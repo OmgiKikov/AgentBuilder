@@ -124,6 +124,7 @@ services:
     command: ["npm", "run", "ragFilesWorker"]
     profiles: [ "rag_files_worker" ]
     environment:
+      - REDIS_URL=redis://redis:6379
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - MONGODB_CONNECTION_STRING=mongodb://mongo:27017/rowboat
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
@@ -142,6 +143,7 @@ services:
     command: ["npm", "run", "ragUrlsWorker"]
     profiles: [ "rag_urls_worker" ]
     environment:
+      - REDIS_URL=redis://redis:6379
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - MONGODB_CONNECTION_STRING=mongodb://mongo:27017/rowboat
       - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
@@ -156,6 +158,7 @@ services:
     command: ["npm", "run", "ragTextWorker"]
     profiles: [ "rag_text_worker" ]
     environment:
+      - REDIS_URL=redis://redis:6379
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - MONGODB_CONNECTION_STRING=mongodb://mongo:27017/rowboat
       - QDRANT_URL=${QDRANT_URL}

@@ -5,7 +5,12 @@ import { tokens } from "@/app/styles/design-tokens";
 import { PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export function Submit() {
+// Define props interface
+interface SubmitProps {
+    buttonText?: string; // Make buttonText optional
+}
+
+export function Submit({ buttonText = "Создать ассистента" }: SubmitProps) { // Provide default value
     const { pending } = useFormStatus();
 
     return (
@@ -27,7 +32,7 @@ export function Submit() {
                 isLoading={pending}
                 startContent={<PlusIcon size={16} />}
             >
-                Создать ассистента
+                {pending ? "Создание..." : buttonText} {/* Use buttonText prop */}
             </Button>
         </div>
     );
