@@ -149,6 +149,7 @@ export function AgentConfig({
                 </div>
             }
         >
+
             <div className="flex flex-col gap-6 p-4 h-[calc(100vh-100px)] min-h-0 flex-1">
                 {/* Tabs */}
                 <div className="flex border-b border-gray-200 dark:border-gray-700">
@@ -253,11 +254,13 @@ export function AgentConfig({
                                     key="instructions"
                                     value={agent.instructions}
                                     onChange={(value) => {
+
                                         handleUpdate({
                                             ...agent,
                                             instructions: value
                                         });
                                     }}
+
                                     markdown
                                     multiline
                                     mentions
@@ -265,6 +268,7 @@ export function AgentConfig({
                                     showSaveButton={true}
                                     showDiscardButton={true}
                                     className="h-full min-h-0 overflow-auto"
+
                                 />
                             )}
                         </>
@@ -275,7 +279,7 @@ export function AgentConfig({
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
                                     <label className={sectionHeaderStyles}>
-                                        Examples
+                                        Примеры
                                     </label>
                                     <CustomButton
                                         variant="secondary"
@@ -397,6 +401,7 @@ export function AgentConfig({
                                 </div>
                             )}
 
+
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <label className={sectionHeaderStyles}>
@@ -449,6 +454,7 @@ export function AgentConfig({
                                 />
                             </div>
 
+
                             {useRag && (
                                 <div className="space-y-4">
                                     <label className={sectionHeaderStyles}>
@@ -459,6 +465,7 @@ export function AgentConfig({
                                             <Select
                                                 variant="bordered"
                                                 placeholder="Add data source"
+
                                                 size="sm"
                                                 className="w-64"
                                                 onSelectionChange={(keys) => {
@@ -472,6 +479,7 @@ export function AgentConfig({
                                                 }}
                                                 startContent={<PlusIcon className="w-4 h-4 text-gray-500" />}
                                             >
+
                                                 {dataSources
                                                     .filter((ds) => !(agent.ragDataSources || []).includes(ds._id))
                                                     .map((ds) => (
@@ -481,7 +489,9 @@ export function AgentConfig({
                                                     ))
                                                 }
                                             </Select>
+
                                         </div>
+
 
                                         <div className="flex flex-col gap-2">
                                             {(agent.ragDataSources || []).map((source) => {
@@ -498,6 +508,7 @@ export function AgentConfig({
                                                                     fill="none" 
                                                                     viewBox="0 0 24 24" 
                                                                     stroke="currentColor"
+
                                                                 >
                                                                     <path 
                                                                         strokeLinecap="round" 
@@ -605,12 +616,14 @@ export function AgentConfig({
                                                             </div>
                                                         </div>
                                                     )}
+
                                                 </div>
                                             </>
                                         )}
                                     </div>
                                 </div>
                             )}
+
 
                             <div className="space-y-4">
                                 <div className="flex items-center">
@@ -698,6 +711,7 @@ export function AgentConfig({
                         </div>
                     )}
                 </div>
+
 
                 <PreviewModalProvider>
                     <GenerateInstructionsModal 
@@ -793,7 +807,7 @@ function GenerateInstructionsModal({
     return (
         <Modal isOpen={isOpen} onClose={onClose} size="lg">
             <ModalContent>
-                <ModalHeader>Generate Instructions</ModalHeader>
+                <ModalHeader>Сгенерировать инструкции</ModalHeader>
                 <ModalBody>
                     <div className="flex flex-col gap-4">
                         {error && (
@@ -807,7 +821,7 @@ function GenerateInstructionsModal({
                                         handleGenerate();
                                     }}
                                 >
-                                    Retry
+                                    Повторить
                                 </CustomButton>
                             </div>
                         )}
@@ -817,7 +831,7 @@ function GenerateInstructionsModal({
                             onChange={(e) => setPrompt(e.target.value)}
                             onKeyDown={handleKeyDown}
                             disabled={isLoading}
-                            placeholder="e.g., This agent should help users analyze their data and provide insights..."
+                            placeholder="Например: агент помогает анализировать данные и даёт советы"
                             className={textareaStyles}
                             autoResize
                         />
@@ -830,7 +844,7 @@ function GenerateInstructionsModal({
                         onClick={onClose}
                         disabled={isLoading}
                     >
-                        Cancel
+                        Отменить
                     </CustomButton>
                     <CustomButton
                         variant="primary"
@@ -839,7 +853,7 @@ function GenerateInstructionsModal({
                         disabled={!prompt.trim() || isLoading}
                         isLoading={isLoading}
                     >
-                        Generate
+                        Сгенерировать
                     </CustomButton>
                 </ModalFooter>
             </ModalContent>
