@@ -230,9 +230,9 @@ export function Copilot({
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            АССИСТЕНТ
+                            Copilot
                         </div>
-                        <Tooltip content="Попросите ассистента помочь с процессом — просто напишите ему!">
+                        <Tooltip content="Попросите Copilot помочь с процессом — просто напишите ему!">
                             <InfoIcon className="w-4 h-4 text-gray-400 cursor-help" />
                         </Tooltip>
                     </div>

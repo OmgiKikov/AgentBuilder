@@ -73,7 +73,7 @@ export function Panel({
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none -mt-16">
                 <img src="/A-B-Testing--Streamline-Manila.svg" alt="Лодка" className="w-40 h-40 mb-4" />
                 <div className="text-base text-center text-blue-900 dark:text-blue-200 font-medium pointer-events-none select-none px-4">
-                    Задайте ассистенту первый вопрос — он уже готов помочь!
+                    Задайте Copilot первый вопрос — он уже готов помочь!
                 </div>
             </div>
         )}
