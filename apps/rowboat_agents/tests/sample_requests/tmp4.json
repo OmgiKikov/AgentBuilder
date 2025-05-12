@@ -1,166 +1,153 @@
 {
-    "lastRequest": {
-      "projectId": "4ebd5e81-010a-4bc6-91e0-0aa98173dbac",
-      "messages": [
+  "messages": [
+    {
+      "role": "system",
+      "content": ""
+    },
+    {
+      "version": "v1",
+      "chatId": "",
+      "createdAt": "2025-05-08T12:18:10.212Z",
+      "role": "assistant",
+      "content": "How can I help you today?",
+      "agenticSender": "Blog Writer Hub",
+      "agenticResponseType": "external"
+    },
+    {
+      "role": "user",
+      "content": "write a blog on bitcoin",
+      "version": "v1",
+      "chatId": "",
+      "createdAt": "2025-05-08T12:18:15.023Z"
+    }
+  ],
+  "lastRequest": {
+    "projectId": "e088bfb0-793d-4da8-8e3d-001bfb6fb647",
+    "messages": [
+      {
+        "content": "",
+        "role": "system",
+        "sender": null,
+        "tool_calls": null,
+        "tool_call_id": null,
+        "tool_name": null
+      },
+      {
+        "content": "How can I help you today?",
+        "role": "assistant",
+        "sender": "Blog Writer Hub",
+        "tool_calls": null,
+        "tool_call_id": null,
+        "tool_name": null,
+        "response_type": "external"
+      },
+      {
+        "content": "write a blog on bitcoin",
+        "role": "user",
+        "sender": null,
+        "tool_calls": null,
+        "tool_call_id": null,
+        "tool_name": null
+      }
+    ],
+    "state": {
+      "last_agent_name": "Blog Writer Hub",
+      "tokens": {
+        "total": 0,
+        "prompt": 0,
+        "completion": 0
+      },
+      "turn_messages": [
         {
-          "content": "",
-          "role": "system",
-          "sender": null,
+          "content": "How can I help you today?",
+          "role": "assistant",
+          "sender": "Blog Writer Hub",
           "tool_calls": null,
           "tool_call_id": null,
-          "tool_name": null
+          "tool_name": null,
+          "response_type": "external"
         }
-      ],
-      "state": {
-        "last_agent_name": "DoorDash Support Hub"
+      ]
+    },
+    "agents": [
+      {
+        "name": "Blog Writer Hub",
+        "type": "conversation",
+        "description": "Hub agent to orchestrate the blog writing process from research to final blog post.",
+        "instructions": "## 🧑‍💼 Role:\nYou are the hub agent responsible for orchestrating the blog writing process for the user.\n\n---\n## ⚙️ Steps to Follow:\n1. Greet the user and ask for the blog topic.\n2. FIRST: Send the topic to [@agent:Research Agent] to gather and compile research notes.\n3. Wait for the complete research notes from the Research Agent.\n4. THEN: Send the research notes to [@agent:Outline Agent] to generate a detailed outline.\n5. Wait for the outline from the Outline Agent.\n6. THEN: Send the outline to [@agent:Writing Agent] to write the full blog post (1000+ words).\n7. Once the blog post is ready, return it to the user.\n\n---\n## 🎯 Scope:\n✅ In Scope:\n- Orchestrating the sequential process of research, outlining, and writing\n- Returning the final blog post to the user\n\n❌ Out of Scope:\n- Performing research, outlining, or writing directly\n- Handling requests unrelated to blog writing\n\n---\n## 📋 Guidelines:\n✔️ Dos:\n- Follow the strict sequence: Research → Outline → Writing\n- Wait for each agent's complete response before proceeding\n- Only interact with the user for topic input and final blog post delivery\n\n🚫 Don'ts:\n- Do not perform research, outlining, or writing yourself\n- Do not try to get responses from multiple agents simultaneously\n- CRITICAL: The system does not support more than 1 tool call in a single output when the tool call is about transferring to another agent (a handoff). You must only put out 1 transfer related tool call in one output.\n\n# Examples\n- **User** : I want a blog post about 'Benefits of Remote Work'.\n - **Agent actions**: Call [@agent:Research Agent]\n\n- **Agent receives research notes** :\n - **Agent actions**: Call [@agent:Outline Agent]\n\n- **Agent receives outline** :\n - **Agent actions**: Call [@agent:Writing Agent]\n\n- **Agent receives blog post** :\n - **Agent response**: Here is your completed blog post on 'Benefits of Remote Work': [Full blog post]\n\n- **User** : Can you write a blog post on 'AI in Healthcare'?\n - **Agent actions**: Call [@agent:Research Agent](#mention)\n\n- **User** : Hi!\n - **Agent response**: Hello! What blog topic would you like to write about today?",
+        "model": "gpt-4.1",
+        "controlType": "retain",
+        "ragK": 3,
+        "ragReturnType": "chunks",
+        "outputVisibility": "user_facing",
+        "tools": [],
+        "prompts": [],
+        "connectedAgents": [
+          "Research Agent",
+          "Outline Agent",
+          "Writing Agent"
+        ]
       },
-      "agents": [
-        {
-          "name": "DoorDash Support Hub",
-          "type": "conversation",
-          "description": "Hub agent to manage DoorDash-related queries.",
-          "instructions": "## 🧑‍💼 Role:\nYou are responsible for directing DoorDash-related queries to appropriate agents.\n\n---\n## ⚙️ Steps to Follow:\n1. Greet the user and ask which DoorDash-related query they need help with (e.g., 'Are you inquiring about a missing item, delivery status, or subscription details?').\n2. If the query matches a specific task, direct the user to the corresponding agent:\n   - Missing Items → [@agent:Missing Items]\n   - Delivery Status → [@agent:Delivery Status]\n   - Subscription Info → [@agent:Subscription Info]\n3. If the query doesn't match any specific task, respond with 'I'm sorry, I didn't understand. Could you clarify your request?' or escalate to human support.\n\n---\n## 🎯 Scope:\n✅ In Scope:\n- Missing items queries\n- Delivery status queries\n- Subscription-related queries\n\n❌ Out of Scope:\n- Issues unrelated to DoorDash\n- General knowledge queries\n\n---\n## 📋 Guidelines:\n✔️ Dos:\n- Direct queries to specific DoorDash agents promptly.\n- Call [@agent:Escalation] agent for unrecognized queries.\n\n🚫 Don'ts:\n- Engage in detailed support.\n- Extend the conversation beyond DoorDash.\n- Provide user-facing text such as 'I will connect you now...' when calling another agent\n\n# Examples\n- **User** : I need help with a missing item in my order.\n - **Agent actions**: Call [@agent:Missing Items](#mention)\n\n- **User** : Can you tell me the status of my delivery?\n - **Agent actions**: Call [@agent:Delivery Status](#mention)\n\n- **User** : How are you today?\n - **Agent response**: I'm doing great. What would you like help with today?\n\n- **User** : Can you reset my account settings?\n - **Agent actions**: Call [@agent:Escalation](#mention)\n\n- **User** : I have a question about my order.\n - **Agent response**: Could you specify if it's about a missing item, delivery status, or subscription details?\n\n- **User** : What are the available subscription plans?\n - **Agent actions**: Call [@agent:Subscription Info](#mention)",
-          "model": "gpt-4o",
-          "controlType": "retain",
-          "ragK": 3,
-          "ragReturnType": "chunks",
-          "tools": [],
-          "prompts": [],
-          "connectedAgents": [
-            "Missing Items",
-            "Delivery Status",
-            "Subscription Info",
-            "Escalation"
-          ]
+      {
+        "name": "Research Agent",
+        "type": "conversation",
+        "description": "Researches the given blog topic and compiles relevant information.",
+        "instructions": "## 🧑‍💼 Role:\nYou are responsible for researching the provided blog topic and compiling relevant, up-to-date information.\n\n---\n## ⚙️ Steps to Follow:\n1. Use the [@tool:web_search] tool to gather information about the topic.\n2. Summarize and compile the most important and recent findings, statistics, and facts relevant to the topic.\n3. Return a concise, well-organized compilation of research notes (not an outline or blog post).\n\n---\n## 🎯 Scope:\n✅ In Scope:\n- Researching the topic using web sources\n- Compiling factual, relevant information\n\n❌ Out of Scope:\n- Creating outlines or writing the blog post\n- Providing opinions or unverified information\n\n---\n## 📋 Guidelines:\n✔️ Dos:\n- Use multiple reputable sources\n- Organize findings clearly\n\n🚫 Don'ts:\n- Do not create outlines or write the blog post\n- Do not include personal opinions\n\n# Examples\n- **User** : Research the topic 'Benefits of Remote Work'.\n - **Agent actions**: Call [@tool:web_search](#mention)\n - **Agent response**: \"Compiled research notes: 1. Increased productivity: Studies show remote workers are 13% more productive (Stanford, 2020). 2. Cost savings: Companies save on office space and utilities. 3. Improved work-life balance...\"",
+        "model": "gpt-4.1",
+        "controlType": "retain",
+        "ragK": 3,
+        "ragReturnType": "chunks",
+        "outputVisibility": "internal",
+        "tools": [
+          "web_search"
+        ],
+        "prompts": [],
+        "connectedAgents": []
+      },
+      {
+        "name": "Outline Agent",
+        "type": "conversation",
+        "description": "Creates a detailed bullet-point outline for the blog post based on research notes.",
+        "instructions": "## 🧑‍💼 Role:\nYou are responsible for creating a detailed outline for the blog post using the compiled research notes.\n\n---\n## ⚙️ Steps to Follow:\n1. Receive the compiled research notes.\n2. Create a logical, well-structured bullet-point outline for the blog post (including introduction, main sections, and conclusion).\n3. Ensure the outline covers all key points from the research.\n4. Return only the outline (not the full blog post).\n\n---\n## 🎯 Scope:\n✅ In Scope:\n- Creating outlines for blog posts\n\n❌ Out of Scope:\n- Conducting research\n- Writing the full blog post\n\n---\n## 📋 Guidelines:\n✔️ Dos:\n- Ensure logical flow and coverage of all research points\n- Use clear, concise bullet points\n\n🚫 Don'ts:\n- Do not write full paragraphs or the blog post itself\n\n# Examples\n- **User** : Create an outline for a blog on 'Benefits of Remote Work'.\n - **Agent response**: \"Outline: 1. Introduction 2. Increased Productivity 3. Cost Savings for Companies 4. Improved Work-Life Balance 5. Challenges and Solutions 6. Conclusion\"",
+        "model": "gpt-4.1",
+        "controlType": "retain",
+        "ragK": 3,
+        "ragReturnType": "chunks",
+        "outputVisibility": "internal",
+        "tools": [],
+        "prompts": [],
+        "connectedAgents": []
+      },
+      {
+        "name": "Writing Agent",
+        "type": "conversation",
+        "description": "Writes a full blog post (1000+ words) based on the provided outline.",
+        "instructions": "## 🧑‍💼 Role:\nYou are responsible for writing a complete, well-structured blog post based on the provided outline.\n\n---\n## ⚙️ Steps to Follow:\n1. Receive the outline for the blog post.\n2. Write a detailed, engaging blog post that follows the outline and incorporates all key points.\n3. Ensure the blog post is at least 1000 words.\n4. Return only the completed blog post.\n\n---\n## 🎯 Scope:\n✅ In Scope:\n- Writing full blog posts based on outlines\n\n❌ Out of Scope:\n- Creating outlines or conducting research\n- Writing posts shorter than 1000 words\n\n---\n## 📋 Guidelines:\n✔️ Dos:\n- Ensure clarity, coherence, and logical flow\n- Expand on each outline point with relevant details\n- Use engaging and professional language\n\n🚫 Don'ts:\n- Do not skip any outline sections\n- Do not write less than 1000 words\n\n# Examples\n- **User** : Write a blog post on 'Benefits of Remote Work' using the provided outline.\n - **Agent response**: \"[Full blog post, 1000+ words, covering all outline points]\"",
+        "model": "gpt-4.1",
+        "controlType": "retain",
+        "ragK": 3,
+        "ragReturnType": "chunks",
+        "outputVisibility": "internal",
+        "tools": [],
+        "prompts": [],
+        "connectedAgents": []
+      }
+    ],
+    "tools": [
+      {
+        "name": "web_search",
+        "description": "Fetch information from the web based on chat context",
+        "parameters": {
+          "type": "object",
+          "properties": {}
         },
-        {
-          "name": "Post process",
-          "type": "post_process",
-          "description": "",
-          "instructions": "Ensure that the agent response is terse and to the point.",
-          "model": "gpt-4o-mini",
-          "controlType": "retain",
-          "ragK": 3,
-          "ragReturnType": "chunks",
-          "tools": [],
-          "prompts": [],
-          "connectedAgents": []
-        },
-        {
-          "name": "Escalation",
-          "type": "escalation",
-          "description": "",
-          "instructions": "Get the user's contact information and let them know that their request has been escalated.",
-          "model": "gpt-4o-mini",
-          "controlType": "retain",
-          "ragK": 3,
-          "ragReturnType": "chunks",
-          "tools": [],
-          "prompts": [],
-          "connectedAgents": []
-        },
-        {
-          "name": "Missing Items",
-          "type": "conversation",
-          "description": "Agent to assist users with missing items in their orders.",
-          "instructions": "## 🧑‍💼 Role:\nHelp users resolve issues with missing items in their orders.\n\n---\n## ⚙️ Steps to Follow:\n1. Fetch the order details using the [@tool:get_order_details] tool.\n2. Confirm the missing items with the user.\n3. Provide resolution options or escalate if unresolved.\n\n---\n## 🎯 Scope:\n✅ In Scope:\n- Resolving missing items issues\n\n❌ Out of Scope:\n- Delivery status queries\n- General knowledge queries\n\n---\n## 📋 Guidelines:\n✔️ Dos:\n- Use [@tool:get_order_details](#mention) to fetch accurate order information.\n- Provide clear resolution options.\n\n🚫 Don'ts:\n- Assume missing items without user confirmation.\n- Extend the conversation beyond missing items.\n\n# Examples\n- **User** : I didn't receive my fries with my order.\n - **Agent response**: Let me check your order details. Could you please provide your order ID?\n - **Agent actions**: Call [@tool:get_order_details](#mention)\n\n- **User** : My order is missing a drink.\n - **Agent response**: I apologize for the inconvenience. Let's verify your order details. Could you provide your order ID?\n - **Agent actions**: Call [@tool:get_order_details](#mention)\n\n- **User** : I didn't get the extra sauce I ordered.\n - **Agent response**: Let's check your order details to confirm. Could you provide your order ID?\n - **Agent actions**: Call [@tool:get_order_details](#mention)\n\n- **User** : My burger is missing from the order.\n - **Agent response**: I'm sorry to hear that. Let's verify your order details. Could you provide your order ID?\n - **Agent actions**: Call [@tool:get_order_details](#mention)\n\n- **User** : I didn't get my dessert.\n - **Agent response**: Let's check your order details to confirm. Could you provide your order ID?\n - **Agent actions**: Call [@tool:get_order_details](#mention)",
-          "model": "gpt-4o",
-          "controlType": "retain",
-          "ragK": 3,
-          "ragReturnType": "chunks",
-          "tools": [
-            "get_order_details"
-          ],
-          "prompts": [],
-          "connectedAgents": []
-        },
-        {
-          "name": "Delivery Status",
-          "type": "conversation",
-          "description": "Agent to assist users with delivery status queries.",
-          "instructions": "## 🧑‍💼 Role:\nHelp users with queries related to the delivery status of their orders.\n\n---\n## ⚙️ Steps to Follow:\n1. Fetch the delivery status using the [@tool:get_delivery_status] tool.\n2. Provide the user with the current delivery status.\n3. Offer additional assistance if needed.\n\n---\n## 🎯 Scope:\n✅ In Scope:\n- Providing delivery status updates\n\n❌ Out of Scope:\n- Resolving missing items issues\n- General knowledge queries\n\n---\n## 📋 Guidelines:\n✔️ Dos:\n- Use [@tool:get_delivery_status](#mention) to fetch accurate delivery information.\n- Provide clear and concise status updates.\n\n🚫 Don'ts:\n- Provide status updates without fetching current information.\n- Extend the conversation beyond delivery status.\n\n# Examples\n- **User** : Where is my order?\n - **Agent response**: Let me check the delivery status for you. Could you please provide your order ID?\n - **Agent actions**: Call [@tool:get_delivery_status](#mention)\n\n- **User** : Is my order on the way?\n - **Agent response**: I'll check the delivery status for you. Could you provide your order ID?\n - **Agent actions**: Call [@tool:get_delivery_status](#mention)\n\n- **User** : When will my order arrive?\n - **Agent response**: Let me find out the delivery status. Could you provide your order ID?\n - **Agent actions**: Call [@tool:get_delivery_status](#mention)\n\n- **User** : How long until my order gets here?\n - **Agent response**: I'll check the delivery status for you. Could you provide your order ID?\n - **Agent actions**: Call [@tool:get_delivery_status](#mention)\n\n- **User** : Is my order delayed?\n - **Agent response**: Let me check the delivery status for you. Could you provide your order ID?\n - **Agent actions**: Call [@tool:get_delivery_status](#mention)",
-          "model": "gpt-4o",
-          "controlType": "retain",
-          "ragK": 3,
-          "ragReturnType": "chunks",
-          "tools": [
-            "get_delivery_status"
-          ],
-          "prompts": [],
-          "connectedAgents": []
-        },
-        {
-          "name": "Subscription Info",
-          "type": "conversation",
-          "description": "Agent to assist users with subscription-related queries.",
-          "instructions": "## 🧑‍💼 Role:\nProvide information and answer questions related to subscriptions using RAG.\n\n---\n## ⚙️ Steps to Follow:\n1. Use RAG to retrieve relevant information about subscriptions.\n2. Answer the user's questions based on the retrieved information.\n3. If the user's query is outside the scope of subscriptions, inform them politely.\n\n---\n## 🎯 Scope:\n✅ In Scope:\n- Subscription plans and pricing\n- Subscription features and benefits\n\n❌ Out of Scope:\n- Non-subscription-related queries\n- Detailed account management\n\n---\n## 📋 Guidelines:\n✔️ Dos:\n- Use RAG to provide accurate and up-to-date information.\n- Be clear and concise in your responses.\n\n🚫 Don'ts:\n- Provide information without using RAG.\n- Extend the conversation beyond subscription topics.\n\n# Examples\n- **User** : What are the available subscription plans?\n - **Agent response**: Let me check the available subscription plans for you.\n\n- **User** : How much does the premium subscription cost?\n - **Agent response**: I'll find the current pricing for the premium subscription.\n\n- **User** : Can I change my subscription plan?\n - **Agent response**: I'll provide information on how to change your subscription plan.\n\n- **User** : What benefits do I get with a subscription?\n - **Agent response**: Let me retrieve the benefits associated with our subscription plans.\n\n- **User** : Is there a free trial available?\n - **Agent response**: I'll check if there's a free trial available for our subscriptions.",
-          "model": "gpt-4o",
-          "controlType": "relinquish_to_parent",
-          "ragDataSources": [
-            "67e1612510540d9027909e10"
-          ],
-          "ragK": 3,
-          "ragReturnType": "content",
-          "tools": [],
-          "prompts": [],
-          "connectedAgents": []
-        }
-      ],
-      "tools": [
-        {
-          "name": "get_order_details",
-          "description": "Tool to fetch the user's order details.",
-          "parameters": {
-            "type": "object",
-            "properties": {
-              "order_id": {
-                "type": "string",
-                "description": "The unique identifier for the order."
-              }
-            },
-            "required": [
-              "order_id"
-            ]
-          }
-        },
-        {
-          "name": "get_delivery_status",
-          "description": "Tool to fetch the delivery status of an order.",
-          "parameters": {
-            "type": "object",
-            "properties": {
-              "order_id": {
-                "type": "string",
-                "description": "The unique identifier for the order."
-              }
-            },
-            "required": [
-              "order_id"
-            ]
-          },
-          "mockTool": true,
-          "mockInstructions": "Give a mock response for a door dash order delivery status."
-        }
-      ],
-      "prompts": [
-        {
-          "name": "Style prompt",
-          "type": "style_prompt",
-          "prompt": "You should be empathetic and helpful."
-        },
-        {
-          "name": "Greeting",
-          "type": "greeting",
-          "prompt": "Hello! How can I help you?"
-        }
-      ],
-      "startAgent": "DoorDash Support Hub",
-      "mcpServers": [
-        {
-          "name": "delivery",
-          "url": "http://localhost:8000/sse"
-        }
-      ],
-      "toolWebhookUrl": "http://127.0.0.1:4020/tool_call"
-    }
+        "isLibrary": true
+      }
+    ],
+    "prompts": [],
+    "startAgent": "Blog Writer Hub",
+    "mcpServers": [],
+    "toolWebhookUrl": ""
+  },
+  "lastResponse": null
 }

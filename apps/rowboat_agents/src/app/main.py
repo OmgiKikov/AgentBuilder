@@ -1,6 +1,5 @@
 import traceback
 from quart import Quart, request, jsonify, Response
-from datetime import datetime
 from functools import wraps
 import os
 import json
@@ -8,15 +7,19 @@ from hypercorn.config import Config
 from hypercorn.asyncio import serve
 import asyncio
 
-from src.graph.core import run_turn, run_turn_streamed
-from src.graph.tools import RAG_TOOL, CLOSE_CHAT_TOOL
-from src.utils.common import common_logger, read_json_from_file
+from src.graph.core import run_turn_streamed
+from src.utils.common import read_json_from_file
 
-from pprint import pprint
-
-logger = common_logger
 app = Quart(__name__)
-config = read_json_from_file("./configs/default_config.json")
+master_config = read_json_from_file("./configs/default_config.json")
+print("Master config:", master_config)
+
+# Get environment variables with defaults
+ENABLE_TRACING = False
+try:
+    ENABLE_TRACING = os.environ.get('ENABLE_TRACING').lower() == 'true'
+except Exception as e:
+    print(f"Error getting ENABLE_TRACING: {e}, using default of False")
 
 # filter out agent transfer messages using a function
 def is_agent_transfer_message(msg):
@@ -59,8 +62,8 @@ def require_api_key(f):
 @app.route("/chat", methods=["POST"])
 @require_api_key
 async def chat():
-    logger.info('='*100)
-    logger.info(f"{'*'*100}Running server mode{'*'*100}")
+    print('='*100)
+    print(f"{'*'*100}Running server mode{'*'*100}")
     try:
         request_data = await request.get_json()
         print("Request:", json.dumps(request_data))
@@ -84,7 +87,6 @@ async def chat():
         data = request_data
         messages = []
         final_state = {}
-        # tokens_used = 0
 
         async for event_type, event_data in run_turn_streamed(
             messages=input_messages,
@@ -92,32 +94,31 @@ async def chat():
             agent_configs=data.get("agents", []),
             tool_configs=data.get("tools", []),
             prompt_configs=data.get("prompts", []),
-            start_turn_with_start_agent=config.get("start_turn_with_start_agent", False),
+            start_turn_with_start_agent=master_config.get("start_turn_with_start_agent", False),
             state=data.get("state", {}),
-            additional_tool_configs=[RAG_TOOL, CLOSE_CHAT_TOOL],
-            complete_request=data
+            complete_request=data,
+            enable_tracing=ENABLE_TRACING
         ):
             if event_type == 'message':
                 messages.append(event_data)
             elif event_type == 'done':
                 final_state = event_data['state']
-                # tokens_used = event_data["tokens_used"]
 
         out = {
             "messages": messages,
             "state": final_state,
         }
 
-        logger.info("Output:")
+        print("Output:")
         for k, v in out.items():
-            logger.info(f"{k}: {v}")
-            logger.info('*'*100)
+            print(f"{k}: {v}")
+            print('*'*100)
 
         return jsonify(out)
 
     except Exception as e:
         print(traceback.format_exc())
-        logger.error(f"Error: {str(e)}")
+        print(f"Error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 def format_sse(data: dict, event: str = None) -> str:
@@ -152,6 +153,7 @@ async def chat_stream():
             msg["role"] = "user"
 
     async def generate():
+        print("Running generate() in server")
         try:
             async for event_type, event_data in run_turn_streamed(
                 messages=input_messages,
@@ -159,23 +161,20 @@ async def chat_stream():
                 agent_configs=request_data.get("agents", []),
                 tool_configs=request_data.get("tools", []),
                 prompt_configs=request_data.get("prompts", []),
-                start_turn_with_start_agent=config.get("start_turn_with_start_agent", False),
+                start_turn_with_start_agent=master_config.get("start_turn_with_start_agent", False),
                 state=request_data.get("state", {}),
-                additional_tool_configs=[RAG_TOOL, CLOSE_CHAT_TOOL],
-                complete_request=request_data
+                complete_request=request_data,
+                enable_tracing=ENABLE_TRACING
             ):
                 if event_type == 'message':
-                    print("Yielding message:")
                     yield format_sse(event_data, "message")
                 elif event_type == 'done':
-                    print("Yielding done:")
                     yield format_sse(event_data, "done")
                 elif event_type == 'error':
-                    print("Yielding error:")
-                    yield format_sse(event_data, "stream_error")
+                    yield format_sse(event_data, " error")
 
         except Exception as e:
-            logger.error(f"Streaming error: {str(e)}")
+            print(f"Streaming error: {str(e)}")
             yield format_sse({"error": str(e)}, "error")
 
     return Response(generate(), mimetype='text/event-stream')

@@ -11,7 +11,7 @@ import { apiV1 } from "rowboat-shared";
 import { TestProfile } from "@/app/lib/types/testing_types";
 import { WithStringId } from "@/app/lib/types/types";
 import { ProfileSelector } from "@/app/projects/[projectId]/test/[[...slug]]/components/selectors/profile-selector";
-import { CheckIcon, CopyIcon, PlusIcon, UserIcon, InfoIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, PlusIcon, UserIcon, InfoIcon, BugIcon, BugOffIcon } from "lucide-react";
 import { USE_TESTING_FEATURE } from "@/app/lib/feature_flags";
 import { clsx } from "clsx";
 
@@ -39,6 +39,7 @@ export function App({
     const [counter, setCounter] = useState<number>(0);
     const [testProfile, setTestProfile] = useState<WithStringId<z.infer<typeof TestProfile>> | null>(null);
     const [systemMessage, setSystemMessage] = useState<string>(defaultSystemMessage);
+    const [showDebugMessages, setShowDebugMessages] = useState<boolean>(true);
     const [chat, setChat] = useState<z.infer<typeof PlaygroundChat>>({
         projectId,
         createdAt: new Date().toISOString(),
@@ -116,6 +117,20 @@ export function App({
                         >
                             <PlusIcon className="w-4 h-4" />
                         </Button>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => setShowDebugMessages(!showDebugMessages)}
+                            className={showDebugMessages ? "bg-blue-50 text-blue-700 hover:bg-blue-100" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}
+                            showHoverContent={true}
+                            hoverContent={showDebugMessages ? "Hide debug messages" : "Show debug messages"}
+                        >
+                            {showDebugMessages ? (
+                                <BugIcon className="w-4 h-4" />
+                            ) : (
+                                <BugOffIcon className="w-4 h-4" />
+                            )}
+                        </Button>
                     </div>
                 }
                 rightActions={
@@ -146,9 +161,6 @@ export function App({
                         </Button>
                     </div>
                 }
-                className={clsx(
-                    isInitialState && "opacity-50 transition-opacity duration-300"
-                )}
                 onClick={onPanelClick}
             >
                 <ProfileSelector
@@ -172,6 +184,7 @@ export function App({
                         mcpServerUrls={mcpServerUrls}
                         toolWebhookUrl={toolWebhookUrl}
                         onCopyClick={(fn) => { getCopyContentRef.current = fn; }}
+                        showDebugMessages={showDebugMessages}
                     />
                 </div>
             </Panel>

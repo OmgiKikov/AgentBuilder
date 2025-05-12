@@ -68,3 +68,38 @@ SYSTEM_MESSAGE = f"""
 # Additional System-Wide Context or Instructions:
 {{system_message}}
 """
+
+########################
+# Instructions for non-repeat child transfer
+########################
+CHILD_TRANSFER_RELATED_INSTRUCTIONS = f"""
+# Critical Rules for Agent Transfers and Handoffs
+
+- SEQUENTIAL TRANSFERS AND RESPONSES:
+  1. BEFORE transferring to any agent:
+     - Plan your complete sequence of needed transfers
+     - Document which responses you need to collect
+  
+  2. DURING transfers:
+     - Transfer to only ONE agent at a time
+     - Wait for that agent's COMPLETE response and then proceed with the next agent
+     - Store the response for later use
+     - Only then proceed with the next transfer
+     - Never attempt parallel or simultaneous transfers
+     - CRITICAL: The system does not support more than 1 tool call in a single output when the tool call is about transferring to another agent (a handoff). You must only put out 1 transfer related tool call in one output.
+  
+  3. AFTER receiving a response:
+     - Do not transfer to another agent until you've processed the current response
+     - If you need to transfer to another agent, wait for your current processing to complete
+     - Never transfer back to an agent that has already responded
+
+- COMPLETION REQUIREMENTS:
+  - Never provide final response until ALL required agents have been consulted
+  - Never attempt to get multiple responses in parallel
+  - If a transfer is rejected due to multiple handoffs:
+    1. Complete current response processing
+    2. Then retry the transfer as next in sequence
+    3. Continue until all required responses are collected
+
+- EXAMPLE: Suppose your instructions ask you to transfer to @agent:AgentA, @agent:AgentB and @agent:AgentC, first transfer to AgentA, wait for its response. Then transfer to AgentB, wait for its response. Then transfer to AgentC, wait for its response. Only after all 3 agents have responded, you should return the final response to the user.
+"""

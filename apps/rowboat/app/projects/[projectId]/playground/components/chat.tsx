@@ -28,6 +28,7 @@ export function Chat({
     mcpServerUrls,
     toolWebhookUrl,
     onCopyClick,
+    showDebugMessages = true,
 }: {
     chat: z.infer<typeof PlaygroundChat>;
     projectId: string;
@@ -40,6 +41,7 @@ export function Chat({
     mcpServerUrls: Array<z.infer<typeof MCPServer>>;
     toolWebhookUrl: string;
     onCopyClick: (fn: () => string) => void;
+    showDebugMessages?: boolean;
 }) {
     const [messages, setMessages] = useState<z.infer<typeof apiV1.ChatMessage>[]>(chat.messages);
     const [loadingAssistantResponse, setLoadingAssistantResponse] = useState<boolean>(false);
@@ -164,7 +166,7 @@ export function Chat({
                 return;
             }
 
-            eventSource = new EventSource(`/api/v1/stream-response/${streamId}`);
+            eventSource = new EventSource(`/api/stream-response/${streamId}`);
 
             eventSource.addEventListener("message", (event) => {
                 if (ignore) {
@@ -285,6 +287,7 @@ export function Chat({
                     systemMessage={systemMessage}
                     onSystemMessageChange={onSystemMessageChange}
                     showSystemMessage={false}
+                    showDebugMessages={showDebugMessages}
                 />
             </div>
         </div>

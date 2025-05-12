@@ -4,10 +4,18 @@ class AgentRole(Enum):
     POST_PROCESSING = "post_process"
     GUARDRAILS = "guardrails"
 
+class outputVisibility(Enum):
+    EXTERNAL = "user_facing"
+    INTERNAL = "internal"
+
+class ResponseType(Enum):
+    INTERNAL = "internal"
+    EXTERNAL = "external"
+
 class ControlType(Enum):
     RETAIN = "retain"
     PARENT_AGENT = "relinquish_to_parent"
-    START_AGENT = "relinquish_to_start"
+    START_AGENT = "start_agent"
 
 class PromptType(Enum):
     STYLE = "style_prompt"

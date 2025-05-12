@@ -19,6 +19,7 @@ import {
 import { getProjectConfig } from "@/app/actions/project_actions";
 import { useTheme } from "@/app/providers/theme-provider";
 import { USE_TESTING_FEATURE, USE_PRODUCT_TOUR } from '@/app/lib/feature_flags';
+import { useHelpModal } from "@/app/providers/help-modal-provider";
 
 interface SidebarProps {
   projectId: string;
@@ -36,6 +37,7 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
   const [projectName, setProjectName] = useState<string>("Select Project");
   const isProjectsRoute = pathname === '/projects' || pathname === '/projects/select';
   const { theme, toggleTheme } = useTheme();
+  const { showHelpModal } = useHelpModal();
 
   useEffect(() => {
     async function fetchProjectName() {
@@ -79,116 +81,138 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
     }
   ];
 
-  return (
-    <aside className={`${collapsed ? 'w-16' : 'w-60'} bg-transparent flex flex-col h-full transition-all duration-300`}>
-      <div className="flex flex-col flex-grow">
-        {!isProjectsRoute && (
-          <>
-            {/* Project Selector */}
-            <div className="p-3 border-b border-zinc-100 dark:border-zinc-800">
-              <Tooltip content={collapsed ? projectName : "Change project"} showArrow placement="right">
-                <Link 
-                  href="/projects"
-                  className={`
-                    flex items-center rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all
-                    ${collapsed ? 'justify-center py-4' : 'gap-3 px-4 py-2.5'}
-                  `}
-                >
-                  <FolderOpenIcon 
-                    size={collapsed ? COLLAPSED_ICON_SIZE : EXPANDED_ICON_SIZE} 
-                    className="text-zinc-500 dark:text-zinc-400 transition-all duration-200" 
-                  />
-                  {!collapsed && (
-                    <span className="text-sm font-medium truncate">
-                      {projectName}
-                    </span>
-                  )}
-                </Link>
-              </Tooltip>
-            </div>
+  const handleStartTour = () => {
+    localStorage.removeItem('user_product_tour_completed');
+    window.location.reload();
+  };
 
-            {/* Navigation Items */}
-            <nav className="p-3 space-y-4">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const fullPath = `/projects/${projectId}/${item.href}`;
-                const isActive = pathname.startsWith(fullPath);
-                const isDisabled = isProjectsRoute && item.requiresProject;
-                
-                return (
-                  <Tooltip 
-                    key={item.href}
-                    content={collapsed ? item.label : ""}
-                    showArrow 
-                    placement="right"
+  return (
+    <>
+      <aside className={`${collapsed ? 'w-16' : 'w-60'} bg-transparent flex flex-col h-full transition-all duration-300`}>
+        <div className="flex flex-col flex-grow">
+          {!isProjectsRoute && (
+            <>
+              {/* Project Selector */}
+              <div className="p-3 border-b border-zinc-100 dark:border-zinc-800">
+                <Tooltip content={collapsed ? projectName : "Change project"} showArrow placement="right">
+                  <Link 
+                    href="/projects"
+                    className={`
+                      flex items-center rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all
+                      ${collapsed ? 'justify-center py-4' : 'gap-3 px-4 py-2.5'}
+                    `}
                   >
-                    <Link 
-                      href={isDisabled ? '#' : fullPath}
-                      className={isDisabled ? 'pointer-events-none' : ''}
+                    <FolderOpenIcon 
+                      size={collapsed ? COLLAPSED_ICON_SIZE : EXPANDED_ICON_SIZE} 
+                      className="text-zinc-500 dark:text-zinc-400 transition-all duration-200" 
+                    />
+                    {!collapsed && (
+                      <span className="text-sm font-medium truncate">
+                        {projectName}
+                      </span>
+                    )}
+                  </Link>
+                </Tooltip>
+              </div>
+
+              {/* Navigation Items */}
+              <nav className="p-3 space-y-4">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const fullPath = `/projects/${projectId}/${item.href}`;
+                  const isActive = pathname.startsWith(fullPath);
+                  const isDisabled = isProjectsRoute && item.requiresProject;
+                  
+                  return (
+                    <Tooltip 
+                      key={item.href}
+                      content={collapsed ? item.label : ""}
+                      showArrow 
+                      placement="right"
                     >
-                      <button 
-                        className={`
-                          relative w-full rounded-md flex items-center
-                          text-[15px] font-medium transition-all duration-200
-                          ${collapsed ? 'justify-center py-4' : 'px-4 py-4 gap-3'}
-                          ${isActive 
-                            ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-l-2 border-indigo-600 dark:border-indigo-400' 
-                            : isDisabled
-                              ? 'text-zinc-300 dark:text-zinc-600 cursor-not-allowed'
-                              : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-300'
-                          }
-                        `}
-                        disabled={isDisabled}
-                        data-tour-target={item.href === 'config' ? 'settings' : undefined}
+                      <Link 
+                        href={isDisabled ? '#' : fullPath}
+                        className={isDisabled ? 'pointer-events-none' : ''}
                       >
-                        <Icon 
-                          size={collapsed ? COLLAPSED_ICON_SIZE : EXPANDED_ICON_SIZE} 
+                        <button 
                           className={`
-                            transition-all duration-200
-                            ${isDisabled 
-                              ? 'text-zinc-300 dark:text-zinc-600' 
-                              : isActive
-                                ? 'text-indigo-600 dark:text-indigo-400'
-                                : 'text-zinc-500 dark:text-zinc-400'
+                            relative w-full rounded-md flex items-center
+                            text-[15px] font-medium transition-all duration-200
+                            ${collapsed ? 'justify-center py-4' : 'px-4 py-4 gap-3'}
+                            ${isActive 
+                              ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-l-2 border-indigo-600 dark:border-indigo-400' 
+                              : isDisabled
+                                ? 'text-zinc-300 dark:text-zinc-600 cursor-not-allowed'
+                                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-300'
                             }
                           `}
-                        />
-                        {!collapsed && <span>{item.label}</span>}
-                      </button>
-                    </Link>
-                  </Tooltip>
-                );
-              })}
-            </nav>
-          </>
-        )}
-      </div>
-
-      {/* Bottom section */}
-      <div className="mt-auto">
-        {/* Collapse Toggle Button */}
-        <div className="p-3 border-t border-zinc-100 dark:border-zinc-800">
-          <button
-            onClick={onToggleCollapse}
-            className="w-full flex items-center justify-center p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all"
-          >
-            {collapsed ? (
-              <ChevronRightIcon size={20} className="text-zinc-500 dark:text-zinc-400" />
-            ) : (
-              <ChevronLeftIcon size={20} className="text-zinc-500 dark:text-zinc-400" />
-            )}
-          </button>
+                          disabled={isDisabled}
+                          data-tour-target={item.href === 'config' ? 'settings' : undefined}
+                        >
+                          <Icon 
+                            size={collapsed ? COLLAPSED_ICON_SIZE : EXPANDED_ICON_SIZE} 
+                            className={`
+                              transition-all duration-200
+                              ${isDisabled 
+                                ? 'text-zinc-300 dark:text-zinc-600' 
+                                : isActive
+                                  ? 'text-indigo-600 dark:text-indigo-400'
+                                  : 'text-zinc-500 dark:text-zinc-400'
+                              }
+                            `}
+                          />
+                          {!collapsed && <span>{item.label}</span>}
+                        </button>
+                      </Link>
+                    </Tooltip>
+                  );
+                })}
+              </nav>
+            </>
+          )}
         </div>
 
-        {/* Theme and Auth Controls */}
-        <div className="p-3 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
-          {USE_PRODUCT_TOUR && !isProjectsRoute && (
+        {/* Bottom section */}
+        <div className="mt-auto">
+          {/* Collapse Toggle Button */}
+          <div className="p-3 border-t border-zinc-100 dark:border-zinc-800">
+            <button
+              onClick={onToggleCollapse}
+              className="w-full flex items-center justify-center p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all"
+            >
+              {collapsed ? (
+                <ChevronRightIcon size={20} className="text-zinc-500 dark:text-zinc-400" />
+              ) : (
+                <ChevronLeftIcon size={20} className="text-zinc-500 dark:text-zinc-400" />
+              )}
+            </button>
+          </div>
+
+          {/* Theme and Auth Controls */}
+          <div className="p-3 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
+            {USE_PRODUCT_TOUR && !isProjectsRoute && (
+              <Tooltip content={collapsed ? "Help" : ""} showArrow placement="right">
+                <button 
+                  onClick={showHelpModal}
+                  className={`
+                    w-full rounded-md flex items-center
+                    text-[15px] font-medium transition-all duration-200
+                    ${collapsed ? 'justify-center py-4' : 'px-4 py-4 gap-3'}
+                    hover:bg-zinc-100 dark:hover:bg-zinc-800/50
+                    text-zinc-600 dark:text-zinc-400
+                  `}
+                  data-tour-target="tour-button"
+                >
+                  <HelpCircle size={COLLAPSED_ICON_SIZE} />
+                  {!collapsed && <span>Help</span>}
+                </button>
+              </Tooltip>
+            )}
+
             <Tooltip content={collapsed ? "Пройти обучение" : ""} showArrow placement="right">
+
               <button 
-                onClick={() => {
-                  localStorage.removeItem('user_product_tour_completed');
-                  window.location.reload();
-                }}
+                onClick={toggleTheme}
                 className={`
                   w-full rounded-md flex items-center
                   text-[15px] font-medium transition-all duration-200
@@ -197,45 +221,30 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
                   text-zinc-600 dark:text-zinc-400
                 `}
               >
-                <HelpCircle size={COLLAPSED_ICON_SIZE} />
+                { theme == "light" ? <Moon size={COLLAPSED_ICON_SIZE} /> : <Sun size={COLLAPSED_ICON_SIZE} /> }
                 {!collapsed && <span>Пройти обучение</span>}
+
               </button>
             </Tooltip>
-          )}
 
-          <Tooltip content={collapsed ? "Внешний вид веб-сайта" : ""} showArrow placement="right">
-            <button 
-              onClick={toggleTheme}
-              className={`
-                w-full rounded-md flex items-center
-                text-[15px] font-medium transition-all duration-200
-                ${collapsed ? 'justify-center py-4' : 'px-4 py-4 gap-3'}
-                hover:bg-zinc-100 dark:hover:bg-zinc-800/50
-                text-zinc-600 dark:text-zinc-400
-              `}
-            >
-              { theme == "light" ? <Moon size={COLLAPSED_ICON_SIZE} /> : <Sun size={COLLAPSED_ICON_SIZE} /> }
-              {!collapsed && <span>Внешний вид веб-сайта</span>}
-            </button>
-          </Tooltip>
-
-          {useAuth && (
-            <Tooltip content={collapsed ? "Аккаунт" : ""} showArrow placement="right">
-              <div 
-                className={`
-                  w-full rounded-md flex items-center
-                  text-[15px] font-medium transition-all duration-200
-                  ${collapsed ? 'justify-center py-4' : 'px-4 py-4 gap-3'}
-                  hover:bg-zinc-100 dark:hover:bg-zinc-800/50
-                `}
-              >
-                <UserButton />
-                {!collapsed && <span>Аккаунт</span>}
-              </div>
-            </Tooltip>
-          )}
+            {useAuth && (
+              <Tooltip content={collapsed ? "Аккаунд" : ""} showArrow placement="right">
+                <div 
+                  className={`
+                    w-full rounded-md flex items-center
+                    text-[15px] font-medium transition-all duration-200
+                    ${collapsed ? 'justify-center py-4' : 'px-4 py-4 gap-3'}
+                    hover:bg-zinc-100 dark:hover:bg-zinc-800/50
+                  `}
+                >
+                  <UserButton />
+                  {!collapsed && <span>Аккаунт</span>}
+                </div>
+              </Tooltip>
+            )}
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 } 

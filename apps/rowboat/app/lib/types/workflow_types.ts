@@ -17,7 +17,9 @@ export const WorkflowAgent = z.object({
     ragDataSources: z.array(z.string()).optional(),
     ragReturnType: z.union([z.literal('chunks'), z.literal('content')]).default('chunks'),
     ragK: z.number().default(3),
+    outputVisibility: z.union([z.literal('user_facing'), z.literal('internal')]).default('user_facing').optional(),
     controlType: z.union([z.literal('retain'), z.literal('relinquish_to_parent'), z.literal('relinquish_to_start')]).default('retain').describe('Whether this agent retains control after a turn, relinquishes to the parent agent, or relinquishes to the start agent'),
+    maxCallsPerParentAgent: z.number().default(3).describe('Maximum number of times this agent can be called by a parent agent in a single turn').optional(),
 });
 export const WorkflowPrompt = z.object({
     name: z.string(),

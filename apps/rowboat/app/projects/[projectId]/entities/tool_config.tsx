@@ -256,10 +256,10 @@ export function ToolConfig({
                         variant="secondary"
                         size="sm"
                         onClick={handleClose}
-                        startContent={<XIcon className="w-4 h-4" />}
-                        aria-label="Close tool config"
+                        showHoverContent={true}
+                        hoverContent="Close"
                     >
-                        Close
+                        <XIcon className="w-4 h-4" />
                     </Button>
                 </div>
             }

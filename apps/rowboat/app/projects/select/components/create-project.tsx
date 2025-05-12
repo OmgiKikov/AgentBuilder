@@ -9,9 +9,10 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { Textarea } from "@/components/ui/textarea";
 import { Submit } from "./submit-button";
 import { Button } from "@/components/ui/button";
-import { FolderOpenIcon } from "@heroicons/react/24/outline";
+import { FolderOpenIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
 import { USE_MULTIPLE_PROJECTS } from "@/app/lib/feature_flags";
 import { HorizontalDivider } from "@/components/ui/horizontal-divider";
+import { Tooltip } from "@heroui/react";
 
 // Add glow animation styles
 const glowStyles = `
@@ -326,6 +327,7 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
                                         </svg>
                                     }
                                 >
+
                                     Выбери из шаблона
                                 </Button>
                                 
@@ -365,6 +367,14 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
                                 <label className={largeSectionHeaderStyles}>
                                     {selectedTab === TabType.Describe ? '✏️ Что хочешь построить?' : '✏️ Customize the description'}
                                 </label>
+                                <div className="flex items-center gap-2">
+                                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                                        In the next step, our AI copilot will create agents for you, complete with mock-tools.
+                                    </p>
+                                    <Tooltip content={<div>If you already know the specific agents and tools you need, mention them below.<br /><br />Specify &apos;internal agents&apos; for task agents that will not interact with the user and &apos;user-facing agents&apos; for conversational agents that will interact with users.</div>} className="max-w-[560px]">
+                                        <InformationCircleIcon className="w-4 h-4 text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 cursor-help" />
+                                    </Tooltip>
+                                </div>
                                 <div className="space-y-2">
                                     <Textarea
                                         value={customPrompt}

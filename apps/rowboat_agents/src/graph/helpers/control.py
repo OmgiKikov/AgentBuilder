@@ -1,7 +1,5 @@
 from .access import get_agent_config_by_name, get_agent_data_by_name
 from src.graph.types import ControlType
-from src.utils.common import common_logger
-logger = common_logger
 
 def get_last_agent_name(state, agent_configs, start_agent_name, msg_type, latest_assistant_msg, start_turn_with_start_agent):
     default_last_agent_name = state.get("last_agent_name", '')
@@ -9,7 +7,7 @@ def get_last_agent_name(state, agent_configs, start_agent_name, msg_type, latest
     specific_agent_data = get_agent_data_by_name(default_last_agent_name, state.get("agent_data", []))
     
     # Overrides for special cases
-    logger.info("Setting agent control based on last agent and control type")
+    print("Setting agent control based on last agent and control type")
     if msg_type == "tool":
         last_agent_name = default_last_agent_name
         assert last_agent_name == latest_assistant_msg.get("sender", ''), "Last agent name does not match sender of latest assistant message during tool call handling"
@@ -22,7 +20,7 @@ def get_last_agent_name(state, agent_configs, start_agent_name, msg_type, latest
         if control_type == ControlType.PARENT_AGENT.value:
             last_agent_name = specific_agent_data.get("most_recent_parent_name", None) if specific_agent_data else None
             if not last_agent_name:
-                logger.error("Most recent parent is empty, defaulting to same agent instead")
+                print("Most recent parent is empty, defaulting to same agent instead")
                 last_agent_name = default_last_agent_name
         elif control_type == ControlType.START_AGENT.value:
             last_agent_name = start_agent_name
@@ -30,7 +28,7 @@ def get_last_agent_name(state, agent_configs, start_agent_name, msg_type, latest
             last_agent_name = default_last_agent_name
     
     if default_last_agent_name != last_agent_name:
-        logger.info(f"Last agent name changed from {default_last_agent_name} to {last_agent_name} due to control settings")
+        print(f"Last agent name changed from {default_last_agent_name} to {last_agent_name} due to control settings")
         
     return last_agent_name
 

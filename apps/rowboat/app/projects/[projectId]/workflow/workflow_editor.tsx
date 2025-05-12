@@ -11,7 +11,7 @@ import { AgentConfig } from "../entities/agent_config";
 import { ToolConfig } from "../entities/tool_config";
 import { App as ChatApp } from "../playground/app";
 import { z } from "zod";
-import { Button, Dropdown, DropdownItem, DropdownMenu, DropdownSection, DropdownTrigger, Spinner } from "@heroui/react";
+import { Button, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Spinner, Tooltip } from "@heroui/react";
 import { PromptConfig } from "../entities/prompt_config";
 import { EditableField } from "../../../lib/components/editable-field";
 import { RelativeTime } from "@primer/react";
@@ -27,7 +27,7 @@ import { apiV1 } from "rowboat-shared";
 import { publishWorkflow, renameWorkflow, saveWorkflow } from "../../../actions/workflow_actions";
 import { PublishedBadge } from "./published_badge";
 import { BackIcon, HamburgerIcon, WorkflowIcon } from "../../../lib/components/icons";
-import { CopyIcon, ImportIcon, Layers2Icon, RadioIcon, RedoIcon, ServerIcon, Sparkles, UndoIcon } from "lucide-react";
+import { CopyIcon, ImportIcon, Layers2Icon, RadioIcon, RedoIcon, ServerIcon, Sparkles, UndoIcon, RocketIcon, PenLine, AlertTriangle } from "lucide-react";
 import { EntityList } from "./entity_list";
 import { McpImportTools } from "./mcp_imports";
 import { ProductTour } from "@/components/common/product-tour";
@@ -269,6 +269,8 @@ function reducer(state: State, action: Action): State {
                                 ragReturnType: "chunks",
                                 ragK: 3,
                                 controlType: "retain",
+                                outputVisibility: "user_facing",
+                                maxCallsPerParentAgent: 3,
                                 ...action.agent
                             });
                             draft.selection = {
@@ -784,28 +786,46 @@ export function WorkflowEditor({
 
     return <div className="flex flex-col h-full relative">
         <div className="shrink-0 flex justify-between items-center pb-6">
-            <div className="workflow-version-selector flex items-center gap-1 px-2 text-gray-800 dark:text-gray-100">
+            <div className="workflow-version-selector flex items-center gap-4 px-2 text-gray-800 dark:text-gray-100">
                 <WorkflowIcon size={16} />
-                <EditableField
-                    key={state.present.workflow._id}
-                    value={state.present.workflow?.name || ''}
-                    onChange={handleRenameWorkflow}
-                    placeholder="Назовите эту версию"
-                    className="text-sm font-semibold"
-                    inline={true}
-                />
-                {state.present.publishing && <Spinner size="sm" />}
-                {isLive && <PublishedBadge />}
+                <Tooltip content="Click to edit">
+                    <div>
+                        <EditableField
+                            key={state.present.workflow._id}
+                            value={state.present.workflow?.name || ''}
+                            onChange={handleRenameWorkflow}
+                            placeholder="Назовите эту версию"
+                            className="text-sm font-semibold"
+                            inline={true}
+                        />
+                    </div>
+                </Tooltip>
+                <div className="flex items-center gap-2">
+                    {state.present.publishing && <Spinner size="sm" />}
+                    {isLive && <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2">
+                        <RadioIcon size={16} />
+                        Live
+                    </div>}
+                    {!isLive && <div className="bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2">
+                        <PenLine size={16} />
+                        Draft
+                    </div>}
+                </div>
+
                 <Dropdown>
                     <DropdownTrigger>
-                        <button className="p-1 text-gray-400 hover:text-black">
-                            <HamburgerIcon size={16} />
-                        </button>
+                        <div>
+                            <Tooltip content="Version Menu">
+                                <button className="p-1.5 text-gray-500 hover:text-gray-800 transition-colors">
+                                    <HamburgerIcon size={20} />
+                                </button>
+                            </Tooltip>
+                        </div>
                     </DropdownTrigger>
                     <DropdownMenu
                         disabledKeys={[
                             ...(state.present.pendingChanges ? ['switch', 'clone'] : []),
-                            ...(isLive ? ['publish', 'mcp'] : []),
+                            ...(isLive ? ['mcp'] : []),
                         ]}
                         onAction={(key) => {
                             if (key === 'switch') {
@@ -814,51 +834,36 @@ export function WorkflowEditor({
                             if (key === 'clone') {
                                 handleCloneVersion(state.present.workflow._id);
                             }
-                            if (key === 'publish') {
-                                handlePublishWorkflow();
-                            }
                             if (key === 'clipboard') {
                                 handleCopyJSON();
                             }
                         }}
                     >
-                        <DropdownSection>
-                            <DropdownItem
-                                key="switch"
-                                startContent={<div className="text-gray-500"><BackIcon size={16} /></div>}
-                                className="gap-x-2"
-                            >
-                                Просмотр версий
-                            </DropdownItem>
-                        </DropdownSection>
 
-                        <DropdownSection>
-                            <DropdownItem
-                                key="clone"
-                                startContent={<div className="text-gray-500"><Layers2Icon size={16} /></div>}
-                                className="gap-x-2"
-                            >
-                                Клонировать эту версию
-                            </DropdownItem>
+                        <DropdownItem
+                            key="switch"
+                            startContent={<div className="text-gray-500"><BackIcon size={16} /></div>}
+                            className="gap-x-2"
+                        >
+                            Просмотр версий
+                        </DropdownItem>
 
-                            <DropdownItem
-                                key="publish"
-                                startContent={<div className="text-indigo-500"><RadioIcon size={16} /></div>}
-                                className="gap-x-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                            >
-                                Сделать версию активной
-                            </DropdownItem>
-                        </DropdownSection>
+                        <DropdownItem
+                            key="clone"
+                            startContent={<div className="text-gray-500"><Layers2Icon size={16} /></div>}
+                            className="gap-x-2"
+                        >
+                            Клонировать эту версию
+                        </DropdownItem>
 
-                        <DropdownSection>
-                            <DropdownItem
-                                key="clipboard"
-                                startContent={<div className="text-gray-500"><CopyIcon size={16} /></div>}
-                                className="gap-x-2"
-                            >
-                                Экспорт в JSON
-                            </DropdownItem>
-                        </DropdownSection>
+                        <DropdownItem
+                            key="clipboard"
+                            startContent={<div className="text-gray-500"><CopyIcon size={16} /></div>}
+                            className="gap-x-2"
+                        >
+                            Экспорт в JSON
+                        </DropdownItem>
+
                     </DropdownMenu>
                 </Dropdown>
             </div>
@@ -867,15 +872,28 @@ export function WorkflowEditor({
             </div>}
             <div className="flex items-center gap-2">
                 {isLive && <div className="flex items-center gap-2">
-                    <div className="bg-yellow-50 text-yellow-500 px-2 py-1 rounded-md text-sm">
-                        Эта версия заблокирована. Вы не можете вносить изменения.
+                    <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2">
+                        <AlertTriangle size={16} />
+                        Эта версия заблокирована. Вы не можете вносить изменения. Изменения, внесенные через copilot,<b>не будут </b>отражены.
+
                     </div>
                     <Button
-                        variant="bordered"
-                        size="sm"
+                        variant="solid"
+                        size="md"
                         onPress={() => handleCloneVersion(state.present.workflow._id)}
+                        className="gap-2 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm"
+                        startContent={<Layers2Icon size={16} />}
                     >
                         Клонировать эту версию
+                    </Button>
+                    <Button
+                        variant="solid"
+                        size="md"
+                        onPress={() => setShowCopilot(!showCopilot)}
+                        className="gap-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
+                        startContent={showCopilot ? null : <Sparkles size={16} />}
+                    >
+                        {showCopilot ? "Hide Copilot" : "Copilot"}
                     </Button>
                 </div>}
                 {!isLive && <div className="text-xs text-gray-400">
@@ -906,12 +924,24 @@ export function WorkflowEditor({
                     </button>
                     <Button
                         variant="solid"
-                        size="lg"
-                        onPress={() => setShowCopilot(!showCopilot)}
-                        className="gap-2 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-base"
-                        startContent={<Sparkles size={20} />}
+                        size="md"
+                        onPress={handlePublishWorkflow}
+                        className="gap-2 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold text-sm"
+                        startContent={<RocketIcon size={16} />}
+                        data-tour-target="deploy"
                     >
-                        Ассистент
+                        Deploy
+                    </Button>
+                    <Button
+                        variant="solid"
+                        size="md"
+                        onPress={() => setShowCopilot(!showCopilot)}
+                        className="gap-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
+                        startContent={showCopilot ? null : <Sparkles size={16} />}
+                    >
+
+                        {showCopilot ? "Скрыть Copilot" : "Copilot"}
+
                     </Button>
                 </>}
             </div>

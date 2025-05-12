@@ -1,11 +1,10 @@
-from src.utils.common import common_logger, read_json_from_file
+from src.utils.common import read_json_from_file
 import requests
 import json
 import argparse
 from datetime import datetime
 
-logger = common_logger
-logger.info("Running app_client_streaming.py")
+print("Running app_client_streaming.py")
 
 def preprocess_messages(messages):
     # Preprocess messages to handle null content and role issues
@@ -32,47 +31,12 @@ def stream_chat(host, request_data, api_key):
     print(f"Host: {host}")
     print("="*80 + "\n")
 
-    # First, initialize the stream
     try:
         print("\n" + "-"*80)
-        print("Initializing stream...")
-        init_response = requests.post(
-            f"{host}/chat_stream_init",
+        print("Connecting to stream...")
+        stream_response = requests.post(
+            f"{host}/chat_stream",
             json=request_data,
-            headers={'Authorization': f'Bearer {api_key}'}
-        )
-        print(f"Init Response Status: {init_response.status_code}")
-        print(f"Init Response Text: {init_response.text}")
-        print("-"*80 + "\n")
-        
-        if init_response.status_code != 200:
-            logger.error(f"Error initializing stream. Status code: {init_response.status_code}")
-            logger.error(f"Response: {init_response.text}")
-            return
-            
-        init_data = init_response.json()
-        
-        if 'error' in init_data:
-            logger.error(f"Error initializing stream: {init_data['error']}")
-            return
-        
-        stream_id = init_data['stream_id']
-        print(f"Stream initialized successfully with ID: {stream_id}")
-        
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Request error during stream initialization: {e}")
-        return
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to decode JSON response: {e}")
-        logger.error(f"Raw response: {init_response.text}")
-        return
-    
-    # Now connect to the stream
-    try:
-        print("\n" + "-"*80)
-        print(f"Connecting to stream {stream_id}...")
-        stream_response = requests.get(
-            f"{host}/chat_stream/{stream_id}",
             headers={
                 'Authorization': f'Bearer {api_key}',
                 'Accept': 'text/event-stream'
@@ -81,15 +45,14 @@ def stream_chat(host, request_data, api_key):
         )
         
         if stream_response.status_code != 200:
-            logger.error(f"Error connecting to stream. Status code: {stream_response.status_code}")
-            logger.error(f"Response: {stream_response.text}")
+            print(f"Error connecting to stream. Status code: {stream_response.status_code}")
+            print(f"Response: {stream_response.text}")
             return
             
         print(f"Successfully connected to stream")
         print("-"*80 + "\n")
 
         event_count = 0
-        current_data = []
         
         try:
             print("\n" + "-"*80)
@@ -104,7 +67,7 @@ def stream_chat(host, request_data, api_key):
                             event_data = json.loads(data)
                             event_count += 1
                             print("\n" + "*"*80)
-                            print(f"Event #{event_count}")
+                            print(f"Event #{event_count} at {datetime.now().isoformat()}")
                             
                             if isinstance(event_data, dict):
                                 # Pretty print the event data

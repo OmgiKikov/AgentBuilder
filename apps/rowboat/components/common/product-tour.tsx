@@ -11,33 +11,43 @@ interface TourStep {
 const TOUR_STEPS: TourStep[] = [
     {
         target: 'copilot',
-        content: 'Создайте агента с помощью ассистента. Это займёт минуту.',
-        title: 'Шаг 1 из 6'
+        content: 'Build agents with the help of copilot.\nThis might take a minute.',
+        title: 'Step 1/8'
     },
     {
         target: 'playground',
-        content: 'Проверьте, как работает ваш агент. Всё просто!',
-        title: 'Шаг 2 из 6'
+        content: 'Test your assistant in the playground.\nDebug tool calls and responses.',
+        title: 'Step 2/8'
     },
     {
         target: 'entity-agents',
-        content: 'Управляйте агентами. Добавляйте инструкции и примеры.',
-        title: 'Шаг 3 из 6'
+        content: 'Manage your agents.\nSpecify instructions, examples and tool usage.',
+        title: 'Step 3/8'
     },
     {
         target: 'entity-tools',
-        content: 'Создавайте и подключайте инструменты. Можно импортировать готовые.',
-        title: 'Шаг 4 из 6'
+        content: 'Create your own tools, import MCP tools or use existing ones.\nMock tools for quick testing.',
+        title: 'Step 4/8'
     },
     {
         target: 'entity-prompts',
-        content: 'Настройте подсказки для агентов. Можно задать приветствие.',
-        title: 'Шаг 5 из 6'
+        content: 'Manage prompts which will be used by agents.\nConfigure greeting message.',
+        title: 'Step 5/8'
     },
     {
         target: 'settings',
-        content: 'Настройте проект: API-ключи, вебхуки и другое.',
-        title: 'Шаг 6 из 6'
+        content: 'Configure project settings\nGet API keys, configure tool webhooks.',
+        title: 'Step 6/8'
+    },
+    {
+        target: 'deploy',
+        content: 'Deploy your workflow version to make it live.\nThis will make your workflow available for use via the API and SDK.\n\nLearn more:\n• <a href="https://docs.rowboatlabs.com/using_the_api/" target="_blank" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">Using the API</a>\n• <a href="https://docs.rowboatlabs.com/using_the_sdk/" target="_blank" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">Using the SDK</a>',
+        title: 'Step 7/8'
+    },
+    {
+        target: 'tour-button',
+        content: 'Come back here anytime to restart the tour.\nStill have questions? See our <a href="https://docs.rowboatlabs.com/" target="_blank" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">docs</a> or reach out on <a href="https://discord.gg/gtbGcqF4" target="_blank" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">discord</a>.',
+        title: 'Step 8/8'
     }
 ];
 
@@ -222,9 +232,9 @@ export function ProductTour({
                 <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                     {TOUR_STEPS[currentStep].title}
                 </div>
-                <div className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3 whitespace-pre-line">
-                    {TOUR_STEPS[currentStep].content}
-                </div>
+                <div className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3 whitespace-pre-line [&>a]:underline"
+                    dangerouslySetInnerHTML={{ __html: TOUR_STEPS[currentStep].content }}
+                />
                 <div className="flex justify-between items-center">
                     <button
                         onClick={handleSkip}

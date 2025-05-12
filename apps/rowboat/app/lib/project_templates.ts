@@ -14,36 +14,13 @@ export const templates: { [key: string]: z.infer<typeof WorkflowTemplate> } = {
                 name: "Example Agent",
                 type: "conversation",
                 description: "An example agent",
-                instructions: `## 🧑‍ Role:
-You are an helpful customer support assistant
-
----
-## ⚙️ Steps to Follow:
-1. Ask the user what they would like help with
-2. Ask the user for their email address and let them know someone will contact them soon.
-
----
-## 🎯 Scope:
-✅ In Scope:
-- Asking the user their issue
-- Getting their email
-
-❌ Out of Scope:
-- Questions unrelated to customer support
-- If a question is out of scope, politely inform the user and avoid providing an answer.
-
----
-## 📋 Guidelines:
-✔️ Dos:
-- ask user their issue
-
-❌ Don'ts:
-- don't ask user any other detail than email`,
+                instructions: "## 🧑‍ Role:\nYou are an helpful customer support assistant\n\n---\n## ⚙️ Steps to Follow:\n1. Ask the user what they would like help with\n2. Ask the user for their email address and let them know someone will contact them soon.\n\n---\n## 🎯 Scope:\n✅ In Scope:\n- Asking the user their issue\n- Getting their email\n\n❌ Out of Scope:\n- Questions unrelated to customer support\n- If a question is out of scope, politely inform the user and avoid providing an answer.\n\n---\n## 📋 Guidelines:\n✔️ Dos:\n- ask user their issue\n\n❌ Don'ts:\n- don't ask user any other detail than email",
                 model: DEFAULT_MODEL,
                 toggleAble: true,
                 ragReturnType: "chunks",
                 ragK: 3,
                 controlType: "retain",
+                outputVisibility: "user_facing",
             },
         ],
         prompts: [],
@@ -66,5 +43,5 @@ export const starting_copilot_prompts: { [key: string]: string } = {
 
     "Scheduling Assistant": "Create an appointment scheduling assistant that helps users schedule, modify, and manage their appointments efficiently. Help with finding available time slots, sending reminders, rescheduling appointments, and answering questions about scheduling policies and procedures. Maintain a professional and organized approach.",
 
-    "Banking Assistant": "Create a banking assistant focused on helping customers with their banking needs. Help with account inquiries, banking products and services, transaction information, and general banking guidance. Prioritize accuracy and security while providing clear and helpful responses to banking-related questions."
+    "Blog Assistant": "Create a blog writer assistant with agents for researching, compiling, outlining and writing the blog. The research agent will research the topic and compile the information. The outline agent will write bullet points for the blog post. The writing agent will expand upon the outline and write the blog post. The blog post should be 1000 words or more.",
 }

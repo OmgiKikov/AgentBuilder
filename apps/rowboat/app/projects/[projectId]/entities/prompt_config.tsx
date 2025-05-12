@@ -61,11 +61,11 @@ export function PromptConfig({
                         variant="secondary"
                         size="sm"
                         onClick={handleClose}
-                        startContent={<XIcon className="w-4 h-4" />}
-                        aria-label="Close prompt config"
-                        className="transition-colors"
+                        showHoverContent={true}
+                        hoverContent="Close"
                     >
-                        Закрыть
+                        <XIcon className="w-4 h-4" />
+
                     </Button>
                 </div>
             }

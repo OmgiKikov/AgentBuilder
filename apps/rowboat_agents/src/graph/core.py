@@ -7,20 +7,16 @@ import logging
 from .helpers.access import (
     get_agent_by_name,
     get_external_tools,
-    get_prompt_by_type
+    get_prompt_by_type,
+    get_agent_config_by_name
 )
-from .helpers.state import (
-    construct_state_from_response
-)
-from .helpers.control import get_latest_assistant_msg, get_latest_non_assistant_messages, get_last_agent_name
-from .swarm_wrapper import run as swarm_run, run_streamed as swarm_run_streamed, create_response, get_agents
-from src.utils.common import common_logger as logger
+from .helpers.library_tools import handle_web_search_event
+from .helpers.control import get_last_agent_name
+from .execute_turn import run_streamed as swarm_run_streamed, get_agents
+from .helpers.instructions import add_child_transfer_related_instructions
+from .types import PromptType, outputVisibility, ResponseType
+from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 
-from .types import PromptType
-
-# Create a dedicated logger for swarm wrapper
-logger.setLevel(logging.INFO)
-print("Logger level set to INFO")
 
 def order_messages(messages):
     """
@@ -52,197 +48,41 @@ def set_sys_message(messages):
     if messages[0].get("role") == "system" and messages[0].get("content") == "":
         messages[0]["content"] = "You are a helpful assistant."
         print("Updated system message: ", messages[0])
-        logger.info("Updated system message: ", messages[0])
-        print("Messages: ", messages)
-        # logger.info("Messages: ", messages)
-    
+
     return messages
 
-def clean_up_history(agent_data):
-    """
-    Ensures each agent's history is sorted using order_messages.
-    """
-    for data in agent_data:
-        data["history"] = order_messages(data["history"])
-    return agent_data
+def add_child_transfer_related_instructions_to_agents(agents):
+    for agent in agents:
+        add_child_transfer_related_instructions(agent)
+    return agents
 
-def create_final_response(response, turn_messages, tokens_used, all_agents):
-    """
-    Constructs the final response data (messages, tokens_used, updated state) that a caller would need.
-    """
-    # Ensure response has a messages attribute
-    if not hasattr(response, 'messages'):
-        response.messages = []
+def add_openai_recommended_instructions_to_agents(agents):
+    for agent in agents:
+        agent.instructions = RECOMMENDED_PROMPT_PREFIX + '\n\n' + agent.instructions
+    return agents
 
-    # Assign the appropriate messages to the response
-    response.messages = turn_messages
+def check_internal_visibility(current_agent):
+    """Check if an agent is internal based on its outputVisibility"""
+    return current_agent.output_visibility == outputVisibility.INTERNAL.value
 
-    # Ensure tokens_used is a valid dictionary
-    if not isinstance(tokens_used, dict):
-        tokens_used = {"total": 0, "prompt": 0, "completion": 0}  # Default values if not a dictionary
+def add_sender_details_to_messages(messages):
+    for msg in messages:
+        msg['sender'] = msg.get('sender', None)
+        if msg.get('sender'):
+            msg['content'] = f"Sender agent: {msg.get('sender')}\nContent: {msg.get('content')}"
+    return messages
 
-    # Ensure response has a tokens_used attribute that's a dictionary
-    if not hasattr(response, 'tokens_used') or not isinstance(response.tokens_used, dict):
-        response.tokens_used = {}
+def append_messages(messages, accumulated_messages):
+    # Create a set of existing message contents for O(1) lookup
+    existing_contents = {msg.get('content') for msg in messages}
 
-    response.tokens_used = tokens_used
+    # Append messages that aren't already present, preserving order
+    for msg in accumulated_messages:
+        if msg.get('content') not in existing_contents:
+            messages.append(msg)
+            existing_contents.add(msg.get('content'))
 
-    # Ensure response has an agent attribute for state construction
-    if not hasattr(response, 'agent'):
-        if all_agents and len(all_agents) > 0:
-            response.agent = all_agents[0]  # Set default agent if missing
-
-    new_state = construct_state_from_response(response, all_agents)
-    return response.messages, response.tokens_used, new_state
-
-
-async def run_turn(
-    messages, start_agent_name, agent_configs, tool_configs, start_turn_with_start_agent, state={}, additional_tool_configs=[], complete_request={}
-):
-    """
-    Coordinates a single 'turn' of conversation or processing among agents.
-    Includes validation, agent setup, optional greeting logic, error handling, and post-processing steps.
-    """
-    logger.info("Running stateless turn")
-    print("Running stateless turn")
-
-    # Sort messages by the specified ordering
-    #messages = order_messages(messages)
-
-    # Merge any additional tool configs
-    tool_configs = tool_configs + additional_tool_configs
-
-    # Determine if this is a greeting turn
-    greeting_turn = not any(msg.get("role") != "system" for msg in messages)
-    turn_messages = []
-    # Initialize tokens_used as a dictionary
-    tokens_used = {"total": 0, "prompt": 0, "completion": 0}
-
-    agent_data = state.get("agent_data", [])
-
-    # If not a greeting turn, localize the last user or system messages
-    if not greeting_turn:
-        latest_assistant_msg = get_latest_assistant_msg(messages)
-        latest_non_assistant_msgs = get_latest_non_assistant_messages(messages)
-        msg_type = latest_non_assistant_msgs[-1]["role"]
-
-        # Determine the last agent from state/config
-        last_agent_name = get_last_agent_name(
-            state=state,
-            agent_configs=agent_configs,
-            start_agent_name=start_agent_name,
-            msg_type=msg_type,
-            latest_assistant_msg=latest_assistant_msg,
-            start_turn_with_start_agent=start_turn_with_start_agent
-        )
-    else:
-        # For a greeting turn, we assume the last agent is the start_agent_name
-        last_agent_name = start_agent_name
-
-    state["agent_data"] = agent_data
-
-    # Initialize all agents
-    logger.info("Initializing agents")
-    print("Initializing agents")
-    new_agents = get_agents(
-        agent_configs=agent_configs,
-        tool_configs=tool_configs,
-        complete_request=complete_request
-    )
-    # Prepare escalation agent
-    last_new_agent = get_agent_by_name(last_agent_name, new_agents)
-
-    # Gather external tools for Swarm
-    external_tools = get_external_tools(tool_configs)
-    logger.info(f"Found {len(external_tools)} external tools")
-    print(f"Found {len(external_tools)} external tools")
-
-    # If no validation error yet, proceed with the main run
-
-    logger.info("Running swarm run")
-    print("Running swarm run")
-
-    response = await swarm_run(
-        agent=last_new_agent,
-        messages=messages,
-        external_tools=external_tools,
-        tokens_used=tokens_used
-    )
-
-    logger.info("Swarm run completed")
-    print("Swarm run completed")
-
-    # Initialize response.messages if it doesn't exist
-    if not hasattr(response, 'messages'):
-        response.messages = []
-
-    # Convert the ResponseOutputMessage to a standard message format
-    if hasattr(response, 'new_items') and response.new_items and hasattr(response.new_items[-1], 'raw_item'):
-        raw_item = response.new_items[-1].raw_item
-        # Extract text content from ResponseOutputText objects
-        content = ""
-        if hasattr(raw_item, 'content') and raw_item.content:
-            for content_item in raw_item.content:
-                if hasattr(content_item, 'text'):
-                    content += content_item.text
-
-        # Create a standard message dictionary
-        standard_message = {
-            "role": raw_item.role if hasattr(raw_item, 'role') else "assistant",
-            "content": content,
-            "sender": last_new_agent.name,
-            "created_at": None,
-            "response_type": "internal"
-        }
-
-        # Add the converted message to response messages
-        response.messages.append(standard_message)
-
-    logger.info("Converted message added to response messages")
-    print("Converted message added to response messages")
-
-    # Use a dictionary for tokens_used
-    tokens_used = {"total": 0, "prompt": 0, "completion": 0}  # Default values as placeholders
-
-    # Ensure turn_messages can be extended with response.messages
-    if hasattr(response, 'messages') and isinstance(response.messages, list):
-        turn_messages.extend(response.messages)
-
-    logger.info(f"Completed run of agent: {last_new_agent.name}")
-    print(f"Completed run of agent: {last_new_agent.name}")
-
-    # Otherwise, duplicate the last response as external
-    logger.info("No post-processing agent found. Duplicating last response and setting to external.")
-    print("No post-processing agent found. Duplicating last response and setting to external.")
-    if turn_messages:
-        duplicate_msg = deepcopy(turn_messages[-1])
-        duplicate_msg["response_type"] = "external"
-        duplicate_msg["sender"] += " >> External"
-
-        # Ensure tokens_used remains a proper dictionary
-        if not isinstance(tokens_used, dict):
-            tokens_used = {"total": 0, "prompt": 0, "completion": 0}  # Default values if not a dictionary
-
-        response = create_response(
-            messages=[duplicate_msg],
-            tokens_used=tokens_used,
-            agent=last_new_agent,
-            error_msg=''
-        )
-
-        # Ensure response has messages attribute
-        if hasattr(response, 'messages') and isinstance(response.messages, list):
-            turn_messages.extend(response.messages)
-
-    # Finalize the response
-    logger.info("Finalizing response")
-    print("Finalizing response")
-    return create_final_response(
-        response=response,
-        turn_messages=turn_messages,
-        tokens_used=tokens_used,
-        all_agents=new_agents
-    )
+    return messages
 
 async def run_turn_streamed(
     messages,
@@ -252,18 +92,39 @@ async def run_turn_streamed(
     prompt_configs,
     start_turn_with_start_agent,
     state={},
-    additional_tool_configs=[],
-    complete_request={}
+    complete_request={},
+    enable_tracing=None
 ):
+    """
+    Run a turn of the conversation with streaming responses.
+
+    A turn consists of all messages between user inputs and must follow these rules:
+    1. Each turn must have exactly one external message from an agent with external visibility
+    2. A turn can have multiple internal messages from internal agents
+    3. Each agent can output at most one regular message per parent
+    4. Control flows from parent to child, and child must return to parent after responding
+    5. Turn ends when an external agent outputs a message
+    """
+    print("\n=== Starting new turn ===")
+    print(f"Starting agent: {start_agent_name}")
+
+    # Use enable_tracing from complete_request if available, otherwise default to False
+    enable_tracing = complete_request.get("enable_tracing", False) if enable_tracing is None else enable_tracing
+
     messages = set_sys_message(messages)
+    messages = add_sender_details_to_messages(messages)
     is_greeting_turn = not any(msg.get("role") != "system" for msg in messages)
-    final_state = None  # Initialize outside try block
+    final_state = None
+    accumulated_messages = []
+    agent_message_counts = {}  # Track messages per agent
+    child_call_counts = {}  # Track parent->child calls
+    current_agent = None
+    parent_stack = []
+
     try:
-        greeting_prompt = get_prompt_by_type(prompt_configs, PromptType.GREETING)
+        # Handle greeting turn
         if is_greeting_turn:
-            if not greeting_prompt:
-                greeting_prompt = "How can I help you today?"
-                print("Greeting prompt not found. Using default: ", greeting_prompt)
+            greeting_prompt = get_prompt_by_type(prompt_configs, PromptType.GREETING) or "How can I help you today?"
             message = {
                 'content': greeting_prompt,
                 'role': 'assistant',
@@ -271,21 +132,33 @@ async def run_turn_streamed(
                 'tool_calls': None,
                 'tool_call_id': None,
                 'tool_name': None,
-                'response_type': 'external'
+                'response_type': ResponseType.EXTERNAL.value
             }
-            print("Yielding greeting message: ", message)
+            accumulated_messages.append(message)
+            print('-'*100)
+            print(f"Yielding message: {message}")
+            print('-'*100)
             yield ('message', message)
-
             final_state = {
-                "last_agent_name": start_agent_name if start_agent_name else None,
-                "tokens": {"total": 0, "prompt": 0, "completion": 0}
+                "last_agent_name": start_agent_name,
+                "tokens": {"total": 0, "prompt": 0, "completion": 0},
+                "turn_messages": accumulated_messages
             }
-            print("Yielding done message")
+            print('-'*100)
+            print(f"Yielding done: {final_state}")
+            print('-'*100)
             yield ('done', {'state': final_state})
             return
-        
+
         # Initialize agents and get external tools
-        new_agents = get_agents(agent_configs=agent_configs, tool_configs=tool_configs, complete_request=complete_request)
+
+        new_agents = get_agents(
+            agent_configs=agent_configs, 
+            tool_configs=tool_configs, 
+            complete_request=complete_request
+        )
+        new_agents = add_child_transfer_related_instructions_to_agents(new_agents)
+        new_agents = add_openai_recommended_instructions_to_agents(new_agents)
         last_agent_name = get_last_agent_name(
             state=state,
             agent_configs=agent_configs,
@@ -294,368 +167,319 @@ async def run_turn_streamed(
             latest_assistant_msg=None,
             start_turn_with_start_agent=start_turn_with_start_agent
         )
-        last_new_agent = get_agent_by_name(last_agent_name, new_agents)
+        current_agent = get_agent_by_name(last_agent_name, new_agents)
         external_tools = get_external_tools(tool_configs)
-
-        current_agent = last_new_agent
         tokens_used = {"total": 0, "prompt": 0, "completion": 0}
+        iter = 0
+        while True:
+            iter += 1
+            is_internal_agent = check_internal_visibility(current_agent)
+            print('-'*100)
+            print(f"Iteration {iter} of turn loop")
+            print(f"Current agent: {current_agent.name} (internal: {is_internal_agent})")
+            print(f"Parent stack: {[agent.name for agent in parent_stack]}")
+            print('-'*100)
 
-        stream_result = await swarm_run_streamed(
-            agent=last_new_agent,
-            messages=messages,
-            external_tools=external_tools,
-            tokens_used=tokens_used
-        )
+            messages = append_messages(messages, accumulated_messages)
+            # Run the current agent
+            stream_result = await swarm_run_streamed(
+                agent=current_agent,
+                messages=messages,
+                external_tools=external_tools,
+                tokens_used=tokens_used,
+                enable_tracing=enable_tracing
+            )
 
-        # Process streaming events
-        async for event in stream_result.stream_events():
-            print('='*50)
-            print("Received event: ", event)
-            print('-'*50)
+            async for event in stream_result.stream_events():
+                try:
+                    # Handle web search events
+                    if event.type == "raw_response_event":
+                        # Handle token usage counting
+                        if hasattr(event.data, 'type') and event.data.type == "response.completed" and hasattr(event.data.response, 'usage'):
+                            tokens_used["total"] += event.data.response.usage.total_tokens
+                            tokens_used["prompt"] += event.data.response.usage.input_tokens
+                            tokens_used["completion"] += event.data.response.usage.output_tokens
+                            print('-'*50)
+                            print(f"Found usage information. Updated cumulative tokens: {tokens_used}")
+                            print('-'*50)
 
-            # Handle raw response events and accumulate tokens
-            if event.type == "raw_response_event":
-                if hasattr(event.data, 'type') and event.data.type == "response.completed" and event.data.response.usage:
-                    if hasattr(event.data.response, 'usage'):
-                        tokens_used["total"] += event.data.response.usage.total_tokens
-                        tokens_used["prompt"] += event.data.response.usage.input_tokens
-                        tokens_used["completion"] += event.data.response.usage.output_tokens
-                        print('-'*50)
-                        print(f"Found usage information. Updated cumulative tokens: {tokens_used}")
-                        print('-'*50)
+                        web_search_messages = handle_web_search_event(event, current_agent)
+                        for message in web_search_messages:
+                            message['response_type'] = ResponseType.INTERNAL.value
+                            print('-'*100)
+                            print(f"Yielding message: {message}")
+                            print('-'*100)
+                            yield ('message', message)
+                            if message.get('role') != 'tool':
+                                message['content'] = f"Sender agent: {current_agent.name}\nContent: {message['content']}"
+                                accumulated_messages.append(message)
+                        continue
 
-                # Handle ResponseFunctionWebSearch specifically
-                if hasattr(event, 'data') and hasattr(event.data, 'raw_item'):
-                    raw_item = event.data.raw_item
+                    # Handle agent transfer
+                    elif event.type == "agent_updated_stream_event":
 
-                    # Check if it's a web search call
-                    if (hasattr(raw_item, 'type') and raw_item.type == 'web_search_call') or (
-                        isinstance(raw_item, dict) and raw_item.get('type') == 'web_search_call'
-                    ):
-                        # Get call_id safely, regardless of structure
-                        call_id = None
-                        if hasattr(raw_item, 'id'):
-                            call_id = raw_item.id
-                        elif isinstance(raw_item, dict) and 'id' in raw_item:
-                            call_id = raw_item['id']
-                        else:
-                            call_id = str(uuid.uuid4())
+                        # Skip self-transfers
+                        if current_agent.name == event.new_agent.name:
+                            print(f"\nSkipping agent transfer attempt: {current_agent.name} -> {event.new_agent.name} (self-transfer)")
+                            continue
 
-                        # Get status safely
-                        status = 'unknown'
-                        if hasattr(raw_item, 'status'):
-                            status = raw_item.status
-                        elif isinstance(raw_item, dict) and 'status' in raw_item:
-                            status = raw_item['status']
+                        # Check if we've already called this child agent too many times
+                        parent_child_key = f"{current_agent.name}:{event.new_agent.name}"
+                        current_count = child_call_counts.get(parent_child_key, 0)
+                        if current_count >= event.new_agent.max_calls_per_parent_agent:
+                            print(f"Skipping transfer from {current_agent.name} to {event.new_agent.name} (max calls reached from parent to child)")
+                            continue
 
-                        # Emit a tool call for web search
+                        # Transfer to new agent
+                        tool_call_id = str(uuid.uuid4())
                         message = {
                             'content': None,
                             'role': 'assistant',
-                            'sender': current_agent.name if current_agent else None,
+                            'sender': current_agent.name,
                             'tool_calls': [{
                                 'function': {
-                                    'name': 'web_search',
+                                    'name': 'transfer_to_agent',
                                     'arguments': json.dumps({
-                                        'search_id': call_id,
-                                        'status': status
+                                        'assistant': event.new_agent.name
                                     })
                                 },
-                                'id': call_id,
+                                'id': tool_call_id,
                                 'type': 'function'
                             }],
                             'tool_call_id': None,
                             'tool_name': None,
-                            'response_type': 'internal'
+                            'response_type': ResponseType.INTERNAL.value
                         }
-                        print("Yielding web search raw response message: ", message)
+                        print('-'*100)
+                        print(f"Yielding message: {message}")
+                        print('-'*100)
                         yield ('message', message)
 
-                continue
-
-            # Update current agent when it changes
-            elif event.type == "agent_updated_stream_event":
-                if current_agent.name == event.new_agent.name:
-                    continue
-
-                tool_call_id = str(uuid.uuid4())
-
-                # yield the transfer invocation
-                message = {
-                    'content': None,
-                    'role': 'assistant',
-                    'sender': current_agent.name,
-                    'tool_calls': [{
-                        'function': {
-                            'name': 'transfer_to_agent',
-                            'arguments': json.dumps({
+                        # Record transfer result
+                        message = {
+                            'content': json.dumps({
                                 'assistant': event.new_agent.name
-                            })
-                        },
-                        'id': tool_call_id,
-                        'type': 'function'
-                    }],
-                    'tool_call_id': None,
-                    'tool_name': None,
-                    'response_type': 'internal'
-                }
-                print("Yielding message: ", message)
-                yield ('message', message)
-
-                # yield the transfer result
-                message = {
-                    'content': json.dumps({
-                        'assistant': event.new_agent.name
-                    }),
-                    'role': 'tool',
-                    'sender': None,
-                    'tool_calls': None,
-                    'tool_call_id': tool_call_id,
-                    'tool_name': 'transfer_to_agent',
-                }
-                print("Yielding message: ", message)
-                yield ('message', message)
-
-                current_agent = event.new_agent
-                continue
-
-            # Handle run items (tools, messages, etc)
-            elif event.type == "run_item_stream_event":
-                current_agent = event.item.agent
-                if event.item.type == "tool_call_item":
-                    # Check if it's a ResponseFunctionWebSearch object
-                    if hasattr(event.item.raw_item, 'type') and event.item.raw_item.type == 'web_search_call':
-                        call_id = event.item.raw_item.id if hasattr(event.item.raw_item, 'id') else str(uuid.uuid4())
-                        message = {
-                            'content': None,
-                            'role': 'assistant',
-                            'sender': current_agent.name if current_agent else None,
-                            'tool_calls': [{
-                                'function': {
-                                    'name': 'web_search',
-                                    'arguments': json.dumps({
-                                        'search_id': call_id
-                                    })
-                                },
-                                'id': call_id,
-                                'type': 'function'
-                            }],
-                            'tool_call_id': None,
-                            'tool_name': None,
-                            'response_type': 'internal'
-                        }
-                        print("Yielding message: ", message)
-                        yield ('message', message)
-
-                        result_message = {
-                        'content': "Web search done",
-                        'role': 'tool',
-                        'sender': None,
-                        'tool_calls': None,
-                        'tool_call_id': call_id,
-                        'tool_name': 'web_search',
-                        'response_type': 'internal'
-                        }
-
-                        print("Yielding web search results: ", result_message)
-                        yield ('message', result_message)
-                    else:
-                        # Handle normal tool calls
-                        message = {
-                            'content': None,
-                            'role': 'assistant',
-                            'sender': current_agent.name if current_agent else None,
-                            'tool_calls': [{
-                                'function': {
-                                    'name': event.item.raw_item.name,
-                                    'arguments': event.item.raw_item.arguments
-                                },
-                                'id': event.item.raw_item.call_id,
-                                'type': 'function'
-                            }],
-                            'tool_call_id': None,
-                            'tool_name': None,
-                            'response_type': 'internal'
-                        }
-                        print("Yielding message: ", message)
-                        yield ('message', message)
-
-
-                elif event.item.type == "tool_call_output_item":
-                    # Check if it's a web search result
-                    if isinstance(event.item.raw_item, dict) and event.item.raw_item.get('type') == 'web_search_results':
-                        call_id = event.item.raw_item.get('search_id', event.item.raw_item.get('id', str(uuid.uuid4())))
-                        message = {
-                            'content': str(event.item.output),
+                            }),
                             'role': 'tool',
                             'sender': None,
                             'tool_calls': None,
-                            'tool_call_id': call_id,
-                            'tool_name': 'web_search',
-                            'response_type': 'internal'
+                            'tool_call_id': tool_call_id,
+                            'tool_name': 'transfer_to_agent'
                         }
-                    else:
-                        # Safe extraction of call_id and name
-                        call_id = None
-                        tool_name = None
+                        print('-'*100)
+                        print(f"Yielding message: {message}")
+                        print('-'*100)
+                        yield ('message', message)
 
-                        # Handle different types of raw_item
-                        if isinstance(event.item.raw_item, dict):
-                            call_id = event.item.raw_item.get('call_id')
-                            tool_name = event.item.raw_item.get('name')
-                        elif hasattr(event.item.raw_item, 'call_id'):
-                            call_id = event.item.raw_item.call_id
+                        # Update tracking and switch to child
+                        if check_internal_visibility(event.new_agent):
+                            child_call_counts[parent_child_key] = current_count + 1
+                            parent_stack.append(current_agent)
+                        current_agent = event.new_agent
+
+                    # Handle regular messages and tool calls
+                    elif event.type == "run_item_stream_event":
+                        if event.item.type == "tool_call_item":
+                            # Check if it's a web search call
+                            if hasattr(event.item.raw_item, 'type') and event.item.raw_item.type == 'web_search_call':
+                                web_search_messages = handle_web_search_event(event, current_agent)
+                                for message in web_search_messages:
+                                    message['response_type'] = ResponseType.INTERNAL.value
+                                    print('-'*100)
+                                    print(f"Yielding message: {message}")
+                                    print('-'*100)
+                                    yield ('message', message)
+                                    if message.get('role') != 'tool':
+                                        message['content'] = f"Sender agent: {current_agent.name}\nContent: {message['content']}"
+                                        accumulated_messages.append(message)
+                                continue
+
+                            # Handle regular tool calls
+                            message = {
+                                'content': None,
+                                'role': 'assistant',
+                                'sender': current_agent.name,
+                                'tool_calls': [{
+                                    'function': {
+                                        'name': event.item.raw_item.name,
+                                        'arguments': event.item.raw_item.arguments
+                                    },
+                                    'id': event.item.raw_item.call_id,
+                                    'type': 'function'
+                                }],
+                                'tool_call_id': None,
+                                'tool_name': None,
+                                'response_type': ResponseType.INTERNAL.value
+                            }
+                            print('-'*100)
+                            print(f"Yielding message: {message}")
+                            print('-'*100)
+                            yield ('message', message)
+                            message['content'] = f"Sender agent: {current_agent.name}\nContent: {message['content']}"
+                            accumulated_messages.append(message)
+
+                        elif event.item.type == "tool_call_output_item":
+                            # Get the tool name and call id from raw_item
+                            tool_call_id = None
+                            tool_name = None
+
+                            # Try to get call_id from various possible locations
+                            if hasattr(event.item.raw_item, 'call_id'):
+                                tool_call_id = event.item.raw_item.call_id
+                            elif isinstance(event.item.raw_item, dict) and 'call_id' in event.item.raw_item:
+                                tool_call_id = event.item.raw_item['call_id']
+
+                            # Try to get tool name from various possible locations
                             if hasattr(event.item.raw_item, 'name'):
                                 tool_name = event.item.raw_item.name
+                            elif isinstance(event.item.raw_item, dict):
+                                if 'name' in event.item.raw_item:
+                                    tool_name = event.item.raw_item['name']
+                                elif 'type' in event.item.raw_item and event.item.raw_item['type'] == 'function_call_output':
+                                    # For function call outputs, try to infer from context
+                                    tool_name = 'recommendation'  # Default for function calls
 
-                        message = {
-                            'content': str(event.item.output),
-                            'role': 'tool',
-                            'sender': None,
-                            'tool_calls': None,
-                            'tool_call_id': call_id,
-                            'tool_name': tool_name,
-                            'response_type': 'internal'
-                        }
+                            # Fallback to event item if available
+                            if not tool_name and hasattr(event.item, 'tool_name'):
+                                tool_name = event.item.tool_name
+                            if not tool_call_id and hasattr(event.item, 'tool_call_id'):
+                                tool_call_id = event.item.tool_call_id
 
-                    print("Yielding message: ", message)
-                    yield ('message', message)
+                            message = {
+                                'content': str(event.item.output),
+                                'role': 'tool',
+                                'sender': None,
+                                'tool_calls': None,
+                                'tool_call_id': tool_call_id,
+                                'tool_name': tool_name,
+                                'response_type': ResponseType.INTERNAL.value
+                            }
+                            print('-'*100)
+                            print(f"Yielding tool call output message: {message}")
+                            print('-'*100)
+                            yield ('message', message)
 
-                elif event.item.type == "message_output_item":
-                    content = ""
-                    url_citations = []
+                        elif event.item.type == "message_output_item":
+                            # Extract content and citations
+                            content = ""
+                            url_citations = []
+                            if hasattr(event.item.raw_item, 'content'):
+                                for content_item in event.item.raw_item.content:
+                                    if hasattr(content_item, 'text'):
+                                        content += content_item.text
+                                    if hasattr(content_item, 'annotations'):
+                                        for annotation in content_item.annotations:
+                                            if hasattr(annotation, 'type') and annotation.type == 'url_citation':
+                                                citation = {
+                                                    'url': annotation.url if hasattr(annotation, 'url') else '',
+                                                    'title': annotation.title if hasattr(annotation, 'title') else '',
+                                                    'start_index': annotation.start_index if hasattr(annotation, 'start_index') else 0,
+                                                    'end_index': annotation.end_index if hasattr(annotation, 'end_index') else 0
+                                                }
+                                                url_citations.append(citation)
 
-                    # Extract text content and any URL citations
-                    if hasattr(event.item.raw_item, 'content'):
-                        for content_item in event.item.raw_item.content:
-                            # Handle text content
-                            if hasattr(content_item, 'text'):
-                                content += content_item.text
+                            # Determine message type and create message
+                            is_internal = check_internal_visibility(current_agent)
+                            response_type = ResponseType.INTERNAL.value if is_internal else ResponseType.EXTERNAL.value
 
-                            # Extract URL citations if present
-                            if hasattr(content_item, 'annotations'):
-                                for annotation in content_item.annotations:
-                                    if hasattr(annotation, 'type') and annotation.type == 'url_citation':
-                                        citation = {
-                                            'url': annotation.url if hasattr(annotation, 'url') else '',
-                                            'title': annotation.title if hasattr(annotation, 'title') else '',
-                                            'start_index': annotation.start_index if hasattr(annotation, 'start_index') else 0,
-                                            'end_index': annotation.end_index if hasattr(annotation, 'end_index') else 0
-                                        }
-                                        url_citations.append(citation)
+                            message = {
+                                'content': content,
+                                'role': 'assistant',
+                                'sender': current_agent.name,
+                                'tool_calls': None,
+                                'tool_call_id': None,
+                                'tool_name': None,
+                                'response_type': response_type
+                            }
 
-                    # Create message with URL citations if they exist
-                    message = {
-                        'content': content,
-                        'role': 'assistant',
-                        'sender': current_agent.name,
-                        'tool_calls': None,
-                        'tool_call_id': None,
-                        'tool_name': None,
-                        'response_type': 'external'
-                    }
+                            if url_citations:
+                                message['citations'] = url_citations
 
-                    # Add citations if any were found
-                    if url_citations:
-                        message['citations'] = url_citations
+                            # Track that this agent has responded
+                            if not message.get('tool_calls'):  # If there are no tool calls, it's a content response
+                                agent_message_counts[current_agent.name] = 1
+                            print('-'*100)
+                            print(f"Yielding message: {message}")
+                            print('-'*100)
+                            yield ('message', message)
+                            message['content'] = f"Sender agent: {current_agent.name}\nContent: {message['content']}"
+                            accumulated_messages.append(message)
+                            # Return to parent or end turn
+                            if is_internal and parent_stack:
+                                # Create tool call for control transition
+                                tool_call_id = str(uuid.uuid4())
+                                transition_message = {
+                                    'content': None,
+                                    'role': 'assistant',
+                                    'sender': current_agent.name,
+                                    'tool_calls': [{
+                                        'function': {
+                                            'name': 'transfer_to_agent',
+                                            'arguments': json.dumps({
+                                                'assistant': parent_stack[-1].name
+                                            })
+                                        },
+                                        'id': tool_call_id,
+                                        'type': 'function'
+                                    }],
+                                    'tool_call_id': None,
+                                    'tool_name': None,
+                                    'response_type': ResponseType.INTERNAL.value
+                                }
+                                print('-'*100)
+                                print(f"Yielding control transition message: {transition_message}")
+                                print('-'*100)
+                                yield ('message', transition_message)
 
-                    print("Yielding message: ", message)
-                    yield ('message', message)
+                                # Create tool response for control transition
+                                transition_response = {
+                                    'content': json.dumps({
+                                        'assistant': parent_stack[-1].name
+                                    }),
+                                    'role': 'tool',
+                                    'sender': None,
+                                    'tool_calls': None,
+                                    'tool_call_id': tool_call_id,
+                                    'tool_name': 'transfer_to_agent'
+                                }
+                                print('-'*100)
+                                print(f"Yielding control transition response: {transition_response}")
+                                print('-'*100)
+                                yield ('message', transition_response)
 
-                # Handle web search function call events
-                elif event.item.type == "web_search_call_item" or (hasattr(event.item, 'raw_item') and hasattr(event.item.raw_item, 'type') and event.item.raw_item.type == 'web_search_call'):
-                    # Extract web search call ID if available
-                    call_id = None
-                    if hasattr(event.item.raw_item, 'id'):
-                        call_id = event.item.raw_item.id
+                                current_agent = parent_stack.pop()
+                                continue
+                            elif not is_internal:
+                                break
 
-                    message = {
-                        'content': None,
-                        'role': 'assistant',
-                        'sender': current_agent.name if current_agent else None,
-                        'tool_calls': [{
-                            'function': {
-                                'name': 'web_search',
-                                'arguments': json.dumps({
-                                    'search_id': call_id
-                                })
-                            },
-                            'id': call_id or str(uuid.uuid4()),
-                            'type': 'function'
-                        }],
-                        'tool_call_id': None,
-                        'tool_name': None,
-                        'response_type': 'internal'
-                    }
-                    print("Yielding web search message: ", message)
-                    yield ('message', message)
+                except Exception as e:
+                    print("\n=== Error in stream event processing ===")
+                    print(f"Error: {str(e)}")
+                    print("Event details:")
+                    print(f"Event type: {event.type if hasattr(event, 'type') else 'unknown'}")
+                    if hasattr(event, '__dict__'):
+                        print(f"Event attributes: {event.__dict__}")
+                    print(f"Full event object: {event}")
+                    print(f"Traceback: {traceback.format_exc()}")
+                    print("=" * 50)
+                    raise
 
-                # Handle web search results
-                elif event.item.type == "web_search_results_item" or (
-                    hasattr(event.item, 'raw_item') and (
-                        (hasattr(event.item.raw_item, 'type') and event.item.raw_item.type == 'web_search_results') or
-                        (isinstance(event.item.raw_item, dict) and event.item.raw_item.get('type') == 'web_search_results')
-                    )
-                ):
-                    # Extract call_id safely
-                    call_id = None
-                    raw_item = event.item.raw_item
+            # Break main loop if we've output an external message
+            if not is_internal_agent and current_agent.name in agent_message_counts:
+                break
 
-                    # Try several ways to get the search_id or id
-                    if hasattr(raw_item, 'search_id'):
-                        call_id = raw_item.search_id
-                    elif isinstance(raw_item, dict) and 'search_id' in raw_item:
-                        call_id = raw_item['search_id']
-                    elif hasattr(raw_item, 'id'):
-                        call_id = raw_item.id
-                    elif isinstance(raw_item, dict) and 'id' in raw_item:
-                        call_id = raw_item['id']
-                    else:
-                        call_id = str(uuid.uuid4())
-
-                    # Extract results content safely
-                    results = {}
-
-                    # Try event.item.output first
-                    if hasattr(event.item, 'output'):
-                        results = event.item.output
-                    # Then try raw_item.results
-                    elif hasattr(raw_item, 'results'):
-                        results = raw_item.results
-                    elif isinstance(raw_item, dict) and 'results' in raw_item:
-                        results = raw_item['results']
-
-                    # Format the results for output
-                    results_str = ""
-                    try:
-                        results_str = json.dumps(results) if results else ""
-                    except Exception as e:
-                        print(f"Error serializing results: {str(e)}")
-                        results_str = str(results)
-
-                    message = {
-                        'content': results_str,
-                        'role': 'tool',
-                        'sender': None,
-                        'tool_calls': None,
-                        'tool_call_id': call_id,
-                        'tool_name': 'web_search',
-                        'response_type': 'internal'
-                    }
-                    print("Yielding web search results: ", message)
-                    yield ('message', message)
-
-            print(f"\n{'='*50}\n")
-
-        # After all events are processed, set final state
+        # Set final state
         final_state = {
             "last_agent_name": current_agent.name if current_agent else None,
-            "tokens": tokens_used
+            "tokens": tokens_used,
+            "turn_messages": accumulated_messages
         }
+        print('-'*100)
+        print(f"Yielding done: {final_state}")
+        print('-'*100)
         yield ('done', {'state': final_state})
 
     except Exception as e:
         print(traceback.format_exc())
         print(f"Error in stream processing: {str(e)}")
-        print("Yielding error event:", {'error': str(e), 'state': final_state})
-        yield ('error', {'error': str(e), 'state': final_state})  # Include final_state in error response
+        yield ('error', {'error': str(e), 'state': final_state})

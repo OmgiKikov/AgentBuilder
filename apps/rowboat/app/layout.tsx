@@ -4,6 +4,7 @@ import { UserProvider } from '@auth0/nextjs-auth0/client';
 import { Inter } from "next/font/google";
 import { Providers } from "./providers";
 import { Metadata } from "next";
+import { HelpModalProvider } from "./providers/help-modal-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,7 +25,9 @@ export default function RootLayout({
       <ThemeProvider>
         <body className={`${inter.className} h-full text-base [scrollbar-width:thin] bg-background`}>
           <Providers className='h-full flex flex-col'>
-            {children}
+            <HelpModalProvider>
+              {children}
+            </HelpModalProvider>
           </Providers>
         </body>
       </ThemeProvider>

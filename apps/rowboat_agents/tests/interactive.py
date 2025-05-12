@@ -47,6 +47,7 @@ async def process_turn(messages, agent_configs, tool_configs, prompt_configs, st
         start_agent_name=start_agent_name,
         agent_configs=agent_configs,
         tool_configs=tool_configs,
+        prompt_configs=prompt_configs,
         start_turn_with_start_agent=config.get("start_turn_with_start_agent", False),
         state=state,
         additional_tool_configs=[RAG_TOOL, CLOSE_CHAT_TOOL],
