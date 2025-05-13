@@ -339,6 +339,10 @@ function reducer(state: State, action: Action): State {
                             draft.workflow.agents = draft.workflow.agents.filter(
                                 (agent) => agent.name !== action.name
                             );
+                            // If the deleted agent was the startAgent, reset startAgent
+                            if (draft.workflow.startAgent === action.name) {
+                                draft.workflow.startAgent = draft.workflow.agents.length > 0 ? draft.workflow.agents[0].name : "";
+                            }
                             draft.selection = null;
                             draft.pendingChanges = true;
                             draft.chatKey++;
@@ -1043,37 +1047,50 @@ export function WorkflowEditor({
                                 <div onClick={() => dispatch({type: "select_agent", name: agent.name})} > {/* Select on click */} 
                                     <div className="flex justify-between items-center pr-10">
                                         <p className={`font-medium text-sm ${agent.disabled ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-700 dark:text-gray-200'}`}>{agent.name}</p>
-                                        {state.present.workflow.startAgent === agent.name && (
-                                            <Tooltip content="Main Agent">
-                                                <RocketIcon size={14} className="text-green-600 dark:text-green-500" />
-                                            </Tooltip>
-                                        )}
+                                        {/* Visual indicator for startAgent is now part of the action buttons below */}
                                     </div>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">{agent.type} model</p>
                                 </div>
                                 <div className="absolute top-1/2 right-1 transform -translate-y-1/2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation(); 
-                                            handleOpenConfigModal('agent', agent.name);
-                                        }}
-                                        className="p-1 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                                        title={`Configure agent ${agent.name}`}
-                                    >
-                                        <Settings2Icon size={14} />
-                                    </button>
-                                     <button
-                                        onClick={(e) => {
-                                            e.stopPropagation(); 
-                                            if (window.confirm(`Are you sure you want to delete the agent "${agent.name}"?`)) {
-                                                handleDeleteAgent(agent.name);
-                                            }
-                                        }}
-                                        className="p-1 text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                                        title={`Delete agent ${agent.name}`}
-                                    >
-                                        <Trash2Icon size={14} />
-                                    </button>
+                                    <Tooltip content={state.present.workflow.startAgent === agent.name ? "This is the main agent" : "Set as main agent"}>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (state.present.workflow.startAgent !== agent.name) {
+                                                    handleSetMainAgent(agent.name);
+                                                }
+                                            }}
+                                            className={`p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors 
+                                                        ${state.present.workflow.startAgent === agent.name ? 'text-green-500 dark:text-green-400 cursor-default' : 'text-gray-400 hover:text-green-500 dark:hover:text-green-400'}`}
+                                            title={state.present.workflow.startAgent === agent.name ? "Main Agent" : "Set as Main Agent"}
+                                        >
+                                            <RocketIcon size={14} />
+                                        </button>
+                                    </Tooltip>
+                                    <Tooltip content={`Configure agent ${agent.name}`}>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation(); 
+                                                handleOpenConfigModal('agent', agent.name);
+                                            }}
+                                            className="p-1 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                        >
+                                            <Settings2Icon size={14} />
+                                        </button>
+                                    </Tooltip>
+                                     <Tooltip content={`Delete agent ${agent.name}`}>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation(); 
+                                                if (window.confirm(`Are you sure you want to delete the agent "${agent.name}"?`)) {
+                                                    handleDeleteAgent(agent.name);
+                                                }
+                                            }}
+                                            className="p-1 text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                        >
+                                            <Trash2Icon size={14} />
+                                        </button>
+                                    </Tooltip>
                                 </div>
                             </div>
                         ))}
