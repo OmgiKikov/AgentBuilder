@@ -27,7 +27,7 @@ import { apiV1 } from "rowboat-shared";
 import { publishWorkflow, renameWorkflow, saveWorkflow } from "../../../actions/workflow_actions";
 import { PublishedBadge } from "./published_badge";
 import { BackIcon, HamburgerIcon, WorkflowIcon } from "../../../lib/components/icons";
-import { CopyIcon, ImportIcon, Layers2Icon, RadioIcon, RedoIcon, ServerIcon, Sparkles, UndoIcon, RocketIcon, PenLine, AlertTriangle, Trash2Icon } from "lucide-react";
+import { CopyIcon, ImportIcon, Layers2Icon, RadioIcon, RedoIcon, ServerIcon, Sparkles, UndoIcon, RocketIcon, PenLine, AlertTriangle, Trash2Icon, Settings2Icon, XIcon } from "lucide-react";
 import { EntityList } from "./entity_list";
 import { McpImportTools } from "./mcp_imports";
 import { ProductTour } from "@/components/common/product-tour";
@@ -613,6 +613,11 @@ export function WorkflowEditor({
     const [showTour, setShowTour] = useState(true);
     const [viewMode, setViewMode] = useState<'run' | 'build'>('build');
 
+    // State for configuration modal
+    const [configModalOpen, setConfigModalOpen] = useState(false);
+    const [configModalEntityType, setConfigModalEntityType] = useState<'agent' | 'tool' | 'prompt' | null>(null);
+    const [configModalEntityName, setConfigModalEntityName] = useState<string | null>(null);
+
     console.log(`workflow editor chat key: ${state.present.chatKey}`);
 
     // Auto-show copilot and increment key when prompt is present
@@ -785,7 +790,21 @@ export function WorkflowEditor({
         setIsInitialState(false);
     }
 
-    // Placeholder for the new top bar content
+    // Functions to control the configuration modal
+    const handleOpenConfigModal = (type: 'agent' | 'tool' | 'prompt', name: string) => {
+        setConfigModalEntityType(type);
+        setConfigModalEntityName(name);
+        setConfigModalOpen(true);
+        // dispatch({ type: type === 'agent' ? 'select_agent' : type === 'tool' ? 'select_tool' : 'select_prompt', name }); // Optionally select entity when opening modal
+    };
+
+    const handleCloseConfigModal = () => {
+        setConfigModalOpen(false);
+        setConfigModalEntityType(null);
+        setConfigModalEntityName(null);
+        // dispatch({ type: 'unselect_agent' }); // Optionally unselect when closing, or keep selection for copilot context
+    };
+
     const TopBar = () => (
         <div className="shrink-0 flex justify-between items-center p-3 border-b dark:border-gray-700 bg-white dark:bg-gray-800">
             {/* Left side: Run/Build Toggle */}
@@ -898,19 +917,33 @@ export function WorkflowEditor({
                 </div>
                  {state.present.workflow.tools.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">Add tools to give your agents the ability to perform actions or connect with integrations.</p>}
                 {state.present.workflow.tools.map(tool => (
-                    <div key={tool.name} className={`p-2 mb-1.5 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${state.present.selection?.type === 'tool' && state.present.selection.name === tool.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}`}
-                         onClick={() => handleSelectTool(tool.name)}>
-                        <p className="font-medium text-sm text-gray-700 dark:text-gray-200">{tool.name}</p>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation(); // Prevent selecting the tool when clicking delete
-                                handleDeleteTool(tool.name);
-                            }}
-                            className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                            title={`Delete tool ${tool.name}`}
-                        >
-                            <Trash2Icon size={14} />
-                        </button>
+                    <div key={tool.name} 
+                         className={`relative group p-2 mb-1.5 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${state.present.selection?.type === 'tool' && state.present.selection.name === tool.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}`}>
+                        <div onClick={() => dispatch({type: "select_tool", name: tool.name})}> {/* Select on click */} 
+                          <p className="font-medium text-sm text-gray-700 dark:text-gray-200 pr-10">{tool.name}</p>
+                        </div>
+                        <div className="absolute top-1/2 right-1 transform -translate-y-1/2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    handleOpenConfigModal('tool', tool.name);
+                                }}
+                                className="p-1 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                title={`Configure tool ${tool.name}`}
+                            >
+                                <Settings2Icon size={14} />
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteTool(tool.name);
+                                }}
+                                className="p-1 text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                title={`Delete tool ${tool.name}`}
+                            >
+                                <Trash2Icon size={14} />
+                            </button>
+                        </div>
                     </div>
                 ))}
             </div>
@@ -918,18 +951,18 @@ export function WorkflowEditor({
             <div className="mb-6">
                 <div className="flex justify-between items-center mb-2">
                     <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Knowledge</h3>
-                    {/* <Button variant="outline" size="sm" className="text-indigo-600 border-indigo-600 hover:bg-indigo-50">+ Add knowledge</Button> */}
+                    {/* <Button variant="ghost" size="sm" className="text-indigo-600 border-indigo-600 hover:bg-indigo-50">+ Add knowledge</Button> */}
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                     {useRag ? "Configure RAG data sources for context-relevant responses." : "RAG is not enabled for this project."}
                 </p>
-                {/* Knowledge content (e.g., list of data sources, RAG settings) will go here */}
                  {useRag && dataSources.map(ds => (
-                    <div key={ds._id} className="p-2 mt-1.5 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700/50">
+                    <div key={ds._id} className="relative group p-2 mt-1.5 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700/50">
                         <p className="font-medium text-sm text-gray-700 dark:text-gray-200">{ds.name}</p>
                         {ds.data?.type === 'urls' && <p className="text-xs text-gray-500 dark:text-gray-400">URL Source</p>}
                         {ds.data?.type === 'files' && <p className="text-xs text-gray-500 dark:text-gray-400">File Source</p>}
-                        {/* Add more specific descriptions based on ds.data or if a general description field is available elsewhere */}
+                         {/* Placeholder for settings button if needed for data sources */}
+                         {/* <button className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-indigo-500 rounded-full opacity-0 group-hover:opacity-100"><Settings2Icon size={14}/></button> */}
                     </div>
                  ))}
             </div>
@@ -941,19 +974,33 @@ export function WorkflowEditor({
                 </div>
                  {state.present.workflow.prompts.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">Turn reusable values into variables (prompts) that you can access with {`{{variable_name}}`}.</p>}
                 {state.present.workflow.prompts.map(prompt => (
-                    <div key={prompt.name} className={`p-2 mb-1.5 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${state.present.selection?.type === 'prompt' && state.present.selection.name === prompt.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}`}
-                         onClick={() => handleSelectPrompt(prompt.name)}>
-                        <p className="font-medium text-sm text-gray-700 dark:text-gray-200">{prompt.name}</p>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation(); // Prevent selecting the prompt when clicking delete
-                                handleDeletePrompt(prompt.name);
-                            }}
-                            className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                            title={`Delete variable ${prompt.name}`}
-                        >
-                            <Trash2Icon size={14} />
-                        </button>
+                    <div key={prompt.name} 
+                         className={`relative group p-2 mb-1.5 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${state.present.selection?.type === 'prompt' && state.present.selection.name === prompt.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}`}>
+                        <div onClick={() => dispatch({type: "select_prompt", name: prompt.name})}> {/* Select on click */} 
+                           <p className="font-medium text-sm text-gray-700 dark:text-gray-200 pr-10">{prompt.name}</p>
+                        </div>
+                        <div className="absolute top-1/2 right-1 transform -translate-y-1/2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    handleOpenConfigModal('prompt', prompt.name);
+                                }}
+                                className="p-1 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                title={`Configure variable ${prompt.name}`}
+                            >
+                                <Settings2Icon size={14} />
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    handleDeletePrompt(prompt.name);
+                                }}
+                                className="p-1 text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                title={`Delete variable ${prompt.name}`}
+                            >
+                                <Trash2Icon size={14} />
+                            </button>
+                        </div>
                     </div>
                 ))}
             </div>
@@ -989,72 +1036,68 @@ export function WorkflowEditor({
                         </div>
                         {state.present.workflow.agents.map(agent => (
                             <div key={agent.name}
-                                 className={`p-3 mb-2 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer 
+                                 className={`relative group p-3 mb-2 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer 
                                             ${state.present.selection?.type === 'agent' && state.present.selection.name === agent.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}
                                             ${state.present.workflow.startAgent === agent.name ? 'ring-2 ring-green-500 dark:ring-green-400' : ''}`}
-                                 onClick={() => handleSelectAgent(agent.name)}>
-                                <div className="flex justify-between items-center">
-                                    <p className={`font-medium text-sm ${agent.disabled ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-700 dark:text-gray-200'}`}>{agent.name}</p>
-                                    {state.present.workflow.startAgent === agent.name && (
-                                        <Tooltip content="Main Agent">
-                                            <RocketIcon size={14} className="text-green-600 dark:text-green-500" />
-                                        </Tooltip>
-                                    )}
+                                 >
+                                <div onClick={() => dispatch({type: "select_agent", name: agent.name})} > {/* Select on click */} 
+                                    <div className="flex justify-between items-center pr-10">
+                                        <p className={`font-medium text-sm ${agent.disabled ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-700 dark:text-gray-200'}`}>{agent.name}</p>
+                                        {state.present.workflow.startAgent === agent.name && (
+                                            <Tooltip content="Main Agent">
+                                                <RocketIcon size={14} className="text-green-600 dark:text-green-500" />
+                                            </Tooltip>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">{agent.type} model</p>
                                 </div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">{agent.type} model</p>
-                                {/* Add more agent details or actions if needed */}
+                                <div className="absolute top-1/2 right-1 transform -translate-y-1/2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation(); 
+                                            handleOpenConfigModal('agent', agent.name);
+                                        }}
+                                        className="p-1 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                        title={`Configure agent ${agent.name}`}
+                                    >
+                                        <Settings2Icon size={14} />
+                                    </button>
+                                     <button
+                                        onClick={(e) => {
+                                            e.stopPropagation(); 
+                                            if (window.confirm(`Are you sure you want to delete the agent "${agent.name}"?`)) {
+                                                handleDeleteAgent(agent.name);
+                                            }
+                                        }}
+                                        className="p-1 text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                        title={`Delete agent ${agent.name}`}
+                                    >
+                                        <Trash2Icon size={14} />
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </ResizablePanel>
                     <ResizableHandle className="w-[3px] bg-gray-200 dark:bg-gray-700 hover:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors" />
-                    {/* Central Configuration Panel */}
-                    <ResizablePanel minSize={30} defaultSize={55} className="overflow-y-auto p-6 bg-white dark:bg-gray-800">
-                        {state.present.selection?.type === "agent" && <AgentConfig
-                            key={state.present.selection.name + state.present.workflow._id}
+                    {/* Central Configuration Panel - Now ONLY Copilot */}
+                    <ResizablePanel minSize={30} defaultSize={55} className="overflow-y-auto p-1 md:p-0 bg-white dark:bg-gray-800 flex flex-col">
+                        <Copilot
                             projectId={state.present.workflow.projectId}
                             workflow={state.present.workflow}
-                            agent={state.present.workflow.agents.find((agent) => agent.name === state.present.selection!.name)!}
-                            usedAgentNames={new Set(state.present.workflow.agents.filter((agent) => agent.name !== state.present.selection!.name).map((agent) => agent.name))}
-                            agents={state.present.workflow.agents}
-                            tools={state.present.workflow.tools}
-                            prompts={state.present.workflow.prompts}
-                            dataSources={dataSources}
-                            handleUpdate={handleUpdateAgent.bind(null, state.present.selection.name)}
-                            handleClose={handleUnselectAgent}
-                            useRag={useRag}
-                        />}
-                        {state.present.selection?.type === "tool" && <ToolConfig
-                            key={state.present.selection.name + state.present.workflow._id}
-                            tool={state.present.workflow.tools.find((tool) => tool.name === state.present.selection!.name)!}
-                            usedToolNames={new Set(state.present.workflow.tools.filter((tool) => tool.name !== state.present.selection!.name).map((tool) => tool.name))}
-                            handleUpdate={handleUpdateTool.bind(null, state.present.selection.name)}
-                            handleClose={handleUnselectTool}
-                        />}
-                        {state.present.selection?.type === "prompt" && <PromptConfig
-                            key={state.present.selection.name + state.present.workflow._id}
-                            prompt={state.present.workflow.prompts.find((prompt) => prompt.name === state.present.selection!.name)!}
-                            agents={state.present.workflow.agents}
-                            tools={state.present.workflow.tools}
-                            prompts={state.present.workflow.prompts}
-                            usedPromptNames={new Set(state.present.workflow.prompts.filter((prompt) => prompt.name !== state.present.selection!.name).map((prompt) => prompt.name))}
-                            handleUpdate={handleUpdatePrompt.bind(null, state.present.selection.name)}
-                            handleClose={handleUnselectPrompt}
-                        />}
-                        {!state.present.selection && (
-                            <div className="flex flex-col items-center justify-center h-full text-center">
-                                <Layers2Icon size={64} className="text-gray-300 dark:text-gray-600 mb-4" />
-                                <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-200 mb-2">Build Your Workflow</h2>
-                                <p className="text-gray-500 dark:text-gray-400 max-w-md">
-                                    Select an agent from the left panel to configure its instructions, model, and associated tools/knowledge.
-                                    You can also add new tools or variables using the right panel.
-                                </p>
-                                 <div className="mt-8">
-                                    <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 text-white" onPress={() => handleAddAgent()}>
-                                        <span className="mr-2"><Sparkles size={20} /></span> Create First Agent
-                                    </Button>
-                                 </div>
-                            </div>
-                        )}
+                            dispatch={dispatch}
+                            chatContext={ // Pass selection to Copilot for context
+                                state.present.selection ? {
+                                    type: state.present.selection.type,
+                                    name: state.present.selection.name
+                                } : chatMessages.length > 0 && !state.present.selection ? { // If no direct selection, but chat has messages, pass chat context
+                                    type: 'chat',
+                                    messages: chatMessages
+                                } : undefined
+                            }
+                            isInitialState={isInitialState && !state.present.selection}
+                        />
+                        {/* Configuration components (AgentConfig, ToolConfig, PromptConfig) are now removed from here */}
+                        {/* They will be rendered in a modal */}
                     </ResizablePanel>
                     <ResizableHandle className="w-[3px] bg-gray-200 dark:bg-gray-700 hover:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors" />
                     {/* Right Sidebar for Tools, Knowledge, Variables */}
@@ -1065,7 +1108,80 @@ export function WorkflowEditor({
             )}
         </div>
 
-        {/* Modals and Product Tour */}
+        {/* MODAL for Configuration */}
+        {configModalOpen && configModalEntityType && configModalEntityName && (
+            <div className="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 p-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                    <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
+                            Configure {configModalEntityType.charAt(0).toUpperCase() + configModalEntityType.slice(1)}: <span className="text-indigo-600 dark:text-indigo-400">{configModalEntityName}</span>
+                        </h3>
+                        <Button variant="ghost" size="sm" onPress={handleCloseConfigModal} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                            <XIcon size={20} />
+                        </Button>
+                    </div>
+                    <div className="p-6 overflow-y-auto grow">
+                        {configModalEntityType === 'agent' && state.present.workflow.agents.find(a => a.name === configModalEntityName) && (
+                            <AgentConfig
+                                key={`modal_agent_${configModalEntityName}`}
+                                projectId={state.present.workflow.projectId}
+                                workflow={state.present.workflow}
+                                agent={state.present.workflow.agents.find(a => a.name === configModalEntityName)!}
+                                usedAgentNames={new Set(state.present.workflow.agents.filter(a => a.name !== configModalEntityName).map(a => a.name))}
+                                agents={state.present.workflow.agents}
+                                tools={state.present.workflow.tools}
+                                prompts={state.present.workflow.prompts}
+                                dataSources={dataSources}
+                                handleUpdate={(agentUpdate) => {
+                                    const currentName = configModalEntityName!;
+                                    handleUpdateAgent(currentName, agentUpdate);
+                                    if (agentUpdate.name && agentUpdate.name !== currentName) {
+                                        handleCloseConfigModal();
+                                    }
+                                }}
+                                handleClose={handleCloseConfigModal}
+                                useRag={useRag}
+                            />
+                        )}
+                        {configModalEntityType === 'tool' && state.present.workflow.tools.find(t => t.name === configModalEntityName) && (
+                            <ToolConfig
+                                key={`modal_tool_${configModalEntityName}`}
+                                tool={state.present.workflow.tools.find(t => t.name === configModalEntityName)!}
+                                usedToolNames={new Set(state.present.workflow.tools.filter(t => t.name !== configModalEntityName).map(t => t.name))}
+                                handleUpdate={(toolUpdate) => {
+                                    const currentName = configModalEntityName!;
+                                    handleUpdateTool(currentName, toolUpdate);
+                                    if (toolUpdate.name && toolUpdate.name !== currentName) {
+                                        handleCloseConfigModal();
+                                    }
+                                }}
+                                handleClose={handleCloseConfigModal}
+                            />
+                        )}
+                        {configModalEntityType === 'prompt' && state.present.workflow.prompts.find(p => p.name === configModalEntityName) && (
+                            <PromptConfig
+                                key={`modal_prompt_${configModalEntityName}`}
+                                prompt={state.present.workflow.prompts.find(p => p.name === configModalEntityName)!}
+                                agents={state.present.workflow.agents}
+                                tools={state.present.workflow.tools}
+                                prompts={state.present.workflow.prompts}
+                                usedPromptNames={new Set(state.present.workflow.prompts.filter(p => p.name !== configModalEntityName).map(p => p.name))}
+                                handleUpdate={(promptUpdate) => {
+                                    const currentName = configModalEntityName!;
+                                    handleUpdatePrompt(currentName, promptUpdate);
+                                    if (promptUpdate.name && promptUpdate.name !== currentName) {
+                                        handleCloseConfigModal();
+                                    }
+                                }}
+                                handleClose={handleCloseConfigModal}
+                            />
+                        )}
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Other Modals and Product Tour */}
         {USE_PRODUCT_TOUR && showTour && (
             <ProductTour
                 projectId={state.present.workflow.projectId}
