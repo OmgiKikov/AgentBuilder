@@ -27,7 +27,7 @@ import { apiV1 } from "rowboat-shared";
 import { publishWorkflow, renameWorkflow, saveWorkflow } from "../../../actions/workflow_actions";
 import { PublishedBadge } from "./published_badge";
 import { BackIcon, HamburgerIcon, WorkflowIcon } from "../../../lib/components/icons";
-import { CopyIcon, ImportIcon, Layers2Icon, RadioIcon, RedoIcon, ServerIcon, Sparkles, UndoIcon, RocketIcon, PenLine, AlertTriangle } from "lucide-react";
+import { CopyIcon, ImportIcon, Layers2Icon, RadioIcon, RedoIcon, ServerIcon, Sparkles, UndoIcon, RocketIcon, PenLine, AlertTriangle, Trash2Icon } from "lucide-react";
 import { EntityList } from "./entity_list";
 import { McpImportTools } from "./mcp_imports";
 import { ProductTour } from "@/components/common/product-tour";
@@ -901,6 +901,16 @@ export function WorkflowEditor({
                     <div key={tool.name} className={`p-2 mb-1.5 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${state.present.selection?.type === 'tool' && state.present.selection.name === tool.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}`}
                          onClick={() => handleSelectTool(tool.name)}>
                         <p className="font-medium text-sm text-gray-700 dark:text-gray-200">{tool.name}</p>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation(); // Prevent selecting the tool when clicking delete
+                                handleDeleteTool(tool.name);
+                            }}
+                            className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            title={`Delete tool ${tool.name}`}
+                        >
+                            <Trash2Icon size={14} />
+                        </button>
                     </div>
                 ))}
             </div>
@@ -934,6 +944,16 @@ export function WorkflowEditor({
                     <div key={prompt.name} className={`p-2 mb-1.5 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${state.present.selection?.type === 'prompt' && state.present.selection.name === prompt.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}`}
                          onClick={() => handleSelectPrompt(prompt.name)}>
                         <p className="font-medium text-sm text-gray-700 dark:text-gray-200">{prompt.name}</p>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation(); // Prevent selecting the prompt when clicking delete
+                                handleDeletePrompt(prompt.name);
+                            }}
+                            className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            title={`Delete variable ${prompt.name}`}
+                        >
+                            <Trash2Icon size={14} />
+                        </button>
                     </div>
                 ))}
             </div>
