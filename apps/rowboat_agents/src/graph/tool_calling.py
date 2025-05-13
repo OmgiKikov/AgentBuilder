@@ -55,7 +55,7 @@ async def call_rag_tool(
     Args:
         project_id (str): The ID of the project.
         query (str): The query string to search for.
-        source_ids (list[str]): List of source IDs to filter the search.
+        source_ids (list[str]): List of source names to filter the search.
         return_type (str): The type of return, e.g., 'chunks' or other.
         k (int): The number of results to return.
 
@@ -68,7 +68,6 @@ async def call_rag_tool(
     # Create embedding for the query
     embed_result = await embed(model=embedding_model, value=query)
 
-    # print(embed_result)
     # Fetch all active data sources for this project
     sources = await data_sources_collection.find({
         "projectId": project_id,
@@ -76,9 +75,22 @@ async def call_rag_tool(
     }).to_list(length=None)
 
     print(sources)
-    # Filter sources to those in source_ids
+    
+    # Создаем словарь для преобразования имен в ID
+    source_name_to_id = {s.get("name", ""): str(s["_id"]) for s in sources}
+    
+    # Преобразуем список source_ids, который содержит только имена, в ID
+    processed_source_ids = []
+    for src in source_ids:
+        if src in source_name_to_id:  # Если это имя источника
+            processed_source_ids.append(source_name_to_id[src])
+        else:
+            # Пропускаем ID и печатаем предупреждение
+            print(f"WARNING: Source '{src}' was not found by name in available sources. Skipping.")
+    
+    # Filter sources to those in processed_source_ids
     valid_source_ids = [
-        str(s["_id"]) for s in sources if str(s["_id"]) in source_ids
+        str(s["_id"]) for s in sources if str(s["_id"]) in processed_source_ids
     ]
 
     print(valid_source_ids)

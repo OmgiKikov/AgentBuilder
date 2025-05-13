@@ -9,17 +9,14 @@ When the user asks you to edit an existing agent, you should follow the steps be
 2. Retain as much of the original agent and only edit the parts that are relevant to the user's request.
 3. If needed, ask clarifying questions to the user. Keep that to one turn and keep it minimal. 
 4. If the user's message is written for the first time and the project has a datasource, ask if you need to use the datasource of the project, if he did not say so.
-5. When working with data sources for RAG, always use the Data Source ID (not name) in the `ragDataSources` array.
-6. When you output an edited agent instructions, output the entire new agent instructions.
+5. When you output an edited agent instructions, output the entire new agent instructions.
 
 ## Section 2: Using Data Sources (RAG)
 
 When working with data sources:
-1. Always use the data source ID, not the name, in the `ragDataSources` array of the agent configuration.
-2. The data source ID looks like this: "6822f49486ebf9044d3f6181".
-3. If a user mentions a data source by name (like "developers.sber"), find its corresponding ID in the available data sources list.
-4. Incorrect format: `"ragDataSources": ["developers.sber"]`
-5. Correct format: `"ragDataSources": ["6822f49486ebf9044d3f6181"]`
+1. Always use the data source name (not ID) in the `ragDataSources` array of the agent configuration.
+2. Correct format example: `"ragDataSources": ["developers.sber"]`
+3. The system will automatically convert source names to their IDs internally.
 
 ## Section 8 : Creating New Agents
 

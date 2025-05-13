@@ -471,9 +471,12 @@ export function AgentConfig({
                                                 onSelectionChange={(keys) => {
                                                     const key = keys.currentKey as string;
                                                     if (key) {
+                                                        // Находим имя источника данных по ID
+                                                        const selectedDs = dataSources.find(ds => ds._id === key);
+                                                        const sourceName = selectedDs?.name || key;
                                                         handleUpdate({
                                                             ...agent,
-                                                            ragDataSources: [...(agent.ragDataSources || []), key]
+                                                            ragDataSources: [...(agent.ragDataSources || []), sourceName]
                                                         });
                                                     }
                                                 }}
@@ -481,7 +484,11 @@ export function AgentConfig({
                                             >
 
                                                 {dataSources
-                                                    .filter((ds) => !(agent.ragDataSources || []).includes(ds._id))
+                                                    .filter((ds) => {
+                                                        // Проверяем, что ни ID, ни имя источника не входят в список уже добавленных
+                                                        return !(agent.ragDataSources || []).includes(ds._id) && 
+                                                               !(agent.ragDataSources || []).includes(ds.name);
+                                                    })
                                                     .map((ds) => (
                                                         <SelectItem key={ds._id}>
                                                             {ds.name}
@@ -495,7 +502,8 @@ export function AgentConfig({
 
                                         <div className="flex flex-col gap-2">
                                             {(agent.ragDataSources || []).map((source) => {
-                                                const ds = dataSources.find((ds) => ds._id === source);
+                                                // Ищем источник данных сначала по ID, затем по имени
+                                                const ds = dataSources.find((ds) => ds._id === source || ds.name === source);
                                                 return (
                                                     <div 
                                                         key={source}
