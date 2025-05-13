@@ -62,6 +62,8 @@ def get_response(
 ```json
 {json.dumps([{"id": ds.get("_id"), "name": ds.get("name")} for ds in data_sources])}
 ```
+
+**IMPORTANT**: When creating or editing agents, always use the Data Source ID (not name) in the `ragDataSources` array.
 """
 
     # add the workflow schema to the system prompt
