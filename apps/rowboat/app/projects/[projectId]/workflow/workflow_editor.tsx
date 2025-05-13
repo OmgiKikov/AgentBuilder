@@ -611,6 +611,7 @@ export function WorkflowEditor({
     const [isMcpImportModalOpen, setIsMcpImportModalOpen] = useState(false);
     const [isInitialState, setIsInitialState] = useState(true);
     const [showTour, setShowTour] = useState(true);
+    const [viewMode, setViewMode] = useState<'run' | 'build'>('build');
 
     console.log(`workflow editor chat key: ${state.present.chatKey}`);
 
@@ -784,48 +785,62 @@ export function WorkflowEditor({
         setIsInitialState(false);
     }
 
-    return <div className="flex flex-col h-full relative">
-        <div className="shrink-0 flex justify-between items-center pb-6">
-            <div className="workflow-version-selector flex items-center gap-4 px-2 text-gray-800 dark:text-gray-100">
-                <WorkflowIcon size={16} />
-                <Tooltip content="Click to edit">
+    // Placeholder for the new top bar content
+    const TopBar = () => (
+        <div className="shrink-0 flex justify-between items-center p-3 border-b dark:border-gray-700 bg-white dark:bg-gray-800">
+            {/* Left side: Run/Build Toggle */}
+            <div className="flex gap-2">
+                <Button
+                    variant={viewMode === 'run' ? 'solid' : 'ghost'}
+                    onPress={() => setViewMode('run')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md ${viewMode === 'run' ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                >
+                    <ServerIcon size={16} className="mr-2" /> Run
+                </Button>
+                <Button
+                    variant={viewMode === 'build' ? 'solid' : 'ghost'}
+                    onPress={() => setViewMode('build')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md ${viewMode === 'build' ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                >
+                    <Layers2Icon size={16} className="mr-2" /> Build
+                </Button>
+            </div>
+
+            {/* Center: Workflow Name and Status (Simplified) */}
+            <div className="flex-grow flex justify-center items-center gap-2 text-sm">
+                <Tooltip content="Click to edit workflow name">
                     <div>
                         <EditableField
-                            key={state.present.workflow._id}
+                            key={state.present.workflow._id + "_name"}
                             value={state.present.workflow?.name || ''}
                             onChange={handleRenameWorkflow}
-                            placeholder="Назовите эту версию"
-                            className="text-sm font-semibold"
+                            placeholder="Untitled Workflow"
+                            className="font-semibold text-gray-800 dark:text-gray-100"
                             inline={true}
                         />
                     </div>
                 </Tooltip>
-                <div className="flex items-center gap-2">
-                    {state.present.publishing && <Spinner size="sm" />}
-                    {isLive && <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2">
-                        <RadioIcon size={16} />
-                        Live
-                    </div>}
-                    {!isLive && <div className="bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2">
-                        <PenLine size={16} />
-                        Draft
-                    </div>}
-                </div>
+                {isLive && <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-md text-xs font-medium flex items-center gap-1">
+                    <RadioIcon size={12} />
+                    Live
+                </div>}
+                {!isLive && <div className="bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 px-2 py-0.5 rounded-md text-xs font-medium flex items-center gap-1">
+                    <PenLine size={12} />
+                    Draft
+                </div>}
+            </div>
 
+            {/* Right side: Versions, Publish (Moved and simplified) */}
+            <div className="flex items-center gap-3">
                 <Dropdown>
                     <DropdownTrigger>
-                        <div>
-                            <Tooltip content="Version Menu">
-                                <button className="p-1.5 text-gray-500 hover:text-gray-800 transition-colors">
-                                    <HamburgerIcon size={20} />
-                                </button>
-                            </Tooltip>
-                        </div>
+                        <Button variant="ghost" className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <span className="mr-1.5"><BackIcon size={16} /></span> Versions
+                        </Button>
                     </DropdownTrigger>
                     <DropdownMenu
                         disabledKeys={[
                             ...(state.present.pendingChanges ? ['switch', 'clone'] : []),
-                            ...(isLive ? ['mcp'] : []),
                         ]}
                         onAction={(key) => {
                             if (key === 'switch') {
@@ -839,211 +854,198 @@ export function WorkflowEditor({
                             }
                         }}
                     >
-
-                        <DropdownItem
-                            key="switch"
-                            startContent={<div className="text-gray-500"><BackIcon size={16} /></div>}
-                            className="gap-x-2"
-                        >
-                            Просмотр версий
-                        </DropdownItem>
-
-                        <DropdownItem
-                            key="clone"
-                            startContent={<div className="text-gray-500"><Layers2Icon size={16} /></div>}
-                            className="gap-x-2"
-                        >
-                            Клонировать эту версию
-                        </DropdownItem>
-
-                        <DropdownItem
-                            key="clipboard"
-                            startContent={<div className="text-gray-500"><CopyIcon size={16} /></div>}
-                            className="gap-x-2"
-                        >
-                            Экспорт в JSON
-                        </DropdownItem>
-
+                        <DropdownItem key="switch" startContent={<BackIcon size={16} />} className="text-sm">View Other Versions</DropdownItem>
+                        <DropdownItem key="clone" startContent={<Layers2Icon size={16} />} className="text-sm">Clone This Version</DropdownItem>
+                        <DropdownItem key="clipboard" startContent={<CopyIcon size={16} />} className="text-sm">Export to JSON</DropdownItem>
                     </DropdownMenu>
                 </Dropdown>
-            </div>
-            {showCopySuccess && <div className="flex items-center gap-2">
-                <div className="text-green-500">Скопировано в буфер обмена</div>
-            </div>}
-            <div className="flex items-center gap-2">
-                {isLive && <div className="flex items-center gap-2">
-                    <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2">
-                        <AlertTriangle size={16} />
-                        Эта версия заблокирована. Вы не можете вносить изменения. Изменения, внесенные через copilot,<b>не будут </b>отражены.
 
-                    </div>
-                    <Button
-                        variant="solid"
-                        size="md"
-                        onPress={() => handleCloneVersion(state.present.workflow._id)}
-                        className="gap-2 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm"
-                        startContent={<Layers2Icon size={16} />}
-                    >
-                        Клонировать эту версию
-                    </Button>
-                    <Button
-                        variant="solid"
-                        size="md"
-                        onPress={() => setShowCopilot(!showCopilot)}
-                        className="gap-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
-                        startContent={showCopilot ? null : <Sparkles size={16} />}
-                    >
-                        {showCopilot ? "Hide Copilot" : "Copilot"}
-                    </Button>
-                </div>}
-                {!isLive && <div className="text-xs text-gray-400">
-                    {state.present.saving && <div className="flex items-center gap-1">
-                        <Spinner size="sm" />
-                        <div>Сохранение...</div>
-                    </div>}
-                    {!state.present.saving && state.present.workflow && <div>
-                        Обновлено <RelativeTime date={new Date(state.present.lastUpdatedAt)} />
-                    </div>}
-                </div>}
-                {!isLive && <>
-                    <button
-                        className="p-1 text-gray-400 hover:text-black hover:cursor-pointer"
-                        title="Отменить"
-                        disabled={state.currentIndex <= 0}
-                        onClick={() => dispatch({ type: "undo" })}
-                    >
-                        <UndoIcon size={16} />
-                    </button>
-                    <button
-                        className="p-1 text-gray-400 hover:text-black hover:cursor-pointer"
-                        title="Повторить"
-                        disabled={state.currentIndex >= state.patches.length}
-                        onClick={() => dispatch({ type: "redo" })}
-                    >
-                        <RedoIcon size={16} />
-                    </button>
+                {!isLive && (
                     <Button
                         variant="solid"
                         size="md"
                         onPress={handlePublishWorkflow}
-                        className="gap-2 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold text-sm"
+                        className="gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold text-sm rounded-md"
                         startContent={<RocketIcon size={16} />}
+                        disabled={state.present.publishing}
                         data-tour-target="deploy"
                     >
-                        Deploy
+                        {state.present.publishing ? <Spinner size="sm" /> : "Publish Changes"}
                     </Button>
-                    <Button
+                )}
+                 {isLive && (
+                     <Button
                         variant="solid"
                         size="md"
-                        onPress={() => setShowCopilot(!showCopilot)}
-                        className="gap-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
-                        startContent={showCopilot ? null : <Sparkles size={16} />}
+                        onPress={() => handleCloneVersion(state.present.workflow._id)}
+                        className="gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm rounded-md"
+                        startContent={<Layers2Icon size={16} />}
                     >
-
-                        {showCopilot ? "Скрыть Copilot" : "Copilot"}
-
+                        Clone to Edit
                     </Button>
-                </>}
+                 )}
             </div>
         </div>
-        <ResizablePanelGroup direction="horizontal" className="grow flex overflow-auto gap-1">
-            <ResizablePanel minSize={10} defaultSize={PANEL_RATIOS.entityList}>
-                <EntityList
-                    agents={state.present.workflow.agents}
-                    tools={state.present.workflow.tools}
-                    prompts={state.present.workflow.prompts}
-                    selectedEntity={state.present.selection}
-                    startAgentName={state.present.workflow.startAgent}
-                    onSelectAgent={handleSelectAgent}
-                    onSelectTool={handleSelectTool}
-                    onSelectPrompt={handleSelectPrompt}
-                    onAddAgent={handleAddAgent}
-                    onAddTool={handleAddTool}
-                    onAddPrompt={handleAddPrompt}
-                    onToggleAgent={handleToggleAgent}
-                    onSetMainAgent={handleSetMainAgent}
-                    onDeleteAgent={handleDeleteAgent}
-                    onDeleteTool={handleDeleteTool}
-                    onDeletePrompt={handleDeletePrompt}
-                    triggerMcpImport={triggerMcpImport}
-                />
-            </ResizablePanel>
-            <ResizableHandle className="w-[3px] bg-transparent" />
-            <ResizablePanel
-                minSize={20}
-                defaultSize={showCopilot ? PANEL_RATIOS.chatApp : PANEL_RATIOS.chatApp + PANEL_RATIOS.copilot}
-                className="overflow-auto"
-            >
-                <ChatApp
-                    key={'' + state.present.chatKey}
-                    hidden={state.present.selection !== null}
-                    projectId={state.present.workflow.projectId}
-                    workflow={state.present.workflow}
-                    messageSubscriber={updateChatMessages}
-                    mcpServerUrls={mcpServerUrls}
-                    toolWebhookUrl={toolWebhookUrl}
-                    isInitialState={isInitialState}
-                    onPanelClick={handlePlaygroundClick}
-                />
-                {state.present.selection?.type === "agent" && <AgentConfig
-                    key={state.present.selection.name}
-                    projectId={state.present.workflow.projectId}
-                    workflow={state.present.workflow}
-                    agent={state.present.workflow.agents.find((agent) => agent.name === state.present.selection!.name)!}
-                    usedAgentNames={new Set(state.present.workflow.agents.filter((agent) => agent.name !== state.present.selection!.name).map((agent) => agent.name))}
-                    agents={state.present.workflow.agents}
-                    tools={state.present.workflow.tools}
-                    prompts={state.present.workflow.prompts}
-                    dataSources={dataSources}
-                    handleUpdate={handleUpdateAgent.bind(null, state.present.selection.name)}
-                    handleClose={handleUnselectAgent}
-                    useRag={useRag}
-                />}
-                {state.present.selection?.type === "tool" && <ToolConfig
-                    key={state.present.selection.name}
-                    tool={state.present.workflow.tools.find((tool) => tool.name === state.present.selection!.name)!}
-                    usedToolNames={new Set(state.present.workflow.tools.filter((tool) => tool.name !== state.present.selection!.name).map((tool) => tool.name))}
-                    handleUpdate={handleUpdateTool.bind(null, state.present.selection.name)}
-                    handleClose={handleUnselectTool}
-                />}
-                {state.present.selection?.type === "prompt" && <PromptConfig
-                    key={state.present.selection.name}
-                    prompt={state.present.workflow.prompts.find((prompt) => prompt.name === state.present.selection!.name)!}
-                    agents={state.present.workflow.agents}
-                    tools={state.present.workflow.tools}
-                    prompts={state.present.workflow.prompts}
-                    usedPromptNames={new Set(state.present.workflow.prompts.filter((prompt) => prompt.name !== state.present.selection!.name).map((prompt) => prompt.name))}
-                    handleUpdate={handleUpdatePrompt.bind(null, state.present.selection.name)}
-                    handleClose={handleUnselectPrompt}
-                />}
-            </ResizablePanel>
-            {showCopilot && (
-                <>
-                    <ResizableHandle className="w-[3px] bg-transparent" />
-                    <ResizablePanel
-                        minSize={10}
-                        defaultSize={PANEL_RATIOS.copilot}
-                        onResize={(size) => setCopilotWidth(size)}
-                    >
-                        <Copilot
+    );
+
+    // Placeholder for the "Build" mode's right sidebar
+    const BuildRightSidebar = () => (
+        <div className="p-4 border-l dark:border-gray-700 h-full overflow-y-auto bg-gray-50 dark:bg-gray-800/30 w-full">
+            <div className="mb-6">
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Tools</h3>
+                    <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddTool()}>+ Add tool</Button>
+                </div>
+                 {state.present.workflow.tools.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">Add tools to give your agents the ability to perform actions or connect with integrations.</p>}
+                {state.present.workflow.tools.map(tool => (
+                    <div key={tool.name} className={`p-2 mb-1.5 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${state.present.selection?.type === 'tool' && state.present.selection.name === tool.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}`}
+                         onClick={() => handleSelectTool(tool.name)}>
+                        <p className="font-medium text-sm text-gray-700 dark:text-gray-200">{tool.name}</p>
+                    </div>
+                ))}
+            </div>
+
+            <div className="mb-6">
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Knowledge</h3>
+                    {/* <Button variant="outline" size="sm" className="text-indigo-600 border-indigo-600 hover:bg-indigo-50">+ Add knowledge</Button> */}
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {useRag ? "Configure RAG data sources for context-relevant responses." : "RAG is not enabled for this project."}
+                </p>
+                {/* Knowledge content (e.g., list of data sources, RAG settings) will go here */}
+                 {useRag && dataSources.map(ds => (
+                    <div key={ds._id} className="p-2 mt-1.5 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700/50">
+                        <p className="font-medium text-sm text-gray-700 dark:text-gray-200">{ds.name}</p>
+                        {ds.data?.type === 'urls' && <p className="text-xs text-gray-500 dark:text-gray-400">URL Source</p>}
+                        {ds.data?.type === 'files' && <p className="text-xs text-gray-500 dark:text-gray-400">File Source</p>}
+                        {/* Add more specific descriptions based on ds.data or if a general description field is available elsewhere */}
+                    </div>
+                 ))}
+            </div>
+
+            <div>
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Variables</h3>
+                     <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddPrompt()}>+ Add variable</Button>
+                </div>
+                 {state.present.workflow.prompts.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">Turn reusable values into variables (prompts) that you can access with {`{{variable_name}}`}.</p>}
+                {state.present.workflow.prompts.map(prompt => (
+                    <div key={prompt.name} className={`p-2 mb-1.5 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${state.present.selection?.type === 'prompt' && state.present.selection.name === prompt.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}`}
+                         onClick={() => handleSelectPrompt(prompt.name)}>
+                        <p className="font-medium text-sm text-gray-700 dark:text-gray-200">{prompt.name}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    return <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-900">
+        <TopBar />
+
+        <div className="grow flex overflow-hidden">
+            {viewMode === 'run' && (
+                <div className="w-full h-full overflow-y-auto p-1 md:p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                    <ChatApp
+                        key={'run_mode_' + state.present.chatKey + '_' + state.present.workflow._id}
+                        projectId={state.present.workflow.projectId}
+                        workflow={state.present.workflow}
+                        messageSubscriber={updateChatMessages}
+                        mcpServerUrls={mcpServerUrls}
+                        toolWebhookUrl={toolWebhookUrl}
+                        isInitialState={isInitialState}
+                        onPanelClick={handlePlaygroundClick}
+                    />
+                </div>
+            )}
+
+            {viewMode === 'build' && (
+                <ResizablePanelGroup direction="horizontal" className="grow flex overflow-auto gap-0">
+                    {/* Left Panel for Agents List */}
+                    <ResizablePanel minSize={15} defaultSize={20} className="bg-white dark:bg-gray-800 border-r dark:border-gray-700 p-4 overflow-y-auto">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Agents</h3>
+                            <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddAgent()}>+ Add agent</Button>
+                        </div>
+                        {state.present.workflow.agents.map(agent => (
+                            <div key={agent.name}
+                                 className={`p-3 mb-2 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer 
+                                            ${state.present.selection?.type === 'agent' && state.present.selection.name === agent.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}
+                                            ${state.present.workflow.startAgent === agent.name ? 'ring-2 ring-green-500 dark:ring-green-400' : ''}`}
+                                 onClick={() => handleSelectAgent(agent.name)}>
+                                <div className="flex justify-between items-center">
+                                    <p className={`font-medium text-sm ${agent.disabled ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-700 dark:text-gray-200'}`}>{agent.name}</p>
+                                    {state.present.workflow.startAgent === agent.name && (
+                                        <Tooltip content="Main Agent">
+                                            <RocketIcon size={14} className="text-green-600 dark:text-green-500" />
+                                        </Tooltip>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{agent.type} model</p>
+                                {/* Add more agent details or actions if needed */}
+                            </div>
+                        ))}
+                    </ResizablePanel>
+                    <ResizableHandle className="w-[3px] bg-gray-200 dark:bg-gray-700 hover:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors" />
+                    {/* Central Configuration Panel */}
+                    <ResizablePanel minSize={30} defaultSize={55} className="overflow-y-auto p-6 bg-white dark:bg-gray-800">
+                        {state.present.selection?.type === "agent" && <AgentConfig
+                            key={state.present.selection.name + state.present.workflow._id}
                             projectId={state.present.workflow.projectId}
                             workflow={state.present.workflow}
-                            dispatch={dispatch}
-                            chatContext={
-                                state.present.selection ? {
-                                    type: state.present.selection.type,
-                                    name: state.present.selection.name
-                                } : chatMessages.length > 0 ? {
-                                    type: 'chat',
-                                    messages: chatMessages
-                                } : undefined
-                            }
-                            isInitialState={isInitialState}
-                        />
+                            agent={state.present.workflow.agents.find((agent) => agent.name === state.present.selection!.name)!}
+                            usedAgentNames={new Set(state.present.workflow.agents.filter((agent) => agent.name !== state.present.selection!.name).map((agent) => agent.name))}
+                            agents={state.present.workflow.agents}
+                            tools={state.present.workflow.tools}
+                            prompts={state.present.workflow.prompts}
+                            dataSources={dataSources}
+                            handleUpdate={handleUpdateAgent.bind(null, state.present.selection.name)}
+                            handleClose={handleUnselectAgent}
+                            useRag={useRag}
+                        />}
+                        {state.present.selection?.type === "tool" && <ToolConfig
+                            key={state.present.selection.name + state.present.workflow._id}
+                            tool={state.present.workflow.tools.find((tool) => tool.name === state.present.selection!.name)!}
+                            usedToolNames={new Set(state.present.workflow.tools.filter((tool) => tool.name !== state.present.selection!.name).map((tool) => tool.name))}
+                            handleUpdate={handleUpdateTool.bind(null, state.present.selection.name)}
+                            handleClose={handleUnselectTool}
+                        />}
+                        {state.present.selection?.type === "prompt" && <PromptConfig
+                            key={state.present.selection.name + state.present.workflow._id}
+                            prompt={state.present.workflow.prompts.find((prompt) => prompt.name === state.present.selection!.name)!}
+                            agents={state.present.workflow.agents}
+                            tools={state.present.workflow.tools}
+                            prompts={state.present.workflow.prompts}
+                            usedPromptNames={new Set(state.present.workflow.prompts.filter((prompt) => prompt.name !== state.present.selection!.name).map((prompt) => prompt.name))}
+                            handleUpdate={handleUpdatePrompt.bind(null, state.present.selection.name)}
+                            handleClose={handleUnselectPrompt}
+                        />}
+                        {!state.present.selection && (
+                            <div className="flex flex-col items-center justify-center h-full text-center">
+                                <Layers2Icon size={64} className="text-gray-300 dark:text-gray-600 mb-4" />
+                                <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-200 mb-2">Build Your Workflow</h2>
+                                <p className="text-gray-500 dark:text-gray-400 max-w-md">
+                                    Select an agent from the left panel to configure its instructions, model, and associated tools/knowledge.
+                                    You can also add new tools or variables using the right panel.
+                                </p>
+                                 <div className="mt-8">
+                                    <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 text-white" onPress={() => handleAddAgent()}>
+                                        <span className="mr-2"><Sparkles size={20} /></span> Create First Agent
+                                    </Button>
+                                 </div>
+                            </div>
+                        )}
                     </ResizablePanel>
-                </>
+                    <ResizableHandle className="w-[3px] bg-gray-200 dark:bg-gray-700 hover:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors" />
+                    {/* Right Sidebar for Tools, Knowledge, Variables */}
+                    <ResizablePanel minSize={15} defaultSize={25}>
+                        <BuildRightSidebar />
+                    </ResizablePanel>
+                </ResizablePanelGroup>
             )}
-        </ResizablePanelGroup>
+        </div>
+
+        {/* Modals and Product Tour */}
         {USE_PRODUCT_TOUR && showTour && (
             <ProductTour
                 projectId={state.present.workflow.projectId}
