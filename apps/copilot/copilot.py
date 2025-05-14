@@ -23,6 +23,7 @@ def get_response(
         workflow_schema: str,
         current_workflow_config: str,
         context: AgentContext | PromptContext | ToolContext | ChatContext | None = None,
+        data_sources: List[dict] = [],
         copilot_instructions: str = copilot_instructions_edit_agent
     ) -> str:
     # if context is provided, create a prompt for the context
@@ -53,6 +54,18 @@ def get_response(
     else:
         context_prompt = ""
 
+    # prepare data sources information if available
+    data_sources_info = ""
+    if data_sources:
+        data_sources_info = f"""
+**Available Data Sources**: These can be used with RAG for agents
+```json
+{json.dumps([{"id": ds.get("_id"), "name": ds.get("name")} for ds in data_sources])}
+```
+
+**IMPORTANT**: Always use the data source name (not ID) in the ragDataSources array.
+"""
+
     # add the workflow schema to the system prompt
     sys_prompt = copilot_instructions.replace("{workflow_schema}", workflow_schema)
 
@@ -66,6 +79,7 @@ The current workflow config is:
 ```
 
 {context_prompt}
+{data_sources_info}
 
 User: {last_message.content}
 """

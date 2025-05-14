@@ -3,6 +3,7 @@ import json
 import aiohttp
 import jwt
 import hashlib
+import re
 from agents import OpenAIChatCompletionsModel, trace, add_trace_processor
 
 # Import helper functions needed for get_agents
@@ -191,21 +192,36 @@ def get_agents(agent_configs, tool_configs, complete_request):
     new_agents = []
     new_agent_to_children = {}
     new_agent_name_to_index = {}
+    
+    # Получаем конфигурацию RAG инструмента
+    rag_tool_config = get_tool_config_by_type(tool_configs, "rag")
+    rag_tool_name = rag_tool_config.get("name", "") if rag_tool_config else "getArticleInfo"
+    
     # Create Agent objects from config
     for agent_config in agent_configs:
         print("="*100)
         print(f"Processing config for agent: {agent_config['name']}")
 
+        # Принудительно включаем RAG для агентов с ragDataSources
+        # Если у агента есть ragDataSources, но не установлен hasRagSources, 
+        # устанавливаем его в True
+        if agent_config.get("ragDataSources") and not agent_config.get("hasRagSources", False):
+            print(f"Enabling RAG for agent {agent_config['name']} with data sources")
+            agent_config["hasRagSources"] = True
+
         # If hasRagSources, append the RAG tool to the agent's tools
         if agent_config.get("hasRagSources", False):
-            rag_tool_name = get_tool_config_by_type(tool_configs, "rag").get("name", "")
-            agent_config["tools"].append(rag_tool_name)
+            # Проверяем, что инструмент RAG еще не добавлен
+            if rag_tool_name not in agent_config.get("tools", []):
+                if "tools" not in agent_config:
+                    agent_config["tools"] = []
+                agent_config["tools"].append(rag_tool_name)
             agent_config = add_rag_instructions_to_agent(agent_config, rag_tool_name)
 
         # Prepare tool lists for this agent
         external_tools = []
 
-        print(f"Agent {agent_config['name']} has {len(agent_config['tools'])} configured tools")
+        print(f"Agent {agent_config['name']} has {len(agent_config.get('tools', []))} configured tools")
 
         new_tools = []
         rag_tool = get_rag_tool(agent_config, complete_request)
@@ -313,6 +329,85 @@ async def run_streamed(
         external_tools = []
     if tokens_used is None:
         tokens_used = {}
+
+    # Обработка сообщений для принудительного использования RAG
+    # Ищем последнее сообщение пользователя
+    last_user_message = None
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i].get("role") == "user":
+            last_user_message = messages[i]
+            break
+
+    # Если есть инструмент RAG и последнее пользовательское сообщение
+    if last_user_message and hasattr(agent, "tools"):
+        rag_tools = [tool for tool in agent.tools if tool.name == "getArticleInfo"]
+        user_query = last_user_message.get("content", "")
+        
+        # Проверяем, не содержит ли уже цепочка сообщений вызов RAG для этого запроса
+        recent_rag_call = False
+        user_msg_index = messages.index(last_user_message)
+        
+        # Проверяем, были ли вызовы RAG инструмента после последнего сообщения пользователя
+        for i in range(user_msg_index + 1, len(messages)):
+            if messages[i].get("role") == "assistant" and messages[i].get("tool_calls"):
+                for tool_call in messages[i].get("tool_calls", []):
+                    if tool_call.get("function", {}).get("name") == "getArticleInfo":
+                        recent_rag_call = True
+                        break
+        
+        # Если есть RAG инструмент, но еще не было вызова для текущего запроса пользователя
+        if rag_tools and not recent_rag_call and user_query:
+            print(f"Forcing RAG for query: {user_query}")
+            
+            # Извлекаем проектный ID и данные источников из атрибутов агента
+            project_id = None
+            data_sources = []
+            
+            # Ищем project_id в сообщениях инструментов
+            for msg in messages:
+                if msg.get("role") == "tool" and msg.get("tool_name") == "transfer_to_agent":
+                    try:
+                        content = json.loads(msg.get("content", "{}"))
+                        if "projectId" in content:
+                            project_id = content["projectId"]
+                            break
+                    except:
+                        pass
+            
+            # Если не нашли в сообщениях, пробуем получить из complete_request
+            if not project_id and hasattr(agent, "complete_request"):
+                project_id = agent.complete_request.get("projectId")
+            
+            # Если нашли project_id, пробуем найти data_sources
+            if project_id:
+                # Ищем data_sources в конфигурации агента
+                if hasattr(agent, "config") and "ragDataSources" in agent.config:
+                    data_sources = agent.config.get("ragDataSources", [])
+                
+                # Если есть project_id и data_sources, вызываем RAG
+                if data_sources:
+                    try:
+                        # Добавляем системное сообщение с результатами RAG
+                        rag_result = await call_rag_tool(
+                            project_id=project_id,
+                            query=user_query,
+                            source_ids=data_sources,
+                            return_type="chunks",
+                            k=3
+                        )
+                        
+                        # Создаем системное сообщение с результатами RAG
+                        rag_system_message = {
+                            "role": "system",
+                            "content": f"Information retrieved from knowledge base for query '{user_query}':\n\n{rag_result}"
+                        }
+                        
+                        # Вставляем системное сообщение перед последним сообщением пользователя
+                        user_msg_index = messages.index(last_user_message)
+                        messages.insert(user_msg_index, rag_system_message)
+                        print("Added forced RAG results to messages")
+                    except Exception as e:
+                        print(f"Error forcing RAG: {str(e)}")
 
     # Format messages to ensure they're compatible with the OpenAI API
     formatted_messages = []
