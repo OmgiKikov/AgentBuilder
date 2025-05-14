@@ -75,26 +75,6 @@ services:
       - PROVIDER_COPILOT_MODEL=${PROVIDER_COPILOT_MODEL}
     restart: unless-stopped
 
-  # tools_webhook:
-  #   build:
-  #     context: ./apps/experimental/tools_webhook
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3005:3005"
-  #   environment:
-  #     - SIGNING_SECRET=${SIGNING_SECRET}
-  #   restart: unless-stopped
-
-  # simulation_runner:
-  #   build:
-  #     context: ./apps/experimental/simulation_runner
-  #     dockerfile: Dockerfile
-  #   environment:
-  #     - MONGODB_URI=mongodb://mongo:27017/rowboat
-  #     - ROWBOAT_API_HOST=http://rowboat:3000
-  #     - OPENAI_API_KEY=${OPENAI_API_KEY}
-  #   restart: unless-stopped
-
   setup_qdrant:
     build:
       context: ./apps/rowboat
@@ -104,7 +84,7 @@ services:
     environment:
       - QDRANT_URL=${QDRANT_URL}
       - QDRANT_API_KEY=${QDRANT_API_KEY}
-    restart: no
+    restart: "no"
 
   delete_qdrant:
     build:
@@ -115,7 +95,7 @@ services:
     environment:
       - QDRANT_URL=${QDRANT_URL}
       - QDRANT_API_KEY=${QDRANT_API_KEY}
-    restart: no
+    restart: "no"
 
   rag_files_worker:
     build:
@@ -165,25 +145,11 @@ services:
       - QDRANT_API_KEY=${QDRANT_API_KEY}
     restart: unless-stopped
 
-  # chat_widget:
-  #   build:
-  #     context: ./apps/experimental/chat_widget
-  #     dockerfile: Dockerfile
-  #   profiles: [ "chat_widget" ]
-  #   ports:
-  #     - "3006:3006"
-  #   environment:
-  #     - PORT=3006
-  #     - CHAT_WIDGET_HOST=http://localhost:3006
-  #     - ROWBOAT_HOST=http://localhost:3000
-  #   restart: unless-stopped
-
   mongo:
     image: mongo:latest
     ports:
       - "27017:27017"
     restart: unless-stopped
-    attach: false
     volumes:
       - ./data/mongo:/data/db
 
@@ -200,15 +166,3 @@ services:
     profiles: [ "docs" ]
     ports:
       - "8000:8000"
-
-  # twilio_handler:
-  #   build:
-  #     context: ./apps/experimental/twilio_handler
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "4010:4010"
-  #   environment:
-  #     - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
-  #     - ROWBOAT_API_HOST=http://rowboat:3000
-  #     - MONGODB_URI=mongodb://mongo:27017/rowboat
-  #   restart: unless-stopped
