@@ -810,7 +810,7 @@ export function WorkflowEditor({
     };
 
     const TopBar = () => (
-        <div className="shrink-0 flex justify-between items-center p-3 border-b dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="shrink-0 flex justify-between items-center p-3 border-b dark:border-gray-700 bg-white dark:bg-gray-800 w-full">
             {/* Left side: Run/Build Toggle */}
             <div className="flex gap-2">
                 <Button
@@ -913,105 +913,107 @@ export function WorkflowEditor({
 
     // Placeholder for the "Build" mode's right sidebar
     const BuildRightSidebar = () => (
-        <div className="p-4 border-l dark:border-gray-700 h-full overflow-y-auto bg-gray-50 dark:bg-gray-800/30 w-full">
-            <div className="mb-6">
-                <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Tools</h3>
-                    <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddTool()}>+ Add tool</Button>
-                </div>
-                 {state.present.workflow.tools.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">Add tools to give your agents the ability to perform actions or connect with integrations.</p>}
-                {state.present.workflow.tools.map(tool => (
-                    <div key={tool.name} 
-                         className={`relative group p-2 mb-1.5 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${state.present.selection?.type === 'tool' && state.present.selection.name === tool.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}`}>
-                        <div onClick={() => dispatch({type: "select_tool", name: tool.name})}> {/* Select on click */} 
-                          <p className="font-medium text-sm text-gray-700 dark:text-gray-200 pr-10">{tool.name}</p>
-                        </div>
-                        <div className="absolute top-1/2 right-1 transform -translate-y-1/2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation(); 
-                                    handleOpenConfigModal('tool', tool.name);
-                                }}
-                                className="p-1 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                                title={`Configure tool ${tool.name}`}
-                            >
-                                <Settings2Icon size={14} />
-                            </button>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteTool(tool.name);
-                                }}
-                                className="p-1 text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                                title={`Delete tool ${tool.name}`}
-                            >
-                                <Trash2Icon size={14} />
-                            </button>
-                        </div>
+        <div className="h-full w-full border-l dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 flex flex-col overflow-hidden">
+            <div className="p-4 overflow-y-auto flex-1">
+                <div className="mb-6">
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Tools</h3>
+                        <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddTool()}>+ Add tool</Button>
                     </div>
-                ))}
-            </div>
+                     {state.present.workflow.tools.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">Add tools to give your agents the ability to perform actions or connect with integrations.</p>}
+                    {state.present.workflow.tools.map(tool => (
+                        <div key={tool.name} 
+                             className={`relative group p-2 mb-1.5 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${state.present.selection?.type === 'tool' && state.present.selection.name === tool.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}`}>
+                            <div onClick={() => dispatch({type: "select_tool", name: tool.name})}> {/* Select on click */} 
+                              <p className="font-medium text-sm text-gray-700 dark:text-gray-200 pr-10">{tool.name}</p>
+                            </div>
+                            <div className="absolute top-1/2 right-1 transform -translate-y-1/2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation(); 
+                                        handleOpenConfigModal('tool', tool.name);
+                                    }}
+                                    className="p-1 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                    title={`Configure tool ${tool.name}`}
+                                >
+                                    <Settings2Icon size={14} />
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteTool(tool.name);
+                                    }}
+                                    className="p-1 text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                    title={`Delete tool ${tool.name}`}
+                                >
+                                    <Trash2Icon size={14} />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
 
-            <div className="mb-6">
-                <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Knowledge</h3>
-                    {/* <Button variant="ghost" size="sm" className="text-indigo-600 border-indigo-600 hover:bg-indigo-50">+ Add knowledge</Button> */}
-                </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {useRag ? "Configure RAG data sources for context-relevant responses." : "RAG is not enabled for this project."}
-                </p>
-                 {useRag && dataSources.map(ds => (
-                    <div key={ds._id} className="relative group p-2 mt-1.5 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700/50">
-                        <p className="font-medium text-sm text-gray-700 dark:text-gray-200">{ds.name}</p>
-                        {ds.data?.type === 'urls' && <p className="text-xs text-gray-500 dark:text-gray-400">URL Source</p>}
-                        {ds.data?.type === 'files' && <p className="text-xs text-gray-500 dark:text-gray-400">File Source</p>}
-                         {/* Placeholder for settings button if needed for data sources */}
-                         {/* <button className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-indigo-500 rounded-full opacity-0 group-hover:opacity-100"><Settings2Icon size={14}/></button> */}
+                <div className="mb-6">
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Knowledge</h3>
+                        {/* <Button variant="ghost" size="sm" className="text-indigo-600 border-indigo-600 hover:bg-indigo-50">+ Add knowledge</Button> */}
                     </div>
-                 ))}
-            </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {useRag ? "Настройте источники данных RAG для получения ответов, соответствующих контексту." : "RAG is not enabled for this project."}
+                    </p>
+                     {useRag && dataSources.map(ds => (
+                        <div key={ds._id} className="relative group p-2 mt-1.5 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700/50">
+                            <p className="font-medium text-sm text-gray-700 dark:text-gray-200">{ds.name}</p>
+                            {ds.data?.type === 'urls' && <p className="text-xs text-gray-500 dark:text-gray-400">URL Source</p>}
+                            {ds.data?.type === 'files' && <p className="text-xs text-gray-500 dark:text-gray-400">File Source</p>}
+                             {/* Placeholder for settings button if needed for data sources */}
+                             {/* <button className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-indigo-500 rounded-full opacity-0 group-hover:opacity-100"><Settings2Icon size={14}/></button> */}
+                        </div>
+                     ))}
+                </div>
 
-            <div>
-                <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Variables</h3>
-                     <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddPrompt()}>+ Add variable</Button>
-                </div>
-                 {state.present.workflow.prompts.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">Turn reusable values into variables (prompts) that you can access with {`{{variable_name}}`}.</p>}
-                {state.present.workflow.prompts.map(prompt => (
-                    <div key={prompt.name} 
-                         className={`relative group p-2 mb-1.5 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${state.present.selection?.type === 'prompt' && state.present.selection.name === prompt.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}`}>
-                        <div onClick={() => dispatch({type: "select_prompt", name: prompt.name})}> {/* Select on click */} 
-                           <p className="font-medium text-sm text-gray-700 dark:text-gray-200 pr-10">{prompt.name}</p>
-                        </div>
-                        <div className="absolute top-1/2 right-1 transform -translate-y-1/2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation(); 
-                                    handleOpenConfigModal('prompt', prompt.name);
-                                }}
-                                className="p-1 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                                title={`Configure variable ${prompt.name}`}
-                            >
-                                <Settings2Icon size={14} />
-                            </button>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation(); 
-                                    handleDeletePrompt(prompt.name);
-                                }}
-                                className="p-1 text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                                title={`Delete variable ${prompt.name}`}
-                            >
-                                <Trash2Icon size={14} />
-                            </button>
-                        </div>
+                <div>
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Variables</h3>
+                         <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddPrompt()}>+ Add variable</Button>
                     </div>
-                ))}
+                     {state.present.workflow.prompts.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">Turn reusable values into variables (prompts) that you can access with {`{{variable_name}}`}.</p>}
+                    {state.present.workflow.prompts.map(prompt => (
+                        <div key={prompt.name} 
+                             className={`relative group p-2 mb-1.5 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${state.present.selection?.type === 'prompt' && state.present.selection.name === prompt.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}`}>
+                            <div onClick={() => dispatch({type: "select_prompt", name: prompt.name})}> {/* Select on click */} 
+                               <p className="font-medium text-sm text-gray-700 dark:text-gray-200 pr-10">{prompt.name}</p>
+                            </div>
+                            <div className="absolute top-1/2 right-1 transform -translate-y-1/2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation(); 
+                                        handleOpenConfigModal('prompt', prompt.name);
+                                    }}
+                                    className="p-1 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                    title={`Configure variable ${prompt.name}`}
+                                >
+                                    <Settings2Icon size={14} />
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation(); 
+                                        handleDeletePrompt(prompt.name);
+                                    }}
+                                    className="p-1 text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                    title={`Delete variable ${prompt.name}`}
+                                >
+                                    <Trash2Icon size={14} />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );
 
-    return <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-900">
+    return <div className="flex flex-col h-full w-full bg-gray-100 dark:bg-gray-900">
         <TopBar />
 
         <div className="grow flex overflow-hidden">
@@ -1031,73 +1033,77 @@ export function WorkflowEditor({
             )}
 
             {viewMode === 'build' && (
-                <ResizablePanelGroup direction="horizontal" className="grow flex overflow-auto gap-0">
+                <ResizablePanelGroup direction="horizontal" className="grow flex overflow-hidden gap-0 max-h-full">
                     {/* Left Panel for Agents List */}
-                    <ResizablePanel minSize={15} defaultSize={20} className="bg-white dark:bg-gray-800 border-r dark:border-gray-700 p-4 overflow-y-auto">
-                        <div className="flex justify-between items-center mb-3">
+                    <ResizablePanel minSize={15} defaultSize={20} className="bg-white dark:bg-gray-800 border-r dark:border-gray-700 overflow-hidden flex flex-col max-h-full">
+                        <div className="flex justify-between items-center mb-2 px-4 pt-4">
                             <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Agents</h3>
                             <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddAgent()}>+ Add agent</Button>
                         </div>
-                        {state.present.workflow.agents.map(agent => (
-                            <div key={agent.name}
-                                 className={`relative group p-3 mb-2 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer 
-                                            ${state.present.selection?.type === 'agent' && state.present.selection.name === agent.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}
-                                            ${state.present.workflow.startAgent === agent.name ? 'ring-2 ring-green-500 dark:ring-green-400' : ''}`}
-                                 >
-                                <div onClick={() => dispatch({type: "select_agent", name: agent.name})} > {/* Select on click */} 
-                                    <div className="flex justify-between items-center pr-10">
-                                        <p className={`font-medium text-sm ${agent.disabled ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-700 dark:text-gray-200'}`}>{agent.name}</p>
-                                        {/* Visual indicator for startAgent is now part of the action buttons below */}
+                        <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2">
+                            {state.present.workflow.agents.map(agent => (
+                                <div 
+                                    key={agent.name}
+                                    className={`relative group mb-2 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer max-w-full
+                                               ${state.present.selection?.type === 'agent' && state.present.selection.name === agent.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}
+                                               ${state.present.workflow.startAgent === agent.name ? 'ring-2 ring-green-500 dark:ring-green-400' : ''}`}
+                                    onClick={() => dispatch({type: "select_agent", name: agent.name})}
+                                >
+                                    <div className="p-3 pr-16"> {/* Added fixed right padding for actions */}
+                                        <div className="flex flex-col">
+                                            <p className={`font-medium text-sm truncate ${agent.disabled ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-700 dark:text-gray-200'}`}>
+                                                {agent.name}
+                                            </p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{agent.type} model</p>
+                                        </div>
                                     </div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">{agent.type} model</p>
+                                    <div className="absolute top-0 right-0 h-full flex items-center pr-2">
+                                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {/* Main agent button */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (state.present.workflow.startAgent !== agent.name) {
+                                                        handleSetMainAgent(agent.name);
+                                                    }
+                                                }}
+                                                className={`p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors 
+                                                            ${state.present.workflow.startAgent === agent.name ? 'text-green-500 dark:text-green-400 cursor-default' : 'text-gray-400 hover:text-green-500 dark:hover:text-green-400'}`}
+                                                title={state.present.workflow.startAgent === agent.name ? "Main Agent" : "Set as Main Agent"}
+                                            >
+                                                <RocketIcon size={14} />
+                                            </button>
+                                            {/* Configure button */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation(); 
+                                                    handleOpenConfigModal('agent', agent.name);
+                                                }}
+                                                className="p-1 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                            >
+                                                <Settings2Icon size={14} />
+                                            </button>
+                                            {/* Delete button */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation(); 
+                                                    if (window.confirm(`Are you sure you want to delete the agent "${agent.name}"?`)) {
+                                                        handleDeleteAgent(agent.name);
+                                                    }
+                                                }}
+                                                className="p-1 text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                            >
+                                                <Trash2Icon size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="absolute top-1/2 right-1 transform -translate-y-1/2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Tooltip content={state.present.workflow.startAgent === agent.name ? "This is the main agent" : "Set as main agent"}>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (state.present.workflow.startAgent !== agent.name) {
-                                                    handleSetMainAgent(agent.name);
-                                                }
-                                            }}
-                                            className={`p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors 
-                                                        ${state.present.workflow.startAgent === agent.name ? 'text-green-500 dark:text-green-400 cursor-default' : 'text-gray-400 hover:text-green-500 dark:hover:text-green-400'}`}
-                                            title={state.present.workflow.startAgent === agent.name ? "Main Agent" : "Set as Main Agent"}
-                                        >
-                                            <RocketIcon size={14} />
-                                        </button>
-                                    </Tooltip>
-                                    <Tooltip content={`Configure agent ${agent.name}`}>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation(); 
-                                                handleOpenConfigModal('agent', agent.name);
-                                            }}
-                                            className="p-1 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                                        >
-                                            <Settings2Icon size={14} />
-                                        </button>
-                                    </Tooltip>
-                                     <Tooltip content={`Delete agent ${agent.name}`}>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation(); 
-                                                if (window.confirm(`Are you sure you want to delete the agent "${agent.name}"?`)) {
-                                                    handleDeleteAgent(agent.name);
-                                                }
-                                            }}
-                                            className="p-1 text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                                        >
-                                            <Trash2Icon size={14} />
-                                        </button>
-                                    </Tooltip>
-                                </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </ResizablePanel>
                     <ResizableHandle className="w-[3px] bg-gray-200 dark:bg-gray-700 hover:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors" />
                     {/* Central Configuration Panel - Now ONLY Copilot */}
-                    <ResizablePanel minSize={30} defaultSize={55} className="overflow-y-auto p-1 md:p-0 bg-white dark:bg-gray-800 flex flex-col">
+                    <ResizablePanel minSize={30} defaultSize={55} className="overflow-y-auto p-1 md:p-0 bg-white dark:bg-gray-800 flex flex-col max-h-full">
                         <Copilot
                             projectId={state.present.workflow.projectId}
                             workflow={state.present.workflow}
@@ -1118,7 +1124,7 @@ export function WorkflowEditor({
                     </ResizablePanel>
                     <ResizableHandle className="w-[3px] bg-gray-200 dark:bg-gray-700 hover:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors" />
                     {/* Right Sidebar for Tools, Knowledge, Variables */}
-                    <ResizablePanel minSize={15} defaultSize={25}>
+                    <ResizablePanel minSize={15} defaultSize={25} className="max-h-full">
                         <BuildRightSidebar />
                     </ResizablePanel>
                 </ResizablePanelGroup>
