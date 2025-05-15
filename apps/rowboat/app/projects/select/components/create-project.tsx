@@ -103,15 +103,43 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
         <header className="p-4 shrink-0">
           {USE_MULTIPLE_PROJECTS && (
             <div className="flex justify-between items-center">
-              <h1
-                className={clsx(
-                  "text-2xl font-semibold text-gray-900 dark:text-gray-100",
-                  "transition-transform duration-700 ease-out",
-                  isLoaded ? "translate-y-0" : "translate-y-4",
-                )}
-              >
-                Создайте AI-агента
-              </h1>
+              <div className="flex space-x-4">
+                <Button
+                  onClick={() => {
+                    document.getElementById("prompt-textarea")?.focus();
+                  }}
+                  variant="primary"
+                  size="md"
+                  className={clsx(
+                    "flex items-center gap-2",
+                    "transition-all duration-300",
+                    "hover:scale-105 active:scale-95",
+                  )}
+                >
+                  <BotIcon className="w-4 h-4" />
+                  Создайте AI-агента
+                </Button>
+                
+                <Button
+                  onClick={() => {
+                    const blankFormData = new FormData();
+                    blankFormData.append("name", defaultName);
+                    blankFormData.append("template", "default");
+                    createProject(blankFormData);
+                  }}
+                  variant="secondary"
+                  size="md"
+                  className={clsx(
+                    "flex items-center gap-2",
+                    "transition-all duration-300",
+                    "hover:scale-105 active:scale-95",
+                  )}
+                >
+                  <SparklesIcon className="w-4 h-4" />
+                  Начнем с нуля
+                </Button>
+              </div>
+              
               {!isProjectPaneOpen && (
                 <Button
                   onClick={onOpenProjectPane}
@@ -130,15 +158,42 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
             </div>
           )}
           {!USE_MULTIPLE_PROJECTS && (
-            <h1
-              className={clsx(
-                "text-3xl font-semibold text-gray-800 dark:text-gray-100 text-center",
-                "transition-transform duration-700 ease-out",
-                isLoaded ? "translate-y-0" : "translate-y-4",
-              )}
-            >
-              Создайте своего AI-агента
-            </h1>
+            <div className="flex space-x-4 justify-center">
+              <Button
+                onClick={() => {
+                  document.getElementById("prompt-textarea")?.focus();
+                }}
+                variant="primary"
+                size="md"
+                className={clsx(
+                  "flex items-center gap-2",
+                  "transition-all duration-300",
+                  "hover:scale-105 active:scale-95",
+                )}
+              >
+                <BotIcon className="w-4 h-4" />
+                Создайте AI-агента
+              </Button>
+              
+              <Button
+                onClick={() => {
+                  const blankFormData = new FormData();
+                  blankFormData.append("name", defaultName);
+                  blankFormData.append("template", "default");
+                  createProject(blankFormData);
+                }}
+                variant="secondary"
+                size="md"
+                className={clsx(
+                  "flex items-center gap-2",
+                  "transition-all duration-300",
+                  "hover:scale-105 active:scale-95",
+                )}
+              >
+                <SparklesIcon className="w-4 h-4" />
+                Начнем с нуля
+              </Button>
+            </div>
           )}
           {isProjectPaneOpen && <HorizontalDivider className="mt-2" />}
         </header>
