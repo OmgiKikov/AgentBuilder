@@ -858,7 +858,7 @@ export function WorkflowEditor({
                 <Dropdown>
                     <DropdownTrigger>
                         <Button variant="ghost" className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                            <span className="mr-1.5"><BackIcon size={16} /></span> Versions
+                            <span className="mr-1.5"><BackIcon size={16} /></span> Версии
                         </Button>
                     </DropdownTrigger>
                     <DropdownMenu
@@ -893,7 +893,7 @@ export function WorkflowEditor({
                         disabled={state.present.publishing}
                         data-tour-target="deploy"
                     >
-                        {state.present.publishing ? <Spinner size="sm" /> : "Publish Changes"}
+                        {state.present.publishing ? <Spinner size="sm" /> : "Опубликовать"}
                     </Button>
                 )}
                  {isLive && (
@@ -977,7 +977,7 @@ export function WorkflowEditor({
                         <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Variables</h3>
                          <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddPrompt()}>+ Add variable</Button>
                     </div>
-                     {state.present.workflow.prompts.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">Turn reusable values into variables (prompts) that you can access with {`{{variable_name}}`}.</p>}
+                     {state.present.workflow.prompts.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">Превратите многократно используемые значения в переменные (prompts) к которым можно обратиться с помощью {`{{variable_name}}`}.</p>}
                     {state.present.workflow.prompts.map(prompt => (
                         <div key={prompt.name} 
                              className={`relative group p-2 mb-1.5 border dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${state.present.selection?.type === 'prompt' && state.present.selection.name === prompt.name ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-500 dark:border-indigo-500' : 'bg-white dark:bg-gray-700/50'}`}>
