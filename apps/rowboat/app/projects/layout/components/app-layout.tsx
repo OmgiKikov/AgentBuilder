@@ -34,7 +34,7 @@ export default function AppLayout({ children, useRag = false, useAuth = false }:
       </div>
       
       {/* Main content area */}
-      <main className="flex-1 overflow-auto rounded-xl bg-white dark:bg-zinc-800 shadow-sm p-4">
+      <main className="flex-1 min-h-0 flex flex-col rounded-xl bg-white dark:bg-zinc-800 shadow-sm p-4">
         {children}
       </main>
     </div>
