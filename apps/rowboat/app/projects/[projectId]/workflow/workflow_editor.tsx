@@ -615,12 +615,18 @@ export function WorkflowEditor({
     const [isMcpImportModalOpen, setIsMcpImportModalOpen] = useState(false);
     const [isInitialState, setIsInitialState] = useState(true);
     const [showTour, setShowTour] = useState(true);
-    const [viewMode, setViewMode] = useState<'run' | 'build'>('build');
 
-    // State for configuration modal
-    const [configModalOpen, setConfigModalOpen] = useState(false);
-    const [configModalEntityType, setConfigModalEntityType] = useState<'agent' | 'tool' | 'prompt' | null>(null);
-    const [configModalEntityName, setConfigModalEntityName] = useState<string | null>(null);
+    const copilotRef = useRef<{ handleUserMessage: (message: string) => void }>(null);
+
+    // Function to trigger copilot chat
+    const triggerCopilotChat = useCallback((message: string) => {
+        setShowCopilot(true);
+        // Small delay to ensure copilot is mounted
+        setTimeout(() => {
+            copilotRef.current?.handleUserMessage(message);
+        }, 100);
+    }, []);
+
 
     console.log(`workflow editor chat key: ${state.present.chatKey}`);
 
@@ -909,6 +915,7 @@ export function WorkflowEditor({
                  )}
             </div>
         </div>
+
     );
 
     // Placeholder for the "Build" mode's right sidebar
@@ -1104,7 +1111,9 @@ export function WorkflowEditor({
                     <ResizableHandle className="w-[3px] bg-gray-200 dark:bg-gray-700 hover:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors" />
                     {/* Central Configuration Panel - Now ONLY Copilot */}
                     <ResizablePanel minSize={30} defaultSize={55} className="overflow-y-auto p-1 md:p-0 bg-white dark:bg-gray-800 flex flex-col max-h-full">
+
                         <Copilot
+                            ref={copilotRef}
                             projectId={state.present.workflow.projectId}
                             workflow={state.present.workflow}
                             dispatch={dispatch}
@@ -1117,7 +1126,10 @@ export function WorkflowEditor({
                                     messages: chatMessages
                                 } : undefined
                             }
-                            isInitialState={isInitialState && !state.present.selection}
+
+                            isInitialState={isInitialState}
+                            dataSources={dataSources}
+
                         />
                         {/* Configuration components (AgentConfig, ToolConfig, PromptConfig) are now removed from here */}
                         {/* They will be rendered in a modal */}

@@ -1,7 +1,7 @@
 from openai import OpenAI
 from flask import Flask, request, jsonify
 from pydantic import BaseModel, ValidationError
-from typing import List, Dict, Any, Literal
+from typing import List, Dict, Any, Literal, Optional
 import json
 from lib import AgentContext, PromptContext, ToolContext, ChatContext
 from client import PROVIDER_COPILOT_MODEL
@@ -15,6 +15,15 @@ class AssistantMessage(BaseModel):
     role: Literal["assistant"]
     content: str
 
+class DataSource(BaseModel):
+    _id: str
+    name: str
+    description: Optional[str] = None
+    active: bool = True
+    status: str  # 'pending' | 'ready' | 'error' | 'deleted'
+    error: Optional[str] = None
+    data: dict  # The discriminated union based on type
+
 with open('copilot_edit_agent.md', 'r', encoding='utf-8') as file:
     copilot_instructions_edit_agent = file.read()
 
@@ -23,7 +32,9 @@ def get_response(
         workflow_schema: str,
         current_workflow_config: str,
         context: AgentContext | PromptContext | ToolContext | ChatContext | None = None,
-        data_sources: List[dict] = [],
+
+        dataSources: Optional[List[DataSource]] = None,
+
         copilot_instructions: str = copilot_instructions_edit_agent
     ) -> str:
     # if context is provided, create a prompt for the context
@@ -54,16 +65,16 @@ def get_response(
     else:
         context_prompt = ""
 
-    # prepare data sources information if available
-    data_sources_info = ""
-    if data_sources:
-        data_sources_info = f"""
-**Available Data Sources**: These can be used with RAG for agents
+
+    # Add dataSources to the context if provided
+    data_sources_prompt = ""
+    if dataSources:
+        data_sources_prompt = f"""
+**NOTE**: The following data sources are available:
 ```json
-{json.dumps([{"id": ds.get("_id"), "name": ds.get("name")} for ds in data_sources])}
+{json.dumps([ds.model_dump() for ds in dataSources])}
 ```
 
-**IMPORTANT**: Always use the data source name (not ID) in the ragDataSources array.
 """
 
     # add the workflow schema to the system prompt
@@ -79,7 +90,9 @@ The current workflow config is:
 ```
 
 {context_prompt}
-{data_sources_info}
+
+{data_sources_prompt}
+
 
 User: {last_message.content}
 """
