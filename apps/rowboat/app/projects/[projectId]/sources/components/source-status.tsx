@@ -18,9 +18,9 @@ export function SourceStatus({
                 <>
                     <CheckCircleIcon className="w-4 h-4 text-green-500 dark:text-green-400" />
                     <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Ready</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Готово</span>
                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                            This source has been indexed and is ready to use.
+                        Этот источник проиндексирован и готов к использованию.
                         </span>
                     </div>
                 </>

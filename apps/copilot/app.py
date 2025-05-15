@@ -26,6 +26,7 @@ class ApiRequest(BaseModel):
     workflow_schema: str
     current_workflow_config: str
     context: AgentContext | PromptContext | ToolContext | ChatContext | None = None
+
     dataSources: Optional[List[DataSource]] = None
 
 class ApiResponse(BaseModel):
@@ -78,7 +79,9 @@ def chat_stream():
                 workflow_schema=request_data.workflow_schema,
                 current_workflow_config=request_data.current_workflow_config,
                 context=request_data.context,
+
                 dataSources=request_data.dataSources
+
             )
 
             for chunk in stream:
@@ -129,6 +132,7 @@ def edit_agent_instructions():
             workflow_schema=request_data.workflow_schema,
             current_workflow_config=request_data.current_workflow_config,
             context=request_data.context,
+            data_sources=request_data.data_sources,
             copilot_instructions=copilot_instructions_edit_agent
         )
 

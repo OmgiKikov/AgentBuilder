@@ -57,13 +57,13 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
   const navItems = [
     {
       href: 'workflow',
-      label: 'Build',
+      label: 'Создать',
       icon: WorkflowIcon,
       requiresProject: true
     },
     ...(USE_TESTING_FEATURE ? [{
       href: 'test',
-      label: 'Test',
+      label: 'Тест',
       icon: PlayIcon,
       requiresProject: true
     }] : []),
@@ -75,7 +75,7 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
     }] : []),
     {
       href: 'config',
-      label: 'Settings',
+      label: 'Настройки',
       icon: SettingsIcon,
       requiresProject: true
     }
@@ -209,7 +209,8 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
               </Tooltip>
             )}
 
-            <Tooltip content={collapsed ? "Appearance" : ""} showArrow placement="right">
+            <Tooltip content={collapsed ? "Пройти обучение" : ""} showArrow placement="right">
+
               <button 
                 onClick={toggleTheme}
                 className={`
@@ -221,12 +222,13 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
                 `}
               >
                 { theme == "light" ? <Moon size={COLLAPSED_ICON_SIZE} /> : <Sun size={COLLAPSED_ICON_SIZE} /> }
-                {!collapsed && <span>Appearance</span>}
+                {!collapsed && <span>Пройти обучение</span>}
+
               </button>
             </Tooltip>
 
             {useAuth && (
-              <Tooltip content={collapsed ? "Account" : ""} showArrow placement="right">
+              <Tooltip content={collapsed ? "Аккаунд" : ""} showArrow placement="right">
                 <div 
                   className={`
                     w-full rounded-md flex items-center
@@ -236,7 +238,7 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
                   `}
                 >
                   <UserButton />
-                  {!collapsed && <span>Account</span>}
+                  {!collapsed && <span>Аккаунт</span>}
                 </div>
               </Tooltip>
             )}

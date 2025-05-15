@@ -108,7 +108,9 @@ export const CopilotAPIRequest = z.object({
     workflow_schema: z.string(),
     current_workflow_config: z.string(),
     context: CopilotApiChatContext.nullable(),
+
     dataSources: z.array(CopilotDataSource).optional(),
+
 });
 export const CopilotAPIResponse = z.union([
     z.object({

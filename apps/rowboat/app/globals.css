@@ -35,9 +35,11 @@
   }
 }
 
+/*
 html, body {
   height: 100vh;
 }
+*/
 
 @layer base {
   :root {
