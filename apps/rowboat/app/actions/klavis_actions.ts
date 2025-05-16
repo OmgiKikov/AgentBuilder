@@ -73,23 +73,53 @@ export interface McpServerResponse {
 
 const KLAVIS_BASE_URL = 'https://api.klavis.ai';
 
-async function measureKlavisApiCall<T>(
+interface KlavisApiCallOptions {
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  body?: Record<string, any>;
+  additionalHeaders?: Record<string, string>;
+}
+
+async function klavisApiCall<T>(
   endpoint: string,
-  apiCall: () => Promise<T>
+  options: KlavisApiCallOptions = {}
 ): Promise<T> {
+  const { method = 'GET', body, additionalHeaders = {} } = options;
   const startTime = performance.now();
+  const url = `${KLAVIS_BASE_URL}${endpoint}`;
+
   try {
-    const result = await apiCall();
+    const headers = {
+      'Authorization': `Bearer ${process.env.KLAVIS_API_KEY}`,
+      'Content-Type': 'application/json',
+      ...additionalHeaders
+    };
+
+    const fetchOptions: RequestInit = {
+      method,
+      headers,
+      ...(body ? { body: JSON.stringify(body) } : {})
+    };
+
+    const response = await fetch(url, fetchOptions);
     const endTime = performance.now();
+    
     console.log('[Klavis API] Response time:', {
-      url: `${KLAVIS_BASE_URL}${endpoint}`,
+      url,
+      method,
       durationMs: Math.round(endTime - startTime)
     });
-    return result;
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error);
+    }
+
+    return await response.json() as T;
   } catch (error) {
     const endTime = performance.now();
     console.error('[Klavis API] Failed call:', {
-      url: `${KLAVIS_BASE_URL}${endpoint}`,
+      url,
+      method,
       durationMs: Math.round(endTime - startTime),
       error
     });
@@ -108,23 +138,8 @@ export async function listActiveServerInstances(projectId: string): Promise<User
     console.log('[Klavis API] Fetching active instances:', { projectId, platformName: 'Rowboat' });
     
     const endpoint = `/user/instances?${queryParams}`;
-    const response = await measureKlavisApiCall(endpoint, () =>
-      fetch(`${KLAVIS_BASE_URL}${endpoint}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.KLAVIS_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      })
-    );
+    const data = await klavisApiCall<GetUserInstancesResponse>(endpoint);
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('[Klavis API] Failed to fetch active instances:', { status: response.status, error });
-      throw new Error(`Failed to list active instances: ${error}`);
-    }
-
-    const data = await response.json() as GetUserInstancesResponse;
     console.log('[Klavis API] =================== Active Instances ===================');
     data.instances.forEach((instance, index) => {
       console.log(`[Klavis API] Instance ${index + 1}:`, {
@@ -150,24 +165,10 @@ export async function listAvailableMcpServers(projectId: string): Promise<McpSer
     console.log('[Klavis API] Fetching all servers');
     
     const serversEndpoint = '/mcp-server/servers';
-    const response = await measureKlavisApiCall(serversEndpoint, () =>
-      fetch(`${KLAVIS_BASE_URL}${serversEndpoint}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.KLAVIS_API_KEY}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-      })
-    );
+    const rawData = await klavisApiCall<GetAllServersResponse>(serversEndpoint, {
+      additionalHeaders: { 'Accept': 'application/json' }
+    });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('[Klavis API] Failed to fetch servers:', { status: response.status, error });
-      return { data: null, error: `Failed to list MCP servers: ${error}` };
-    }
-
-    const rawData = await response.json() as GetAllServersResponse;
     console.log('[Klavis API] Servers response:', { serverCount: rawData.servers.length });
     
     if (!rawData || !rawData.servers || !Array.isArray(rawData.servers)) {
@@ -187,19 +188,10 @@ export async function listAvailableMcpServers(projectId: string): Promise<McpSer
     });
 
     const instancesEndpoint = `/user/instances?${queryParams}`;
-    const instancesResponse = await measureKlavisApiCall(instancesEndpoint, () =>
-      fetch(`${KLAVIS_BASE_URL}${instancesEndpoint}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.KLAVIS_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      })
-    );
-
     let activeInstances: UserInstance[] = [];
-    if (instancesResponse.ok) {
-      const instancesData = await instancesResponse.json() as GetUserInstancesResponse;
+    
+    try {
+      const instancesData = await klavisApiCall<GetUserInstancesResponse>(instancesEndpoint);
       console.log('[Klavis API] =================== Active Instances ===================');
       instancesData.instances.forEach((instance, index) => {
         console.log(`[Klavis API] Instance ${index + 1}:`, JSON.stringify({
@@ -213,11 +205,8 @@ export async function listAvailableMcpServers(projectId: string): Promise<McpSer
       });
       console.log('[Klavis API] =====================================================');
       activeInstances = instancesData.instances;
-    } else {
-      console.error('[Klavis API] Failed to fetch user instances:', { 
-        status: instancesResponse.status,
-        error: await instancesResponse.text()
-      });
+    } catch (error) {
+      console.error('[Klavis API] Failed to fetch user instances:', error);
     }
 
     const activeInstanceMap = new Map(activeInstances.map(instance => [instance.name, instance]));
@@ -264,30 +253,13 @@ export async function createMcpServerInstance(
       platformName
     };
     console.log('[Klavis API] Creating server instance:', requestBody);
-
+    
     const endpoint = '/mcp-server/instance/create';
-    const response = await measureKlavisApiCall(endpoint, () =>
-      fetch(`${KLAVIS_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.KLAVIS_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      })
-    );
+    const result = await klavisApiCall<CreateServerInstanceResponse>(endpoint, {
+      method: 'POST',
+      body: requestBody
+    });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('[Klavis API] Failed to create instance:', { 
-        status: response.status, 
-        error,
-        request: requestBody 
-      });
-      throw new Error(`Failed to create MCP server instance: ${error}`);
-    }
-
-    const result = await response.json() as CreateServerInstanceResponse;
     console.log('[Klavis API] Created server instance:', result);
     return result;
   } catch (error: any) {
@@ -336,22 +308,11 @@ export async function setMcpServerAuthToken(
     console.log('[Klavis API] Setting auth token for instance:', { instanceId });
     
     const endpoint = `/mcp-server/instance/${instanceId}/auth`;
-    const response = await measureKlavisApiCall(endpoint, () =>
-      fetch(`${KLAVIS_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.KLAVIS_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ authToken }),
-      })
-    );
+    await klavisApiCall<void>(endpoint, {
+      method: 'POST',
+      body: { authToken }
+    });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('[Klavis API] Failed to set auth token:', { status: response.status, error });
-      throw new Error(`Failed to set MCP server auth token: ${error}`);
-    }
     console.log('[Klavis API] Auth token set successfully:', { instanceId });
   } catch (error: any) {
     console.error('[Klavis API] Error setting auth token:', error);
@@ -364,29 +325,18 @@ export async function deleteMcpServerInstance(instanceId: string): Promise<void>
     console.log('[Klavis API] Deleting instance:', { instanceId });
     
     const endpoint = `/mcp-server/instance/delete/${instanceId}`;
-    const response = await measureKlavisApiCall(endpoint, () =>
-      fetch(`${KLAVIS_BASE_URL}${endpoint}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${process.env.KLAVIS_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      })
-    );
-
-    if (response.status === 404) {
-      console.log('[Klavis API] Instance already deleted:', { instanceId });
-      return;
+    try {
+      await klavisApiCall<DeleteServerInstanceResponse>(endpoint, {
+        method: 'DELETE'
+      });
+      console.log('[Klavis API] Instance deleted successfully:', { instanceId });
+    } catch (error: any) {
+      if (error.message.includes('404')) {
+        console.log('[Klavis API] Instance already deleted:', { instanceId });
+        return;
+      }
+      throw error;
     }
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('[Klavis API] Failed to delete instance:', { status: response.status, error });
-      throw new Error(`Delete failed: ${error}`);
-    }
-
-    const result = await response.json() as DeleteServerInstanceResponse;
-    console.log('[Klavis API] Instance deleted successfully:', { instanceId, result });
   } catch (error: any) {
     console.error('[Klavis API] Error deleting instance:', error);
     throw error;
