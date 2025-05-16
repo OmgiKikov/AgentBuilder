@@ -80,7 +80,7 @@ interface ServerLogoProps {
   className?: string;
 }
 
-function ServerLogo({ serverName, className = "" }: ServerLogoProps) {
+export function ServerLogo({ serverName, className = "" }: ServerLogoProps) {
   const logoMap: Record<string, string> = {
     'GitHub': '/mcp-server-images/github.svg',
     'Google Drive': '/mcp-server-images/gdrive.svg',
