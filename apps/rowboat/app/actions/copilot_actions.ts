@@ -130,7 +130,7 @@ export async function getCopilotResponseStream(
     }
 
     // Получаем список data_sources для проекта
-    const dataSources = await listDataSources(projectId);
+    const projectDataSources = await listDataSources(projectId);
 
     // prepare request
     const request: z.infer<typeof CopilotAPIRequest> = {
@@ -139,8 +139,19 @@ export async function getCopilotResponseStream(
         current_workflow_config: JSON.stringify(convertToCopilotWorkflow(current_workflow_config)),
         context: context ? convertToCopilotApiChatContext(context) : null,
 
-        dataSources: dataSources ? dataSources.map(ds => CopilotDataSource.parse(ds)) : undefined,
-
+        dataSources: dataSources ? 
+            dataSources.map(ds => CopilotDataSource.parse(ds)) : 
+            projectDataSources.map(ds => {
+                return {
+                    _id: ds._id,
+                    name: ds.name,
+                    description: ds.description || undefined,
+                    active: ds.active,
+                    status: ds.status || "pending",
+                    error: ds.error,
+                    data: ds.data
+                };
+            }),
     };
 
     // serialize the request
@@ -171,7 +182,7 @@ export async function getCopilotAgentInstructions(
     }
 
     // Получаем список data_sources для проекта
-    const dataSources = await listDataSources(projectId);
+    const projectDataSources = await listDataSources(projectId);
 
     // prepare request
     const request: z.infer<typeof CopilotAPIRequest> = {
@@ -182,7 +193,18 @@ export async function getCopilotAgentInstructions(
             type: 'agent',
             agentName: agentName,
         },
-        data_sources: dataSources, // Добавляем data_sources в запрос
+        dataSources: projectDataSources.map(ds => {
+            // Обеспечиваем наличие всех необходимых полей
+            return {
+                _id: ds._id,
+                name: ds.name,
+                description: ds.description || undefined,
+                active: ds.active,
+                status: ds.status || "pending",
+                error: ds.error,
+                data: ds.data
+            };
+        }),
     };
     console.log(`sending copilot agent instructions request`, JSON.stringify(request));
 

@@ -615,6 +615,10 @@ export function WorkflowEditor({
     const [isMcpImportModalOpen, setIsMcpImportModalOpen] = useState(false);
     const [isInitialState, setIsInitialState] = useState(true);
     const [showTour, setShowTour] = useState(true);
+    const [configModalOpen, setConfigModalOpen] = useState(false);
+    const [configModalEntityType, setConfigModalEntityType] = useState<'agent' | 'tool' | 'prompt' | null>(null);
+    const [configModalEntityName, setConfigModalEntityName] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'run' | 'build'>('build');
 
     const copilotRef = useRef<{ handleUserMessage: (message: string) => void }>(null);
 
@@ -972,7 +976,7 @@ export function WorkflowEditor({
                         <div key={ds._id} className="relative group p-2 mt-1.5 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700/50">
                             <p className="font-medium text-sm text-gray-700 dark:text-gray-200">{ds.name}</p>
                             {ds.data?.type === 'urls' && <p className="text-xs text-gray-500 dark:text-gray-400">URL Source</p>}
-                            {ds.data?.type === 'files' && <p className="text-xs text-gray-500 dark:text-gray-400">File Source</p>}
+                            {(ds.data?.type === 'files_local' || ds.data?.type === 'files_s3') && <p className="text-xs text-gray-500 dark:text-gray-400">File Source</p>}
                              {/* Placeholder for settings button if needed for data sources */}
                              {/* <button className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-indigo-500 rounded-full opacity-0 group-hover:opacity-100"><Settings2Icon size={14}/></button> */}
                         </div>
@@ -1176,6 +1180,7 @@ export function WorkflowEditor({
                                 }}
                                 handleClose={handleCloseConfigModal}
                                 useRag={useRag}
+                                triggerCopilotChat={triggerCopilotChat}
                             />
                         )}
                         {configModalEntityType === 'tool' && state.present.workflow.tools.find(t => t.name === configModalEntityName) && (
