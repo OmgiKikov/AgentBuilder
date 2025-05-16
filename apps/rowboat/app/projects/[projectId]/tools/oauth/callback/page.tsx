@@ -1,36 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 
 export default function OAuthCallback() {
-  const searchParams = useSearchParams();
-
   useEffect(() => {
-    const code = searchParams.get('code');
-    const state = searchParams.get('state');
-    
-    if (code && state) {
-      // Send message to opener window about successful authentication
-      if (window.opener) {
-        window.opener.postMessage({ type: 'OAUTH_SUCCESS', code, state }, '*');
-        window.close();
-      }
-    } else {
-      // Handle error
-      const error = searchParams.get('error');
-      const error_description = searchParams.get('error_description');
-      
-      if (window.opener) {
-        window.opener.postMessage({ 
-          type: 'OAUTH_ERROR', 
-          error, 
-          error_description 
-        }, '*');
-        window.close();
-      }
+    // Simply close the window - parent will refresh server status
+    if (window.opener) {
+      window.close();
     }
-  }, [searchParams]);
+  }, []);
 
   return (
     <div className="flex min-h-screen items-center justify-center">

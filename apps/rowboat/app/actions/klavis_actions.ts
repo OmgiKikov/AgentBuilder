@@ -1,17 +1,5 @@
 'use server';
 
-import { MongoClient } from "mongodb";
-import { db } from "@/app/lib/mongodb";
-
-// Add interface for raw server data
-interface RawMcpServer {
-  id: string;
-  name: string;
-  description: string;
-  tools: McpTool[];
-  serverUrl?: string;
-}
-
 // API Response Types
 interface KlavisServerMetadata {
   id: string;
@@ -26,15 +14,6 @@ interface KlavisServerMetadata {
 
 interface GetAllServersResponse {
   servers: KlavisServerMetadata[];
-}
-
-interface ServerInstance {
-  instanceId: string;
-  authNeeded: boolean;
-  isAuthenticated: boolean;
-  serverName: string;
-  platform: string;
-  externalUserId: string;
 }
 
 interface CreateServerInstanceResponse {
@@ -57,6 +36,8 @@ interface UserInstance {
     authNeeded: boolean;
     isAuthenticated: boolean;
   }[] | null;
+  authNeeded: boolean;
+  isAuthenticated: boolean;
 }
 
 interface GetUserInstancesResponse {
@@ -73,7 +54,8 @@ export interface McpServer {
   serverName: string;
   serverUrl?: string;
   isActive?: boolean;
-  isAuthenticated?: boolean;
+  authNeeded: boolean;
+  isAuthenticated: boolean;
 }
 
 export interface McpTool {
@@ -87,22 +69,6 @@ export interface McpTool {
 export interface McpServerResponse {
   data: McpServer[] | null;
   error: string | null;
-}
-
-interface KlavisServerInstance {
-  id: string;
-  name: string;
-  description: string | null;
-  tools: {
-    name: string;
-    description: string;
-    authNeeded: boolean;
-    isAuthenticated: boolean;
-  }[] | null;
-}
-
-interface KlavisInstancesResponse {
-  instances: KlavisServerInstance[];
 }
 
 const KLAVIS_BASE_URL = 'https://api.klavis.ai';
@@ -159,7 +125,18 @@ export async function listActiveServerInstances(projectId: string): Promise<User
     }
 
     const data = await response.json() as GetUserInstancesResponse;
-    console.log('[Klavis API] Active instances response:', { instanceCount: data.instances.length });
+    console.log('[Klavis API] =================== Active Instances ===================');
+    data.instances.forEach((instance, index) => {
+      console.log(`[Klavis API] Instance ${index + 1}:`, {
+        id: instance.id,
+        name: instance.name,
+        description: instance.description,
+        tools: `[${instance.tools?.length || 0} tools]`,
+        isAuthenticated: instance.isAuthenticated,
+        authNeeded: instance.authNeeded
+      });
+    });
+    console.log('[Klavis API] =====================================================');
     return data.instances;
   } catch (error) {
     console.error('[Klavis API] Error listing active instances:', error);
@@ -223,7 +200,18 @@ export async function listAvailableMcpServers(projectId: string): Promise<McpSer
     let activeInstances: UserInstance[] = [];
     if (instancesResponse.ok) {
       const instancesData = await instancesResponse.json() as GetUserInstancesResponse;
-      console.log('[Klavis API] User instances response:', { instanceCount: instancesData.instances.length });
+      console.log('[Klavis API] =================== Active Instances ===================');
+      instancesData.instances.forEach((instance, index) => {
+        console.log(`[Klavis API] Instance ${index + 1}:`, JSON.stringify({
+          id: instance.id,
+          name: instance.name,
+          description: instance.description,
+          tools: `[${instance.tools?.length || 0} tools]`,
+          isAuthenticated: instance.isAuthenticated,
+          authNeeded: instance.authNeeded
+        }, null, 2));
+      });
+      console.log('[Klavis API] =====================================================');
       activeInstances = instancesData.instances;
     } else {
       console.error('[Klavis API] Failed to fetch user instances:', { 
@@ -251,11 +239,12 @@ export async function listAvailableMcpServers(projectId: string): Promise<McpSer
           requiresAuth: server.authNeeded || false
         })),
         isActive: !!activeInstance,
-        isAuthenticated: activeInstance?.tools?.[0]?.isAuthenticated || false
+        // For active instances, use the instance's auth flags, otherwise use server defaults
+        authNeeded: activeInstance ? activeInstance.authNeeded : (server.authNeeded || false),
+        isAuthenticated: activeInstance ? activeInstance.isAuthenticated : false
       };
     });
 
-    console.log('Servers fetched:', { count: transformedData.length });
     return { data: transformedData, error: null };
   } catch (error: any) {
     console.error('[Klavis API] Server list error:', error.message);
@@ -339,43 +328,6 @@ export async function enableServer(
   }
 }
 
-export async function listMcpServerTools(instanceId: string): Promise<McpTool[]> {
-  try {
-    console.log('[Klavis API] Fetching tools for instance:', { instanceId });
-    
-    const endpoint = `/mcp-server/instance/${instanceId}/tools`;
-    const response = await measureKlavisApiCall(endpoint, () =>
-      fetch(`${KLAVIS_BASE_URL}${endpoint}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.KLAVIS_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      })
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('[Klavis API] Failed to fetch tools:', { status: response.status, error });
-      throw new Error(`Failed to list MCP server tools: ${error}`);
-    }
-
-    const data = await response.json();
-    const tools = data.tools || [];
-    console.log('[Klavis API] Tools response:', { instanceId, toolCount: tools.length });
-    return tools.map((tool: any) => ({
-      id: tool.name || '',
-      name: tool.name || '',
-      description: tool.description || '',
-      isEnabled: true,
-      requiresAuth: tool.authNeeded || false
-    }));
-  } catch (error: any) {
-    console.error('[Klavis API] Error listing tools:', error);
-    throw error;
-  }
-}
-
 export async function setMcpServerAuthToken(
   instanceId: string,
   authToken: string,
@@ -440,47 +392,3 @@ export async function deleteMcpServerInstance(instanceId: string): Promise<void>
     throw error;
   }
 }
-
-export async function callMcpServerTool(
-  instanceId: string,
-  toolEndpoint: string,
-  params: Record<string, any>,
-): Promise<any> {
-  try {
-    console.log('[Klavis API] Calling tool:', { instanceId, toolEndpoint, params });
-    
-    const endpoint = `/mcp-server/instance/${instanceId}/tools${toolEndpoint}`;
-    const response = await measureKlavisApiCall(endpoint, () =>
-      fetch(`${KLAVIS_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.KLAVIS_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(params),
-      })
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('[Klavis API] Failed to call tool:', { 
-        status: response.status, 
-        error,
-        instanceId,
-        toolEndpoint 
-      });
-      throw new Error(`Failed to call MCP server tool: ${error}`);
-    }
-
-    const result = await response.json();
-    console.log('[Klavis API] Tool call successful:', { 
-      instanceId, 
-      toolEndpoint,
-      success: true
-    });
-    return result;
-  } catch (error: any) {
-    console.error('[Klavis API] Error calling tool:', error);
-    throw error;
-  }
-} 

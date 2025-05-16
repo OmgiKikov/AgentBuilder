@@ -146,6 +146,21 @@ export function HostedTools() {
         throw new Error('No data received from server');
       }
       
+      // Log active servers
+      const activeServers = response.data.filter(server => server.isActive);
+      console.log('[Klavis API] =================== Active Servers in UI ===================');
+      activeServers.forEach((server, index) => {
+        console.log(`[Klavis API] Active Server ${index + 1}:`, JSON.stringify({
+          id: server.id,
+          instanceId: server.instanceId,
+          name: server.serverName,
+          description: server.description,
+          isAuthenticated: server.isAuthenticated,
+          tools: server.tools,
+        }, null, 2));
+      });
+      console.log('[Klavis API] ========================================================');
+      
       setServers(response.data);
       setError(null);
     } catch (err: any) {
@@ -207,7 +222,7 @@ export function HostedTools() {
                 isActive: newState,
                 instanceId: newState ? ('instanceId' in result ? result.instanceId : s.instanceId) : s.id,
                 serverUrl: newState ? ('serverUrl' in result ? result.serverUrl : undefined) : undefined,
-                isAuthenticated: newState ? false : undefined // Reset authentication when toggling off
+                isAuthenticated: false // Always set to false when toggling, will be updated on next refresh
               };
             }
             return s;
@@ -250,7 +265,7 @@ export function HostedTools() {
         });
         setToggleError({
           serverId: serverKey,
-          message: 'Failed to toggle server'
+          message: "We're having trouble setting up this server. Please reach out on discord."
         });
       }
     } finally {
@@ -265,7 +280,7 @@ export function HostedTools() {
   const handleAuthenticate = async (server: McpServer) => {
     try {
       const authWindow = window.open(
-        `https://api.klavis.ai/oauth/${server.serverName.toLowerCase()}/authorize?instance_id=${server.instanceId}`,
+        `https://api.klavis.ai/oauth/${server.serverName.toLowerCase()}/authorize?instance_id=${server.instanceId}&redirect_url=${window.location.origin}/projects/${projectId}/tools/oauth/callback`,
         '_blank',
         'width=600,height=700'
       );
@@ -477,7 +492,7 @@ export function HostedTools() {
                 </div>
 
                 <div className="flex items-center gap-2 mt-auto">
-                  {server.tools?.[0]?.requiresAuth && server.isActive && (
+                  {server.isActive && server.authNeeded && (
                     <div className="inline-flex items-center space-x-2">
                       {!server.isAuthenticated && (
                         <Button
