@@ -10,48 +10,58 @@ import { Info, Lock, Power, RefreshCw, Search } from 'lucide-react';
 import { clsx } from 'clsx';
 import { 
   McpServer, 
-  McpTool, 
-  listMcpServers, 
+  McpTool,
+  listAvailableMcpServers,
   enableServer
 } from '@/app/actions/klavis_actions';
-
-const SERVERS_REQUIRING_AUTH = [
-  'firecrawl web search',
-  'firecrawl deep research',
-  'github',
-  'google drive',
-  'jira',
-  'notion',
-  'resend',
-  'slack',
-  'wordpress',
-  'supabase',
-  'postgres',
-  'google docs'
-];
 
 const SERVER_PRIORITY: Record<string, number> = {
   'GitHub': 1,
   'Slack': 2,
-  'Jira': 3,
-  'Discord': 4,
-  'YouTube': 5,
-  'Firecrawl Web Search': 6,
-  'Firecrawl Deep Research': 7,
-  'Notion': 8
+  'Google Drive': 3,
+  'Google Docs': 4,
+  'Jira': 5,
+  'Discord': 6,
+  'YouTube': 7,
+  'Firecrawl Web Search': 8,
+  'Firecrawl Deep Research': 9,
+  'Notion': 10
 };
 
-function sortServers(servers: McpServer[]): McpServer[] {
+function sortServers(servers: McpServer[], filterType: FilterType = 'all'): McpServer[] {
   return [...servers].sort((a, b) => {
-    const priorityA = SERVER_PRIORITY[a.serverName] || 999;
-    const priorityB = SERVER_PRIORITY[b.serverName] || 999;
-    
-    if (priorityA === priorityB) {
-      // If neither has priority or both have same priority, sort alphabetically
+    // For popular view, only sort priority servers
+    if (filterType === 'popular') {
+      const priorityA = SERVER_PRIORITY[a.serverName] || 999;
+      const priorityB = SERVER_PRIORITY[b.serverName] || 999;
+      if (priorityA === 999 && priorityB === 999) return 0;
+      return priorityA - priorityB;
+    }
+
+    // For all view, sort by priority first, then available/coming soon
+    if (filterType === 'all') {
+      const priorityA = SERVER_PRIORITY[a.serverName] || 999;
+      const priorityB = SERVER_PRIORITY[b.serverName] || 999;
+      const hasToolsA = (a.tools || []).length > 0;
+      const hasToolsB = (b.tools || []).length > 0;
+
+      // If both are priority servers, sort by priority
+      if (priorityA !== 999 && priorityB !== 999) {
+        return priorityA - priorityB;
+      }
+      // If one is priority server, it comes first
+      if (priorityA !== 999) return -1;
+      if (priorityB !== 999) return 1;
+      // If neither is priority, available servers come before coming soon
+      if (hasToolsA !== hasToolsB) {
+        return hasToolsA ? -1 : 1;
+      }
+      // If both are same type (available or coming soon), sort alphabetically
       return a.serverName.localeCompare(b.serverName);
     }
-    
-    return priorityA - priorityB;
+
+    // For other views, sort alphabetically
+    return a.serverName.localeCompare(b.serverName);
   });
 }
 
@@ -104,6 +114,8 @@ function ServerLogo({ serverName, className = "" }: ServerLogoProps) {
   );
 }
 
+type FilterType = 'all' | 'available' | 'coming-soon' | 'popular';
+
 export function HostedTools() {
   const params = useParams();
   const projectId = typeof params.projectId === 'string' ? params.projectId : params.projectId?.[0];
@@ -112,6 +124,7 @@ export function HostedTools() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [toggleError, setToggleError] = useState<{serverId: string; message: string} | null>(null);
   const [enabledServers, setEnabledServers] = useState<Set<string>>(new Set());
   const [togglingServers, setTogglingServers] = useState<Set<string>>(new Set());
@@ -123,7 +136,7 @@ export function HostedTools() {
   async function fetchServers() {
     try {
       setLoading(true);
-      const response = await listMcpServers();
+      const response = await listAvailableMcpServers(projectId || "");
       
       if (response.error) {
         throw new Error(response.error);
@@ -179,7 +192,7 @@ export function HostedTools() {
           const next = new Set(prev);
           if (!newState) {
             next.delete(serverKey);
-          } else if (result.instanceId) {
+          } else if ('instanceId' in result) {
             next.add(serverKey);
           }
           return next;
@@ -192,8 +205,8 @@ export function HostedTools() {
               return {
                 ...s,
                 isActive: newState,
-                instanceId: newState ? (result.instanceId || s.instanceId) : s.id,
-                serverUrl: newState ? result.serverUrl : undefined,
+                instanceId: newState ? ('instanceId' in result ? result.instanceId : s.instanceId) : s.id,
+                serverUrl: newState ? ('serverUrl' in result ? result.serverUrl : undefined) : undefined,
                 isAuthenticated: newState ? false : undefined // Reset authentication when toggling off
               };
             }
@@ -202,12 +215,12 @@ export function HostedTools() {
         });
 
         // Update server list in background
-        const updatedServers = await listMcpServers();
+        const updatedServers = await listAvailableMcpServers(projectId || "");
         
         if (updatedServers.data) {
           setServers(updatedServers.data);
           // Verify our local state matches server state
-          const serverState = updatedServers.data.find(s => s.serverName === serverKey);
+          const serverState = updatedServers.data.find((s: McpServer) => s.serverName === serverKey);
           const serverEnabled = Boolean(serverState?.isActive);
           
           if (serverEnabled !== newState) {
@@ -251,7 +264,6 @@ export function HostedTools() {
 
   const handleAuthenticate = async (server: McpServer) => {
     try {
-      // Direct OAuth flow without white labeling
       const authWindow = window.open(
         `https://api.klavis.ai/oauth/${server.serverName.toLowerCase()}/authorize?instance_id=${server.instanceId}`,
         '_blank',
@@ -259,12 +271,11 @@ export function HostedTools() {
       );
 
       if (authWindow) {
-        // Poll for window closure
         const checkInterval = setInterval(() => {
           if (authWindow.closed) {
             clearInterval(checkInterval);
             console.log('OAuth window closed, refreshing server status...');
-            fetchServers(); // Refresh the server list to get updated auth status
+            fetchServers();
           }
         }, 500);
       }
@@ -282,15 +293,12 @@ export function HostedTools() {
 
     try {
       await enableServer(serverName, projectId, true);
-      await fetchServers(); // Refresh the list
+      await fetchServers();
       
-      // For GitHub, we'll need to refresh the servers list to get the instance ID
-      if (serverName.toLowerCase().includes('github')) {
-        const servers = await listMcpServers();
-        const githubServer = servers.data?.find(s => s.serverName === serverName);
-        if (githubServer) {
-          window.open(`https://api.klavis.ai/oauth/github/authorize?instance_id=${githubServer.instanceId}`, '_blank');
-        }
+      const updatedServers = await listAvailableMcpServers(projectId);
+      const server = updatedServers.data?.find((s: McpServer) => s.serverName === serverName);
+      if (server?.tools?.[0]?.requiresAuth) {
+        window.open(`https://api.klavis.ai/oauth/${serverName.toLowerCase()}/authorize?instance_id=${server.instanceId}`, '_blank');
       }
     } catch (err) {
       console.error('Error creating server:', err);
@@ -298,47 +306,103 @@ export function HostedTools() {
   };
 
   const filteredServers = sortServers(servers.filter(server => {
+    // First apply the search filter
     const searchLower = searchQuery.toLowerCase();
-    return (
+    const serverTools = server.tools || [];
+    const matchesSearch = (
       server.serverName.toLowerCase().includes(searchLower) ||
       server.description.toLowerCase().includes(searchLower) ||
-      server.tools.some(tool => 
+      serverTools.some(tool => 
         tool.name.toLowerCase().includes(searchLower) ||
         tool.description.toLowerCase().includes(searchLower)
       )
     );
-  }));
+
+    // Then apply the type filter
+    const hasTools = (serverTools.length > 0);
+    const isPriority = SERVER_PRIORITY[server.serverName] !== undefined;
+    
+    switch (activeFilter) {
+      case 'available':
+        return matchesSearch && hasTools && !isPriority;
+      case 'coming-soon':
+        return matchesSearch && !hasTools;
+      case 'popular':
+        return matchesSearch && isPriority;
+      default:
+        return matchesSearch;
+    }
+  }), activeFilter);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="relative flex-1">
-          <div className="absolute inset-y-0 left-2 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4">
+        <div className="flex gap-3">
+          <div className="flex-shrink-0">
+            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
-          <input
-            type="text"
-            placeholder="Search servers or tools..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md 
-              bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 
-              placeholder-gray-400 dark:placeholder-gray-500
-              focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
-              hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
-          />
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            To make hosted MCP tools available to agents in the Build view, first toggle the servers ON here. Some tools may require authentication after enabling.
+          </p>
         </div>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={fetchServers}
-          disabled={loading}
-        >
-          <div className="inline-flex items-center">
-            <RefreshCw className={clsx("h-4 w-4", loading && "animate-spin")} />
-            <span className="ml-2">Refresh</span>
+      </div>
+
+      <div className="flex flex-col gap-6">
+        <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
+          {[
+            { id: 'all', label: 'All' },
+            { id: 'popular', label: 'Popular' },
+            { id: 'available', label: 'More' },
+            { id: 'coming-soon', label: 'Coming Soon' }
+          ].map((filter) => (
+            <button
+              key={filter.id}
+              onClick={() => setActiveFilter(filter.id as FilterType)}
+              className={clsx(
+                'px-4 py-2 text-sm font-medium transition-colors relative',
+                activeFilter === filter.id
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400 rounded'
+              )}
+            >
+              {filter.label}
+              {activeFilter === filter.id && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-2 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search servers or tools..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md 
+                bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 
+                placeholder-gray-400 dark:placeholder-gray-500
+                focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
+                hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+            />
           </div>
-        </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={fetchServers}
+            disabled={loading}
+          >
+            <div className="inline-flex items-center">
+              <RefreshCw className={clsx("h-4 w-4", loading && "animate-spin")} />
+              <span className="ml-2">Refresh</span>
+            </div>
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -366,21 +430,30 @@ export function HostedTools() {
                       <div className="flex items-center gap-2">
                         <ServerLogo serverName={server.serverName} className="mr-2" />
                         <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{server.serverName}</h3>
-                        <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
-                          bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
-                          {server.tools.length} tools
-                        </span>
-                      </div>
-                      <Switch
-                        checked={enabledServers.has(server.serverName)}
-                        onCheckedChange={() => handleToggleTool(server)}
-                        disabled={togglingServers.has(server.serverName)}
-                        className={clsx(
-                          "data-[state=checked]:bg-blue-500 dark:data-[state=checked]:bg-blue-600",
-                          "data-[state=unchecked]:bg-gray-200 dark:data-[state=unchecked]:bg-gray-700",
-                          togglingServers.has(server.serverName) && "opacity-50 cursor-not-allowed"
+                        {(server.tools || []).length > 0 ? (
+                          <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
+                            bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
+                            {(server.tools || []).length} tools
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
+                            bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300">
+                            Coming soon
+                          </span>
                         )}
-                      />
+                      </div>
+                      {(server.tools || []).length > 0 && (
+                        <Switch
+                          checked={enabledServers.has(server.serverName)}
+                          onCheckedChange={() => handleToggleTool(server)}
+                          disabled={togglingServers.has(server.serverName)}
+                          className={clsx(
+                            "data-[state=checked]:bg-blue-500 dark:data-[state=checked]:bg-blue-600",
+                            "data-[state=unchecked]:bg-gray-200 dark:data-[state=unchecked]:bg-gray-700",
+                            togglingServers.has(server.serverName) && "opacity-50 cursor-not-allowed"
+                          )}
+                        />
+                      )}
                     </div>
                     {toggleError?.serverId === server.serverName && (
                       <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 
@@ -404,8 +477,7 @@ export function HostedTools() {
                 </div>
 
                 <div className="flex items-center gap-2 mt-auto">
-                  {SERVERS_REQUIRING_AUTH.includes(server.serverName.toLowerCase()) && 
-                   server.isActive && (
+                  {server.tools?.[0]?.requiresAuth && server.isActive && (
                     <div className="inline-flex items-center space-x-2">
                       {!server.isAuthenticated && (
                         <Button
@@ -429,17 +501,19 @@ export function HostedTools() {
                       </div>
                     </div>
                   )}
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setSelectedServer(server)}
-                    className="ml-auto"
-                  >
-                    <div className="inline-flex items-center">
-                      <Info className="h-4 w-4" />
-                      <span className="ml-1.5">Tools</span>
-                    </div>
-                  </Button>
+                  {(server.tools || []).length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setSelectedServer(server)}
+                      className="ml-auto"
+                    >
+                      <div className="inline-flex items-center">
+                        <Info className="h-4 w-4" />
+                        <span className="ml-1.5">Tools</span>
+                      </div>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -459,11 +533,11 @@ export function HostedTools() {
                 <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Available Tools</h4>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-medium 
                   bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                  {selectedServer.tools.length}
+                  {(selectedServer.tools || []).length}
                 </span>
               </div>
               <div className="space-y-4">
-                {selectedServer.tools.map((tool) => (
+                {(selectedServer.tools || []).map((tool) => (
                   <div
                     key={`${selectedServer.instanceId}-${tool.id}`}
                     className="group p-4 rounded-lg bg-gray-50/50 dark:bg-gray-800/50"
@@ -488,4 +562,4 @@ export function HostedTools() {
       </SlidePanel>
     </div>
   );
-} 
+}
