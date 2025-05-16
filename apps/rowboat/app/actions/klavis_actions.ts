@@ -1,5 +1,7 @@
 'use server';
 
+import { projectAuthCheck } from './project_actions';
+
 // API Response Types
 interface KlavisServerMetadata {
   id: string;
@@ -130,6 +132,8 @@ async function klavisApiCall<T>(
 // Lists all active server instances for a given project
 export async function listActiveServerInstances(projectId: string): Promise<UserInstance[]> {
   try {
+    await projectAuthCheck(projectId);
+
     const queryParams = new URLSearchParams({
       user_id: projectId,
       platform_name: 'Rowboat'
@@ -162,6 +166,8 @@ export async function listActiveServerInstances(projectId: string): Promise<User
 // Lists all available MCP servers that can be enabled
 export async function listAvailableMcpServers(projectId: string): Promise<McpServerResponse> {
   try {
+    await projectAuthCheck(projectId);
+
     console.log('[Klavis API] Fetching all servers');
     
     const serversEndpoint = '/mcp-server/servers';
@@ -247,6 +253,8 @@ export async function createMcpServerInstance(
   platformName: string,
 ): Promise<CreateServerInstanceResponse> {
   try {
+    await projectAuthCheck(projectId);
+
     const requestBody = {
       serverName,
       userId: projectId,
@@ -274,6 +282,8 @@ export async function enableServer(
   enabled: boolean
 ): Promise<CreateServerInstanceResponse | {}> {
   try {
+    await projectAuthCheck(projectId);
+
     console.log('[Klavis API] Toggle server request:', { serverName, projectId, enabled });
     
     if (enabled) {
@@ -305,6 +315,7 @@ export async function setMcpServerAuthToken(
   authToken: string,
 ): Promise<void> {
   try {
+    // Note: No projectAuthCheck here since this is called with instanceId, not projectId
     console.log('[Klavis API] Setting auth token for instance:', { instanceId });
     
     const endpoint = `/mcp-server/instance/${instanceId}/auth`;
@@ -322,6 +333,7 @@ export async function setMcpServerAuthToken(
 
 export async function deleteMcpServerInstance(instanceId: string): Promise<void> {
   try {
+    // Note: No projectAuthCheck here since this is called with instanceId, not projectId
     console.log('[Klavis API] Deleting instance:', { instanceId });
     
     const endpoint = `/mcp-server/instance/delete/${instanceId}`;

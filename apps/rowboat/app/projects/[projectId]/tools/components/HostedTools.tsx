@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -129,11 +129,7 @@ export function HostedTools() {
   const [enabledServers, setEnabledServers] = useState<Set<string>>(new Set());
   const [togglingServers, setTogglingServers] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    fetchServers();
-  }, []);
-
-  async function fetchServers() {
+  const fetchServers = useCallback(async () => {
     try {
       setLoading(true);
       const response = await listAvailableMcpServers(projectId || "");
@@ -171,7 +167,11 @@ export function HostedTools() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [projectId]);
+
+  useEffect(() => {
+    fetchServers();
+  }, [fetchServers]);
 
   // Initialize enabled servers on load and keep it updated
   useEffect(() => {
