@@ -61,7 +61,7 @@ export default function App() {
                     <SearchProjects
                         projects={projects}
                         isLoading={isLoading}
-                        heading="Select existing assistant"
+                        heading="Выберите ассистента"
                         className="h-full"
                         onClose={() => setIsProjectPaneOpen(false)}
                     />

@@ -350,12 +350,8 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
                 "hover:scale-105 transition-transform duration-500",
               )}
             >
-              <Image
-                src="/placeholder.svg?height=192&width=192"
-                alt="AI Agent Builder"
-                width={192}
-                height={192}
-                className="object-contain"
+              <BotIcon 
+                className="w-48 h-48 text-purple-600 dark:text-purple-400"
               />
             </div>
             <div className="text-center space-y-2 max-w-md">

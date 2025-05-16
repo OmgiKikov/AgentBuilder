@@ -74,7 +74,7 @@ export function ComposeBoxPlayground({
                         onFocus={handleFocus}
                         onBlur={() => setIsFocused(false)}
                         disabled={disabled || loading}
-                        placeholder="Type a message..."
+                        placeholder="Напишите сообщение..."
                         autoResize={true}
                         maxHeight={120}
                         className={`

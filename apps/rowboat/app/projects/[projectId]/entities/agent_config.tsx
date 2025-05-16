@@ -760,7 +760,7 @@ export function AgentConfig({
                             <div className="flex flex-col gap-3">
                                 <div className="space-y-2">
                                     <label className={sectionHeaderStyles}>
-                                        DATA SOURCES
+                                        ИСТОЧНИК ДАННЫХ
                                     </label>
                                     <div className="flex items-center gap-3">
                                         <Select

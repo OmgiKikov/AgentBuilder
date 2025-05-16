@@ -828,14 +828,14 @@ export function WorkflowEditor({
                     onPress={() => setViewMode('run')}
                     className={`px-4 py-2 text-sm font-medium rounded-md ${viewMode === 'run' ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                 >
-                    <ServerIcon size={16} className="mr-2" /> Run
+                    <ServerIcon size={16} className="mr-2" /> Чат
                 </Button>
                 <Button
                     variant={viewMode === 'build' ? 'solid' : 'ghost'}
                     onPress={() => setViewMode('build')}
                     className={`px-4 py-2 text-sm font-medium rounded-md ${viewMode === 'build' ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                 >
-                    <Layers2Icon size={16} className="mr-2" /> Build
+                    <Layers2Icon size={16} className="mr-2" /> Создать
                 </Button>
             </div>
 
@@ -928,8 +928,8 @@ export function WorkflowEditor({
             <div className="p-4 overflow-y-auto flex-1">
                 <div className="mb-6">
                     <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Tools</h3>
-                        <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddTool()}>+ Add tool</Button>
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Инструменты</h3>
+                        <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddTool()}>+ Добавить</Button>
                     </div>
                      {state.present.workflow.tools.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">Add tools to give your agents the ability to perform actions or connect with integrations.</p>}
                     {state.present.workflow.tools.map(tool => (
@@ -966,7 +966,7 @@ export function WorkflowEditor({
 
                 <div className="mb-6">
                     <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Knowledge</h3>
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">База знаний</h3>
                         {/* <Button variant="ghost" size="sm" className="text-indigo-600 border-indigo-600 hover:bg-indigo-50">+ Add knowledge</Button> */}
                     </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -985,8 +985,8 @@ export function WorkflowEditor({
 
                 <div>
                     <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Variables</h3>
-                         <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddPrompt()}>+ Add variable</Button>
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Переменные</h3>
+                         <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddPrompt()}>+ Добавить</Button>
                     </div>
                      {state.present.workflow.prompts.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">Превратите многократно используемые значения в переменные (prompts) к которым можно обратиться с помощью {`{{variable_name}}`}.</p>}
                     {state.present.workflow.prompts.map(prompt => (
@@ -1048,8 +1048,8 @@ export function WorkflowEditor({
                     {/* Left Panel for Agents List */}
                     <ResizablePanel minSize={15} defaultSize={20} className="bg-white dark:bg-gray-800 border-r dark:border-gray-700 overflow-hidden flex flex-col max-h-full">
                         <div className="flex justify-between items-center mb-2 px-4 pt-4">
-                            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Agents</h3>
-                            <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddAgent()}>+ Add agent</Button>
+                            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Агенты</h3>
+                            <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" onPress={() => handleAddAgent()}>+ Добавить</Button>
                         </div>
                         <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2">
                             {state.present.workflow.agents.map(agent => (
