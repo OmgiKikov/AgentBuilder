@@ -470,7 +470,7 @@ export function AgentConfig({
                                             Ответы агентов для общения с пользователями. Вы можете использовать агентов для многоходовых разговоров с пользователями.
                                             <br />
                                             <br />
-                                            Ответы агентов для внутренних целей. Вы можете использовать их для построения конвейеров и DAG в рабочих процессах. Например: Агент общения {'->'} Агент задач {'->'} Агент задач.
+                                            Ответы агентов для внутренних целей. Вы можете использовать их для построения конвейеров и DAG в рабочих процессах. Например: Агент общения {`->`} Агент задач {`->`} Агент задач.
                                             <div className="absolute h-2 w-2 bg-white dark:bg-gray-800 transform rotate-45 -bottom-1 left-4 border-r border-b border-gray-200 dark:border-gray-700"></div>
                                         </div>
                                     </div>
@@ -683,7 +683,7 @@ export function AgentConfig({
                                             Установите это в соответствии с PROVIDER_BASE_URL, который вы установили в своем .env файле (например, LiteLLM, gateway). 
                                             <br />
                                             <br />
-                                            Например: LiteLLM's naming convention is like: 'claude-3-7-sonnet-latest', но вы можете использовать другие имена моделей или другие поставщики, такие как openrouter, openai и т.д. 
+                                            Например: LiteLLM&apos;s naming convention is like: &apos;claude-3-7-sonnet-latest&apos;, но вы можете использовать другие имена моделей или другие поставщики, такие как openrouter, openai и т.д. 
                                             <br />
                                             <br />
                                             {/* По умолчанию модель установлена на Gigachat, предполагая, что ваш API ключ установлен в PROVIDER_API_KEY и PROVIDER_BASE_URL не установлен. */}
@@ -743,7 +743,7 @@ export function AgentConfig({
                                         options={[
                                             { key: "retain", label: "Сохранить контроль" },
                                             { key: "relinquish_to_parent", label: "Передать контроль родительскому агенту" },
-                                            { key: "relinquish_to_start", label: "Передать контроль 'начальному' агенту" }
+                                            { key: "relinquish_to_start", label: "Передать контроль &apos;начальному&apos; агенту" }
                                         ]}
                                         onChange={(value) => handleUpdate({
                                             ...agent,

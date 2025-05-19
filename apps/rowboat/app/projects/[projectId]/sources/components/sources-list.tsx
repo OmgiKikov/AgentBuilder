@@ -64,11 +64,11 @@ export function SourcesList({ projectId }: { projectId: string }) {
                     {loading && (
                         <div className="flex items-center gap-2">
                             <Spinner size="sm" />
-                            <div>Loading...</div>
+                            <div>Загрузка...</div>
                         </div>
                     )}
                     {!loading && !sources.length && (
-                        <p className="mt-4 text-center">You have not added any data sources.</p>
+                        <p className="mt-4 text-center">Вы не добавили ни одного источника данных.</p>
                     )}
                     {!loading && sources.length > 0 && (
                         <>
