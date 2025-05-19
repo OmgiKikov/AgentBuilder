@@ -8,6 +8,8 @@ import { EllipsisVerticalIcon, ImportIcon, PlusIcon, Brain, Wrench, PenLine, Lib
 import { Panel } from "@/components/common/panel-common";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
+import { MCPServer } from "@/app/lib/types/types";
+import { getMcpToolsFromProject } from "@/app/actions/mcp_actions";
 
 const SECTION_HEIGHT_PERCENTAGES = {
     AGENTS: 40,    // 50% of available height
@@ -128,7 +130,9 @@ export function EntityList({
     onDeleteAgent,
     onDeleteTool,
     onDeletePrompt,
-}: EntityListProps) {
+    projectId
+}: EntityListProps & { projectId: string }) {
+    const [mergedTools, setMergedTools] = useState(tools);
     const selectedRef = useRef<HTMLButtonElement | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerHeight, setContainerHeight] = useState<number>(0);
@@ -152,6 +156,25 @@ export function EntityList({
             selectedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }, [selectedEntity]);
+
+    // Fetch and merge MCP tools from project settings
+    useEffect(() => {
+        async function fetchAndMergeTools() {
+            try {
+                // Get MCP tools from server action
+                const mcpTools = await getMcpToolsFromProject(projectId);
+
+                // Merge with existing workflow tools
+                // Replace any existing MCP tools with their latest versions
+                const nonMcpTools = tools.filter(t => !t.isMcp);
+                setMergedTools([...nonMcpTools, ...mcpTools]);
+            } catch (error) {
+                console.error('Error merging MCP tools:', error);
+            }
+        }
+
+        fetchAndMergeTools();
+    }, [projectId, tools]);
 
     const calculateSectionHeight = (percentage: number) => {
         // Total gaps = 2 gaps between 3 sections
@@ -226,13 +249,13 @@ export function EntityList({
                                 <Wrench className="w-4 h-4" />
                                 <span>Tools</span>
                                 <div className="flex items-center gap-1 ml-2">
-                                    {tools.some(t => t.isMcp) && (
+                                    {mergedTools.some(t => t.isMcp) && (
                                         <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20">
                                             <ImportIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                                             <span className="text-xs text-blue-600 dark:text-blue-400">MCP</span>
                                         </div>
                                     )}
-                                    {tools.some(t => t.isLibrary) && (
+                                    {mergedTools.some(t => t.isLibrary) && (
                                         <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/20">
                                             <Library className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                                             <span className="text-xs text-purple-600 dark:text-purple-400">Library</span>
@@ -259,9 +282,9 @@ export function EntityList({
                     className="overflow-hidden flex-[30]"
                 >
                     <div className="flex flex-col h-full overflow-y-auto">
-                        {tools.length > 0 ? (
+                        {mergedTools.length > 0 ? (
                             <div className="space-y-1 pb-2">
-                                {tools.map((tool, index) => {
+                                {mergedTools.map((tool, index) => {
                                     let toolIcon;
                                     let iconClassName = "w-4 h-4";
                                     

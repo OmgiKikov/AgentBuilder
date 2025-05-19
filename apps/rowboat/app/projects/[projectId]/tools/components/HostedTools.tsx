@@ -267,107 +267,92 @@ export function HostedTools() {
 
   const handleToggleTool = async (server: McpServerType) => {
     try {
-      const serverKey = server.name;
-      console.log('Toggle:', { server: serverKey, newState: !enabledServers.has(serverKey) });
+        const serverKey = server.name;
+        console.log('Toggle:', { server: serverKey, newState: !enabledServers.has(serverKey) });
 
-      setTogglingServers(prev => new Set([...prev, serverKey]));
-      setToggleError(null);
+        setTogglingServers(prev => new Set([...prev, serverKey]));
+        setToggleError(null);
 
-      const isCurrentlyEnabled = enabledServers.has(serverKey);
-      const newState = !isCurrentlyEnabled;
-      
-      try {
-        const result = await enableServer(server.name, projectId || "", newState);
+        const isCurrentlyEnabled = enabledServers.has(serverKey);
+        const newState = !isCurrentlyEnabled;
         
-        if (newState && 'instanceId' in result) {
-          // When enabling a server, automatically select all available tools
-          const availableTools = server.availableTools || [];
-          console.log('[Toggle] Selecting all available tools:', {
-            server: serverKey,
-            toolCount: availableTools.length,
-            tools: availableTools.map(t => t.id)
-          });
-          
-          // Use Promise.all to wait for all tool toggles to complete
-          await Promise.all(availableTools.map(tool => 
-            toggleMcpTool(projectId, server.serverName, tool.id, true)
-          ));
-        }
-
-        // Update local state after all operations are complete
-        setEnabledServers(prev => {
-          const next = new Set(prev);
-          if (!newState) {
-            next.delete(serverKey);
-          } else if ('instanceId' in result) {
-            next.add(serverKey);
-          }
-          return next;
-        });
-
-        // Update servers state immediately
-        setServers(prevServers => {
-          return prevServers.map(s => {
-            if (s.name === serverKey) {
-              return {
-                ...s,
-                isActive: newState,
-                instanceId: newState ? ('instanceId' in result ? result.instanceId : s.instanceId) : s.id,
-                serverUrl: newState ? ('serverUrl' in result ? result.serverUrl : undefined) : undefined,
-                isAuthenticated: false // Always set to false when toggling, will be updated on next refresh
-              };
-            }
-            return s;
-          });
-        });
-
-        // Update server list in background
-        const updatedServers = await listAvailableMcpServers(projectId || "");
-        
-        if (updatedServers.data) {
-          setServers(updatedServers.data);
-          // Verify our local state matches server state
-          const serverState = updatedServers.data.find(s => s.name === serverKey);
-          const serverEnabled = Boolean(serverState?.isActive);
-          
-          if (serverEnabled !== newState) {
-            console.log('State mismatch:', { server: serverKey, expected: newState, actual: serverEnabled });
+        try {
+            const result = await enableServer(server.name, projectId || "", newState);
+            
+            // Update local state after all operations are complete
             setEnabledServers(prev => {
-              const next = new Set(prev);
-              if (serverEnabled) {
-                next.add(serverKey);
-              } else {
-                next.delete(serverKey);
-              }
-              return next;
+                const next = new Set(prev);
+                if (!newState) {
+                    next.delete(serverKey);
+                } else if ('instanceId' in result) {
+                    next.add(serverKey);
+                }
+                return next;
             });
-          }
+
+            // Update only the specific server in the servers state
+            setServers(prevServers => {
+                return prevServers.map(s => {
+                    if (s.name === serverKey) {
+                        if (!newState) {
+                            // If disabling, preserve server structure but clear operational data
+                            return {
+                                ...s,
+                                isActive: false,
+                                serverUrl: undefined,
+                                tools: [],
+                                availableTools: s.availableTools, // Keep available tools list
+                                isAuthenticated: false
+                            };
+                        } else if ('instanceId' in result) {
+                            // If enabling, wait for server response to update tools
+                            return {
+                                ...s,
+                                isActive: true,
+                                instanceId: result.instanceId,
+                                serverUrl: result.serverUrl,
+                                isAuthenticated: false
+                            };
+                        }
+                    }
+                    return s;
+                });
+            });
+
+            // Update tool counts
+            setServerToolCounts(prev => {
+                const next = new Map(prev);
+                if (!newState) {
+                    next.set(serverKey, 0); // Set to 0 instead of deleting
+                }
+                return next;
+            });
+
+        } catch (err) {
+            console.error('Toggle failed:', { server: serverKey, error: err });
+            // Revert local state on error
+            setEnabledServers(prev => {
+                const next = new Set(prev);
+                if (newState) {
+                    next.delete(serverKey);
+                } else {
+                    next.add(serverKey);
+                }
+                return next;
+            });
+            setToggleError({
+                serverId: serverKey,
+                message: "We're having trouble setting up this server. Please reach out on discord."
+            });
         }
-      } catch (err) {
-        console.error('Toggle failed:', { server: serverKey, error: err });
-        // Revert local state on error
-        setEnabledServers(prev => {
-          const next = new Set(prev);
-          if (newState) {
-            next.delete(serverKey);
-          } else {
-            next.add(serverKey);
-          }
-          return next;
-        });
-        setToggleError({
-          serverId: serverKey,
-          message: "We're having trouble setting up this server. Please reach out on discord."
-        });
-      }
     } finally {
-      setTogglingServers(prev => {
-        const next = new Set(prev);
-        next.delete(server.name);
-        return next;
-      });
+        setTogglingServers(prev => {
+            const next = new Set(prev);
+            next.delete(server.name);
+            return next;
+        });
     }
-  };
+};
 
   const handleAuthenticate = async (server: McpServerType) => {
     try {
@@ -386,8 +371,19 @@ export function HostedTools() {
             // Update MongoDB through server action
             await updateProjectServers(projectId);
             
-            // Refresh UI
-            fetchServers();
+            // Update only this server's state
+            const response = await listAvailableMcpServers(projectId);
+            if (response.data) {
+              setServers(prevServers => {
+                return prevServers.map(s => {
+                  if (s.name === server.name) {
+                    const updatedServer = response.data?.find(us => us.name === server.name);
+                    return updatedServer || s;
+                  }
+                  return s;
+                });
+              });
+            }
           }
         }, 500);
       }
@@ -422,43 +418,51 @@ export function HostedTools() {
     
     setSavingTools(true);
     try {
-      // Get all available tools from Klavis and current selection state
-      const availableTools = selectedServer.availableTools || [];
-      
-      // Update each available tool's state based on our selection
-      for (const tool of availableTools) {
-        const isSelected = selectedTools.has(tool.id);
-        await toggleMcpTool(projectId, selectedServer.serverName, tool.id, isSelected);
-      }
-      
-      // Refresh the server list to get updated state
-      const updatedServers = await listAvailableMcpServers(projectId);
-      if (updatedServers.data) {
-        setServers(updatedServers.data);
+        // Get all available tools from Klavis and current selection state
+        const availableTools = selectedServer.availableTools || [];
         
-        // Update tool counts
-        const newCounts = new Map<string, number>();
-        updatedServers.data.forEach(server => {
-          if (isServerEligible(server)) {
-            newCounts.set(server.name, server.tools.length);
-          }
-        });
-        setServerToolCounts(newCounts);
-        
-        // Update selected server data
-        const updatedServer = updatedServers.data.find(s => s.name === selectedServer.name);
-        if (updatedServer) {
-          setSelectedServer(updatedServer);
+        // Update each available tool's state based on our selection
+        for (const tool of availableTools) {
+            const isSelected = selectedTools.has(tool.id);
+            await toggleMcpTool(projectId, selectedServer.serverName, tool.id, isSelected);
         }
-      }
-      
-      setHasToolChanges(false);
+        
+        // Update only the specific server in the servers state
+        setServers(prevServers => {
+            return prevServers.map(s => {
+                if (s.name === selectedServer.name) {
+                    return {
+                        ...s,
+                        tools: availableTools.filter(tool => selectedTools.has(tool.id))
+                    };
+                }
+                return s;
+            });
+        });
+
+        // Update selected server data
+        setSelectedServer(prev => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                tools: availableTools.filter(tool => selectedTools.has(tool.id))
+            };
+        });
+
+        // Update tool counts for this server
+        setServerToolCounts(prev => {
+            const next = new Map(prev);
+            next.set(selectedServer.name, selectedTools.size);
+            return next;
+        });
+        
+        setHasToolChanges(false);
     } catch (error) {
-      console.error('Error saving tool selection:', error);
+        console.error('Error saving tool selection:', error);
     } finally {
-      setSavingTools(false);
+        setSavingTools(false);
     }
-  };
+};
 
   const filteredServers = sortServers(servers.filter(server => {
     // First apply the search filter

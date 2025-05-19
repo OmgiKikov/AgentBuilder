@@ -171,6 +171,7 @@ export function convertMcpServerToolToWorkflowTool(
     mcpTool: z.infer<typeof McpServerTool>,
     mcpServer: z.infer<typeof MCPServer>
 ): z.infer<typeof WorkflowTool> {
+
     // Get the input schema with defaults
     const inputSchema = McpToolInputSchema.parse(mcpTool.inputSchema ?? {
         type: 'object',
@@ -178,7 +179,7 @@ export function convertMcpServerToolToWorkflowTool(
         required: [],
     });
 
-    return {
+    const converted = {
         name: mcpTool.name,
         description: mcpTool.description ?? "",
         parameters: inputSchema,
@@ -186,4 +187,6 @@ export function convertMcpServerToolToWorkflowTool(
         mcpServerName: mcpServer.name,
         mcpServerURL: mcpServer.serverUrl,
     };
+
+    return converted;
 }

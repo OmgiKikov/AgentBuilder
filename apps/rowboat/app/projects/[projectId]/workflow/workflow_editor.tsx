@@ -295,6 +295,7 @@ function reducer(state: State, action: Action): State {
                                 parameters: {
                                     type: 'object',
                                     properties: {},
+                                    required: []
                                 },
                                 mockTool: true,
                                 autoSubmitMockedResponse: true,
@@ -942,24 +943,27 @@ export function WorkflowEditor({
         </div>
         <ResizablePanelGroup direction="horizontal" className="grow flex overflow-auto gap-1">
             <ResizablePanel minSize={10} defaultSize={PANEL_RATIOS.entityList}>
-                <EntityList
-                    agents={state.present.workflow.agents}
-                    tools={state.present.workflow.tools}
-                    prompts={state.present.workflow.prompts}
-                    selectedEntity={state.present.selection}
-                    startAgentName={state.present.workflow.startAgent}
-                    onSelectAgent={handleSelectAgent}
-                    onSelectTool={handleSelectTool}
-                    onSelectPrompt={handleSelectPrompt}
-                    onAddAgent={handleAddAgent}
-                    onAddTool={handleAddTool}
-                    onAddPrompt={handleAddPrompt}
-                    onToggleAgent={handleToggleAgent}
-                    onSetMainAgent={handleSetMainAgent}
-                    onDeleteAgent={handleDeleteAgent}
-                    onDeleteTool={handleDeleteTool}
-                    onDeletePrompt={handleDeletePrompt}
-                />
+                <div className="flex flex-col h-full">
+                    <EntityList
+                        agents={state.present.workflow.agents}
+                        tools={state.present.workflow.tools}
+                        prompts={state.present.workflow.prompts}
+                        selectedEntity={state.present.selection}
+                        startAgentName={state.present.workflow.startAgent}
+                        onSelectAgent={handleSelectAgent}
+                        onSelectTool={handleSelectTool}
+                        onSelectPrompt={handleSelectPrompt}
+                        onAddAgent={handleAddAgent}
+                        onAddTool={handleAddTool}
+                        onAddPrompt={handleAddPrompt}
+                        onToggleAgent={handleToggleAgent}
+                        onSetMainAgent={handleSetMainAgent}
+                        onDeleteAgent={handleDeleteAgent}
+                        onDeleteTool={handleDeleteTool}
+                        onDeletePrompt={handleDeletePrompt}
+                        projectId={state.present.workflow.projectId}
+                    />
+                </div>
             </ResizablePanel>
             <ResizableHandle className="w-[3px] bg-transparent" />
             <ResizablePanel
