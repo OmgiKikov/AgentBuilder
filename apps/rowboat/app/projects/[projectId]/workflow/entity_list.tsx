@@ -248,16 +248,6 @@ export function EntityList({
                                 <Button
                                     variant="secondary"
                                     size="sm"
-                                    onClick={triggerMcpImport}
-                                    className={buttonClasses}
-                                    showHoverContent={true}
-                                    hoverContent="Импортировать из MCP"
-                                >
-                                    <ImportIcon className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
                                     onClick={() => onAddTool({})}
                                     className={`group ${buttonClasses}`}
                                     showHoverContent={true}

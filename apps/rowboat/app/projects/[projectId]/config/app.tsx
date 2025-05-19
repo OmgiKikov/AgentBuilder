@@ -203,7 +203,22 @@ function McpServersSection({
     const handleSave = async () => {
         setSaving(true);
         try {
-            await updateMcpServers(projectId, servers);
+            // Преобразуем серверы в формат, ожидаемый API
+            const formattedServers = servers.map(server => ({
+                id: server.name, // Используем name как id
+                name: server.name,
+                description: "", // Добавляем пустое описание
+                tools: [], // Пустой массив инструментов
+                instanceId: server.name, // Используем name как instanceId
+                serverName: server.name,
+                serverUrl: server.url,
+                isActive: true, // По умолчанию активный
+                authNeeded: false, // По умолчанию не требует аутентификации
+                isAuthenticated: true, // По умолчанию аутентифицирован
+                requiresAuth: false, // По умолчанию не требует аутентификации
+            }));
+            
+            await updateMcpServers(projectId, formattedServers);
             setOriginalServers(JSON.parse(JSON.stringify(servers))); // Update original servers after successful save
             setMessage({ type: 'success', text: 'Servers updated successfully' });
             setTimeout(() => setMessage(null), 3000);

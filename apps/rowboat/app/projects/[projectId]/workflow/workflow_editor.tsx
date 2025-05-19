@@ -296,6 +296,7 @@ function reducer(state: State, action: Action): State {
                                 parameters: {
                                     type: 'object',
                                     properties: {},
+                                    required: [],
                                 },
                                 mockTool: true,
                                 autoSubmitMockedResponse: true,

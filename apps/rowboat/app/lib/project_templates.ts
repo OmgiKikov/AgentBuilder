@@ -31,6 +31,7 @@ export const templates: { [key: string]: z.infer<typeof WorkflowTemplate> } = {
                 "parameters": {
                     "type": "object",
                     "properties": {},
+                    "required": []
                 },
                 "isLibrary": true
             },

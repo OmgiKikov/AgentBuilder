@@ -7,11 +7,12 @@ import { z } from 'zod';
 import FirecrawlApp, { ScrapeResponse } from '@mendable/firecrawl-js';
 import { apiV1 } from "rowboat-shared";
 import { Claims, getSession } from "@auth0/nextjs-auth0";
-import { getAgenticApiResponse, getAgenticResponseStreamId } from "../lib/utils";
+import { getAgenticApiResponse } from "../lib/utils";
 import { check_query_limit } from "../lib/rate_limiting";
 import { QueryLimitError } from "../lib/client_utils";
 import { projectAuthCheck } from "./project_actions";
 import { USE_AUTH } from "../lib/feature_flags";
+import { redisClient } from "../lib/redis";
 
 const crawler = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY || '' });
 
@@ -94,12 +95,23 @@ export async function getAssistantResponse(request: z.infer<typeof AgenticAPICha
     };
 }
 
-export async function getAssistantResponseStreamId(request: z.infer<typeof AgenticAPIChatRequest>): Promise<z.infer<typeof AgenticAPIInitStreamResponse>> {
-    await projectAuthCheck(request.projectId);
-    if (!await check_query_limit(request.projectId)) {
-        throw new QueryLimitError();
-    }
+export async function getAgenticResponseStreamId(
+    request: z.infer<typeof AgenticAPIChatRequest>,
+): Promise<z.infer<typeof AgenticAPIInitStreamResponse>> {
+    // serialize the request
+    const payload = JSON.stringify(request);
 
-    const response = await getAgenticResponseStreamId(request);
-    return response;
+    // create a uuid for the stream
+    const streamId = crypto.randomUUID();
+
+    // store payload in redis
+    await redisClient.set(`chat-stream-${streamId}`, payload, {
+        EX: 60 * 10, // expire in 10 minutes
+    });
+
+    return {
+        streamId,
+    };
 }
+
+export { getAgenticResponseStreamId as getAssistantResponseStreamId };
