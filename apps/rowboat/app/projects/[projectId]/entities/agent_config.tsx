@@ -198,7 +198,10 @@ export function AgentConfig({
                                     : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                             )}
                         >
-                            {tab === 'rag' ? 'RAG' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                            {tab === 'instructions' && 'Инструкции'}
+                            {tab === 'examples' && 'Примеры'}
+                            {tab === 'configurations' && 'Конфигурация'}
+                            {tab === 'rag' && 'RAG'}
                         </button>
                     ))}
                 </div>
@@ -210,14 +213,14 @@ export function AgentConfig({
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
                                     <label className={sectionHeaderStyles}>
-                                        Instructions
+                                        Инструкции
                                     </label>
                                     <CustomButton
                                         variant="secondary"
                                         size="sm"
                                         onClick={() => setIsInstructionsMaximized(!isInstructionsMaximized)}
                                         showHoverContent={true}
-                                        hoverContent={isInstructionsMaximized ? "Minimize" : "Maximize"}
+                                        hoverContent={isInstructionsMaximized ? "Свернуть" : "Развернуть"}
                                     >
                                         {isInstructionsMaximized ? (
                                             <Minimize2 className="w-4 h-4" />
@@ -232,7 +235,7 @@ export function AgentConfig({
                                     onClick={() => setShowGenerateModal(true)}
                                     startContent={<Sparkles className="w-4 h-4" />}
                                 >
-                                    Generate
+                                    Сгенерировать
                                 </CustomButton>
                             </div>
                             {isInstructionsMaximized ? (
@@ -241,14 +244,14 @@ export function AgentConfig({
                                         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                                             <div className="flex items-center gap-2">
                                                 <label className={sectionHeaderStyles}>
-                                                    Instructions
+                                                    Инструкции
                                                 </label>
                                                 <CustomButton
                                                     variant="secondary"
                                                     size="sm"
                                                     onClick={() => setIsInstructionsMaximized(false)}
                                                     showHoverContent={true}
-                                                    hoverContent="Minimize"
+                                                    hoverContent="Свернуть"
                                                 >
                                                     <Minimize2 className="w-4 h-4" />
                                                 </CustomButton>
@@ -259,7 +262,7 @@ export function AgentConfig({
                                                 onClick={() => setShowGenerateModal(true)}
                                                 startContent={<Sparkles className="w-4 h-4" />}
                                             >
-                                                Generate
+                                                Сгенерировать
                                             </CustomButton>
                                         </div>
                                         <div className="flex-1 overflow-hidden p-4">
@@ -288,13 +291,11 @@ export function AgentConfig({
                                     key="instructions"
                                     value={agent.instructions}
                                     onChange={(value) => {
-
                                         handleUpdate({
                                             ...agent,
                                             instructions: value
                                         });
                                     }}
-
                                     markdown
                                     multiline
                                     mentions
@@ -302,7 +303,6 @@ export function AgentConfig({
                                     showSaveButton={true}
                                     showDiscardButton={true}
                                     className="h-full min-h-0 overflow-auto"
-
                                 />
                             )}
                         </>
@@ -336,7 +336,7 @@ export function AgentConfig({
                                         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                                             <div className="flex items-center gap-2">
                                                 <label className={sectionHeaderStyles}>
-                                                    Examples
+                                                    Примеры
                                                 </label>
                                                 <CustomButton
                                                     variant="secondary"
@@ -400,7 +400,7 @@ export function AgentConfig({
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <label className={sectionHeaderStyles}>
-                                            Name
+                                            Имя
                                         </label>
                                         <div className={clsx(
                                             "border rounded-lg focus-within:ring-2",
@@ -439,7 +439,7 @@ export function AgentConfig({
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <label className={sectionHeaderStyles}>
-                                        Description
+                                        Описание
                                     </label>
                                     <Textarea
                                         value={agent.description || ""}
@@ -459,18 +459,18 @@ export function AgentConfig({
                             <div className="space-y-4">
                                 <div className="flex items-center">
                                     <label className={sectionHeaderStyles}>
-                                        Agent Type
+                                        Тип агента
                                     </label>
                                     <div className="relative ml-2 group">
                                         <Info 
                                             className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer transition-colors"
                                         />
                                         <div className="absolute bottom-full left-0 mb-2 p-3 w-80 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs invisible group-hover:visible z-50">
-                                            <div className="mb-1 font-medium">Agent Types</div>
-                                            Conversation agents&apos; responses are user-facing. You can use conversation agents for multi-turn conversations with users.
+                                            <div className="mb-1 font-medium">Типы агентов</div>
+                                            Ответы агентов для общения с пользователями. Вы можете использовать агентов для многоходовых разговоров с пользователями.
                                             <br />
                                             <br />
-                                            Task agents&apos; responses are internal and available to other agents. You can use them to build pipelines and DAGs within workflows. E.g. Conversation Agent {'->'} Task Agent {'->'} Task Agent.
+                                            Ответы агентов для внутренних целей. Вы можете использовать их для построения конвейеров и DAG в рабочих процессах. Например: Агент общения {'->'} Агент задач {'->'} Агент задач.
                                             <div className="absolute h-2 w-2 bg-white dark:bg-gray-800 transform rotate-45 -bottom-1 left-4 border-r border-b border-gray-200 dark:border-gray-700"></div>
                                         </div>
                                     </div>
@@ -478,8 +478,8 @@ export function AgentConfig({
                                 <CustomDropdown
                                     value={agent.outputVisibility}
                                     options={[
-                                        { key: "user_facing", label: "Conversation Agent" },
-                                        { key: "internal", label: "Task Agent" }
+                                        { key: "user_facing", label: "Агент общения" },
+                                        { key: "internal", label: "Агент задач" }
                                     ]}
                                     onChange={(value) => handleUpdate({
                                         ...agent,
@@ -499,7 +499,7 @@ export function AgentConfig({
                                         <div>
                                             <Select
                                                 variant="bordered"
-                                                placeholder="Add data source"
+                                                placeholder="Добавить источник данных"
 
                                                 size="sm"
                                                 className="w-64"
@@ -566,7 +566,7 @@ export function AgentConfig({
                                                                     {ds?.name || "Unknown"}
                                                                 </span>
                                                                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                                    Data Source
+                                                                    Источник данных
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -583,7 +583,7 @@ export function AgentConfig({
                                                             }}
                                                             startContent={<Trash2 className="w-4 h-4" />}
                                                         >
-                                                            Remove
+                                                            Удалить
                                                         </CustomButton>
                                                     </div>
                                                 );
@@ -601,7 +601,7 @@ export function AgentConfig({
                                                             <ChevronDown className="w-4 h-4 text-gray-400" /> : 
                                                             <ChevronRight className="w-4 h-4 text-gray-400" />
                                                         }
-                                                        Advanced RAG configuration
+                                                        Расширенная конфигурация RAG
                                                     </button>
                                                     
                                                     {isAdvancedConfigOpen && (
@@ -609,7 +609,7 @@ export function AgentConfig({
                                                             <div className="grid gap-6">
                                                                 <div className="space-y-2">
                                                                     <label className={sectionHeaderStyles}>
-                                                                        Return type
+                                                                        Тип возвращаемого значения
                                                                     </label>
                                                                     <div className="flex gap-4">
                                                                         {["chunks", "content"].map((type) => (
@@ -634,7 +634,7 @@ export function AgentConfig({
 
                                                                 <div className="space-y-2">
                                                                     <label className={sectionHeaderStyles}>
-                                                                        Number of matches
+                                                                        Количество совпадений
                                                                     </label>
                                                                     <div className="flex items-center gap-3">
                                                                         <input
@@ -649,11 +649,11 @@ export function AgentConfig({
                                                                             })}
                                                                         />
                                                                         <span className="text-sm text-gray-500 dark:text-gray-400">
-                                                                            matches
+                                                                            совпадений
                                                                         </span>
                                                                     </div>
                                                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                                        Number of relevant chunks to retrieve (1-20)
+                                                                        Количество релевантных частей (1-20)
                                                                     </p>
                                                                 </div>
                                                             </div>
@@ -672,21 +672,21 @@ export function AgentConfig({
                             <div className="space-y-4">
                                 <div className="flex items-center">
                                     <label className={sectionHeaderStyles}>
-                                        Model
+                                        Модель
                                     </label>
                                     <div className="relative ml-2 group">
                                         <Info 
                                             className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer transition-colors"
                                         />
                                         <div className="absolute bottom-full left-0 mb-2 p-3 w-80 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs invisible group-hover:visible z-50">
-                                            <div className="mb-1 font-medium">Model Configuration</div>
-                                            Set this according to the PROVIDER_BASE_URL you have set in your .env file (such as your LiteLLM, gateway). 
+                                            <div className="mb-1 font-medium">Конфигурация модели</div>
+                                            Установите это в соответствии с PROVIDER_BASE_URL, который вы установили в своем .env файле (например, LiteLLM, gateway). 
                                             <br />
                                             <br />
-                                            E.g. LiteLLM&apos;s naming convention is like: &apos;claude-3-7-sonnet-latest&apos;, but you may have set alias model names or might be using a different provider like openrouter, openai etc. 
+                                            Например: LiteLLM's naming convention is like: 'claude-3-7-sonnet-latest', но вы можете использовать другие имена моделей или другие поставщики, такие как openrouter, openai и т.д. 
                                             <br />
                                             <br />
-                                            By default, the model is set to gpt-4.1, assuming your OpenAI API key is set in PROVIDER_API_KEY and PROVIDER_BASE_URL is not set.
+                                            {/* По умолчанию модель установлена на Gigachat, предполагая, что ваш API ключ установлен в PROVIDER_API_KEY и PROVIDER_BASE_URL не установлен. */}
                                             <div className="absolute h-2 w-2 bg-white dark:bg-gray-800 transform rotate-45 -bottom-1 left-4 border-r border-b border-gray-200 dark:border-gray-700"></div>
                                         </div>
                                     </div>
@@ -706,15 +706,15 @@ export function AgentConfig({
                             <div className="space-y-4">
                                 <div className="flex items-center">
                                     <label className={sectionHeaderStyles}>
-                                        Max calls from parent agent per turn
+                                        Максимальное количество вызовов от родительского агента за один раз
                                     </label>
                                     <div className="relative ml-2 group">
                                         <Info 
                                             className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer transition-colors"
                                         />
                                         <div className="absolute bottom-full left-0 mb-2 p-3 w-80 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs invisible group-hover:visible z-50">
-                                            <div className="mb-1 font-medium">Max Calls Configuration</div>
-                                            This setting limits how many times a parent agent can call this agent in a single turn, to prevent infinite loops.
+                                            <div className="mb-1 font-medium">Конфигурация максимального количества вызовов</div>
+                                            Это ограничение на количество раз, которое родительский агент может вызывать этот агент в одном ходе, чтобы избежать бесконечных циклов.
                                             <div className="absolute h-2 w-2 bg-white dark:bg-gray-800 transform rotate-45 -bottom-1 left-4 border-r border-b border-gray-200 dark:border-gray-700"></div>
                                         </div>
                                     </div>
@@ -736,14 +736,14 @@ export function AgentConfig({
                             {USE_TRANSFER_CONTROL_OPTIONS && (
                                 <div className="space-y-4">
                                     <label className={sectionHeaderStyles}>
-                                        Conversation control after turn
+                                        Контроль после хода
                                     </label>
                                     <CustomDropdown
                                         value={agent.controlType}
                                         options={[
-                                            { key: "retain", label: "Retain control" },
-                                            { key: "relinquish_to_parent", label: "Relinquish to parent" },
-                                            { key: "relinquish_to_start", label: "Relinquish to 'start' agent" }
+                                            { key: "retain", label: "Сохранить контроль" },
+                                            { key: "relinquish_to_parent", label: "Передать контроль родительскому агенту" },
+                                            { key: "relinquish_to_start", label: "Передать контроль 'начальному' агенту" }
                                         ]}
                                         onChange={(value) => handleUpdate({
                                             ...agent,
@@ -796,7 +796,7 @@ export function AgentConfig({
                                                 onClick={handleUpdateInstructions}
                                                 className="whitespace-nowrap"
                                             >
-                                                Update Instructions
+                                                Обновить инструкции
                                             </CustomButton>
                                         )}
                                     </div>
@@ -831,7 +831,7 @@ export function AgentConfig({
                                                             {ds?.name || "Unknown"}
                                                         </span>
                                                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                            Data Source
+                                                            Источник данных
                                                         </span>
                                                     </div>
                                                 </div>
@@ -848,7 +848,7 @@ export function AgentConfig({
                                                     }}
                                                     startContent={<Trash2 className="w-4 h-4" />}
                                                 >
-                                                    Remove
+                                                    Удалить
                                                 </CustomButton>
                                             </div>
                                         );
@@ -866,7 +866,7 @@ export function AgentConfig({
                                                     <ChevronDown className="w-4 h-4 text-gray-400" /> : 
                                                     <ChevronRight className="w-4 h-4 text-gray-400" />
                                                 }
-                                                Advanced RAG configuration
+                                                Расширенная конфигурация RAG
                                             </button>
                                             
                                             {isAdvancedConfigOpen && (
@@ -874,7 +874,7 @@ export function AgentConfig({
                                                     <div className="grid gap-6">
                                                         <div className="space-y-2">
                                                             <label className={sectionHeaderStyles}>
-                                                                Return type
+                                                                Тип возвращаемого значения
                                                             </label>
                                                             <div className="flex gap-4">
                                                                 {["chunks", "content"].map((type) => (
@@ -899,7 +899,7 @@ export function AgentConfig({
 
                                                         <div className="space-y-2">
                                                             <label className={sectionHeaderStyles}>
-                                                                Number of matches
+                                                                Количество совпадений
                                                             </label>
                                                             <div className="flex items-center gap-3">
                                                                 <input
@@ -914,11 +914,11 @@ export function AgentConfig({
                                                                     })}
                                                                 />
                                                                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                                                                    matches
+                                                                    совпадений
                                                                 </span>
                                                             </div>
                                                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                                Number of relevant chunks to retrieve (1-20)
+                                                                Количество релевантных частей (1-20)
                                                             </p>
                                                         </div>
                                                     </div>
@@ -1083,13 +1083,13 @@ function GenerateInstructionsModal({
 
 function validateAgentName(value: string, currentName?: string, usedNames?: Set<string>) {
     if (value.length === 0) {
-        return "Name cannot be empty";
+        return "Имя не может быть пустым";
     }
     if (currentName && value !== currentName && usedNames?.has(value)) {
-        return "This name is already taken";
+        return "Это имя уже занято";
     }
     if (!/^[a-zA-Z0-9_-\s]+$/.test(value)) {
-        return "Name must contain only letters, numbers, underscores, hyphens, and spaces";
+        return "Имя может содержать только буквы, цифры, подчеркивания, дефисы и пробелы";
     }
     return null;
 }
