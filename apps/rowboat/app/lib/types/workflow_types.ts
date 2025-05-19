@@ -42,11 +42,16 @@ export const WorkflowTool = z.object({
             type: z.string(),
             description: z.string(),
         })),
-        required: z.array(z.string()).optional(),
+        required: z.array(z.string()).default([]),
+    }).default({
+        type: 'object',
+        properties: {},
+        required: [],
     }),
     isMcp: z.boolean().default(false).optional(),
     isLibrary: z.boolean().default(false).optional(),
     mcpServerName: z.string().optional(),
+    mcpServerURL: z.string().optional(),
 });
 export const Workflow = z.object({
     name: z.string().optional(),

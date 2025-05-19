@@ -1,10 +1,56 @@
 import { CoreMessage, ToolCallPart } from "ai";
 import { z } from "zod";
 import { apiV1 } from "rowboat-shared";
+import { WorkflowTool } from "./workflow_types";
+
+export const McpToolInputSchema = z.object({
+    type: z.literal('object'),
+    properties: z.record(z.object({
+        type: z.string(),
+        description: z.string(),
+    })).default({}),
+    required: z.array(z.string()).default([]),
+});
+
+export const McpServerTool = z.object({
+    name: z.string(),
+    description: z.string().optional(),
+    inputSchema: McpToolInputSchema.optional(),
+});
+
+export const McpTool = z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    parameters: z.object({
+        type: z.literal('object'),
+        properties: z.record(z.object({
+            type: z.string(),
+            description: z.string(),
+        })),
+        required: z.array(z.string()).optional(),
+    }).optional(),
+});
 
 export const MCPServer = z.object({
+    id: z.string(),
     name: z.string(),
-    url: z.string(),
+    description: z.string(),
+    tools: z.array(McpTool),  // Selected tools from MongoDB
+    availableTools: z.array(McpTool).optional(),  // Available tools from Klavis
+    instanceId: z.string(),
+    serverName: z.string(),
+    serverUrl: z.string().optional(),
+    isActive: z.boolean().optional(),
+    authNeeded: z.boolean(),
+    isAuthenticated: z.boolean(),
+    requiresAuth: z.boolean().default(false),
+});
+
+// Response types for Klavis API
+export const McpServerResponse = z.object({
+    data: z.array(z.lazy(() => MCPServer)).nullable(),
+    error: z.string().nullable(),
 });
 
 export const PlaygroundChat = z.object({
@@ -119,3 +165,25 @@ export const ApiResponse = z.object({
     messages: z.array(ApiMessage),
     state: z.unknown(),
 });
+
+// Helper function to convert MCP server tool to WorkflowTool
+export function convertMcpServerToolToWorkflowTool(
+    mcpTool: z.infer<typeof McpServerTool>,
+    mcpServer: z.infer<typeof MCPServer>
+): z.infer<typeof WorkflowTool> {
+    // Get the input schema with defaults
+    const inputSchema = McpToolInputSchema.parse(mcpTool.inputSchema ?? {
+        type: 'object',
+        properties: {},
+        required: [],
+    });
+
+    return {
+        name: mcpTool.name,
+        description: mcpTool.description ?? "",
+        parameters: inputSchema,
+        isMcp: true,
+        mcpServerName: mcpServer.name,
+        mcpServerURL: mcpServer.serverUrl,
+    };
+}

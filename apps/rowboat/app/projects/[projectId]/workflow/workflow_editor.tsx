@@ -29,7 +29,7 @@ import { PublishedBadge } from "./published_badge";
 import { BackIcon, HamburgerIcon, WorkflowIcon } from "../../../lib/components/icons";
 import { CopyIcon, ImportIcon, Layers2Icon, RadioIcon, RedoIcon, ServerIcon, Sparkles, UndoIcon, RocketIcon, PenLine, AlertTriangle, Trash2Icon, Settings2Icon, XIcon } from "lucide-react";
 import { EntityList } from "./entity_list";
-// import { McpImportTools } from "./mcp_imports";
+
 import { ProductTour } from "@/components/common/product-tour";
 
 enablePatches();
@@ -612,7 +612,6 @@ export function WorkflowEditor({
     const [showCopySuccess, setShowCopySuccess] = useState(false);
     const [showCopilot, setShowCopilot] = useState(true);
     const [copilotWidth, setCopilotWidth] = useState<number>(PANEL_RATIOS.copilot);
-    const [isMcpImportModalOpen, setIsMcpImportModalOpen] = useState(false);
     const [isInitialState, setIsInitialState] = useState(true);
     const [showTour, setShowTour] = useState(true);
     const [configModalOpen, setConfigModalOpen] = useState(false);
@@ -911,6 +910,7 @@ export function WorkflowEditor({
                  )}
             </div>
         </div>
+
 
     );
 

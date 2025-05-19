@@ -37,7 +37,6 @@ interface EntityListProps {
     onDeleteAgent: (name: string) => void;
     onDeleteTool: (name: string) => void;
     onDeletePrompt: (name: string) => void;
-    triggerMcpImport: () => void;
 }
 
 interface EmptyStateProps {
@@ -131,7 +130,6 @@ export function EntityList({
     onDeleteAgent,
     onDeleteTool,
     onDeletePrompt,
-    triggerMcpImport,
 }: EntityListProps) {
     const selectedRef = useRef<HTMLButtonElement | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -228,6 +226,7 @@ export function EntityList({
                         <div className={headerClasses}>
                             <div className="flex items-center gap-2">
                                 <Wrench className="w-4 h-4" />
+
                                 <span>Инструменты</span>
                                 <div className="flex items-center gap-1 ml-2">
                                     {tools.some(t => t.isMcp) && (
@@ -244,6 +243,7 @@ export function EntityList({
                                     )}
                                 </div>
                             </div>
+
                             <div className="flex flex-wrap items-center gap-2">
                                 <Button
                                     variant="secondary"
@@ -280,6 +280,9 @@ export function EntityList({
                                 {tools.map((tool, index) => {
                                     let toolIcon;
                                     let iconClassName = "w-4 h-4";
+
+                                    
+
                                     if (tool.isMcp) {
                                         toolIcon = <ImportIcon className={clsx(iconClassName, "text-blue-600 dark:text-blue-500")} />;
                                     } else if (tool.isLibrary) {
@@ -287,6 +290,7 @@ export function EntityList({
                                     } else {
                                         toolIcon = <Wrench className={clsx(iconClassName, "text-gray-600 dark:text-gray-500")} />;
                                     }
+
                                     return (
                                         <ListItemWithMenu
                                             key={`tool-${index}`}
