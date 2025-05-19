@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
 
 const SECTION_HEIGHT_PERCENTAGES = {
-    AGENTS: 40,    // 50% of available height
+    AGENTS: 40,    // 40% of available height
     TOOLS: 30,     // 30% of available height
-    PROMPTS: 30,   // 20% of available height
+    PROMPTS: 30,   // 30% of available height
 } as const;
 
 const GAP_SIZE = 24; // 6 units * 4px (tailwind's default spacing unit)
@@ -45,7 +45,9 @@ interface EmptyStateProps {
 
 const EmptyState: React.FC<EmptyStateProps> = ({ entity }) => (
     <div className="flex items-center justify-center h-24 text-sm text-zinc-400 dark:text-zinc-500">
-        No {entity} created
+        {entity === "agents" && "Пока нет агентов"}
+        {entity === "tools" && "Пока нет инструментов"}
+        {entity === "prompts" && "Пока нет промтов"}
     </div>
 );
 
@@ -107,7 +109,7 @@ const ListItemWithMenu = ({
 
 const StartLabel = () => (
     <div className="text-xs text-indigo-500 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded">
-        Start
+        Старт
     </div>
 );
 
@@ -170,7 +172,7 @@ export function EntityList({
                         <div className={headerClasses}>
                             <div className="flex items-center gap-2">
                                 <Brain className="w-4 h-4" />
-                                <span>Agents</span>
+                                <span>Агенты</span>
                             </div>
                             <Button
                                 variant="secondary"
@@ -178,7 +180,7 @@ export function EntityList({
                                 onClick={() => onAddAgent({})}
                                 className={`group ${buttonClasses}`}
                                 showHoverContent={true}
-                                hoverContent="Add Agent"
+                                hoverContent="Добавить агента"
                             >
                                 <PlusIcon className="w-4 h-4" />
                             </Button>
@@ -224,7 +226,8 @@ export function EntityList({
                         <div className={headerClasses}>
                             <div className="flex items-center gap-2">
                                 <Wrench className="w-4 h-4" />
-                                <span>Tools</span>
+
+                                <span>Инструменты</span>
                                 <div className="flex items-center gap-1 ml-2">
                                     {tools.some(t => t.isMcp) && (
                                         <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20">
@@ -240,19 +243,32 @@ export function EntityList({
                                     )}
                                 </div>
                             </div>
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => onAddTool({})}
-                                className={`group ${buttonClasses}`}
-                                showHoverContent={true}
-                                hoverContent="Create Custom Tool"
-                            >
-                                <div className="flex items-center gap-1.5">
-                                    <PlusIcon className="w-4 h-4" />
-                                    <span>Add Tool</span>
-                                </div>
-                            </Button>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={triggerMcpImport}
+                                    className={buttonClasses}
+                                    showHoverContent={true}
+                                    hoverContent="Импортировать из MCP"
+                                >
+                                    <ImportIcon className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => onAddTool({})}
+                                    className={`group ${buttonClasses}`}
+                                    showHoverContent={true}
+                                    hoverContent="Добавить инструмент"
+                                >
+                                    <div className="flex items-center gap-1.5">
+                                        <PlusIcon className="w-4 h-4" />
+                                        <span>Добавить инструмент</span>
+                                    </div>
+                                </Button>
+                            </div>
                         </div>
                     }
                     maxHeight={calculateSectionHeight(SECTION_HEIGHT_PERCENTAGES.TOOLS)}
@@ -264,7 +280,9 @@ export function EntityList({
                                 {tools.map((tool, index) => {
                                     let toolIcon;
                                     let iconClassName = "w-4 h-4";
+
                                     
+
                                     if (tool.isMcp) {
                                         toolIcon = <ImportIcon className={clsx(iconClassName, "text-blue-600 dark:text-blue-500")} />;
                                     } else if (tool.isLibrary) {
@@ -305,7 +323,7 @@ export function EntityList({
                         <div className={headerClasses}>
                             <div className="flex items-center gap-2">
                                 <PenLine className="w-4 h-4" />
-                                <span>Prompts</span>
+                                <span>Промты</span>
                             </div>
                             <Button
                                 variant="secondary"
@@ -313,7 +331,7 @@ export function EntityList({
                                 onClick={() => onAddPrompt({})}
                                 className={`group ${buttonClasses}`}
                                 showHoverContent={true}
-                                hoverContent="Add Prompt"
+                                hoverContent="Добавить промт"
                             >
                                 <PlusIcon className="w-4 h-4" />
                             </Button>
@@ -389,9 +407,9 @@ function AgentDropdown({
                     }
                 }}
             >
-                <DropdownItem key="set-main-agent">Set as start agent</DropdownItem>
-                <DropdownItem key="toggle">{agent.disabled ? 'Enable' : 'Disable'}</DropdownItem>
-                <DropdownItem key="delete" className="text-danger">Delete</DropdownItem>
+                <DropdownItem key="set-main-agent">Установить как стартовый агент</DropdownItem>
+                <DropdownItem key="toggle">{agent.disabled ? 'Включить' : 'Выключить'}</DropdownItem>
+                <DropdownItem key="delete" className="text-danger">Удалить</DropdownItem>
             </DropdownMenu>
         </Dropdown>
     );
@@ -419,7 +437,7 @@ function EntityDropdown({
                     }
                 }}
             >
-                <DropdownItem key="delete" className="text-danger">Delete</DropdownItem>
+                <DropdownItem key="delete" className="text-danger">Удалить</DropdownItem>
             </DropdownMenu>
         </Dropdown>
     );

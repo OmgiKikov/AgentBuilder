@@ -183,6 +183,7 @@ export function AgentConfig({
                 </div>
             }
         >
+
             <div className="flex flex-col gap-6 p-4 h-[calc(100vh-100px)] min-h-0 flex-1">
                 {/* Tabs */}
                 <div className="flex border-b border-gray-200 dark:border-gray-700">
@@ -197,7 +198,10 @@ export function AgentConfig({
                                     : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                             )}
                         >
-                            {tab === 'rag' ? 'RAG' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                            {tab === 'instructions' && 'Инструкции'}
+                            {tab === 'examples' && 'Примеры'}
+                            {tab === 'configurations' && 'Конфигурация'}
+                            {tab === 'rag' && 'RAG'}
                         </button>
                     ))}
                 </div>
@@ -209,14 +213,14 @@ export function AgentConfig({
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
                                     <label className={sectionHeaderStyles}>
-                                        Instructions
+                                        Инструкции
                                     </label>
                                     <CustomButton
                                         variant="secondary"
                                         size="sm"
                                         onClick={() => setIsInstructionsMaximized(!isInstructionsMaximized)}
                                         showHoverContent={true}
-                                        hoverContent={isInstructionsMaximized ? "Minimize" : "Maximize"}
+                                        hoverContent={isInstructionsMaximized ? "Свернуть" : "Развернуть"}
                                     >
                                         {isInstructionsMaximized ? (
                                             <Minimize2 className="w-4 h-4" />
@@ -231,7 +235,7 @@ export function AgentConfig({
                                     onClick={() => setShowGenerateModal(true)}
                                     startContent={<Sparkles className="w-4 h-4" />}
                                 >
-                                    Generate
+                                    Сгенерировать
                                 </CustomButton>
                             </div>
                             {isInstructionsMaximized ? (
@@ -240,14 +244,14 @@ export function AgentConfig({
                                         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                                             <div className="flex items-center gap-2">
                                                 <label className={sectionHeaderStyles}>
-                                                    Instructions
+                                                    Инструкции
                                                 </label>
                                                 <CustomButton
                                                     variant="secondary"
                                                     size="sm"
                                                     onClick={() => setIsInstructionsMaximized(false)}
                                                     showHoverContent={true}
-                                                    hoverContent="Minimize"
+                                                    hoverContent="Свернуть"
                                                 >
                                                     <Minimize2 className="w-4 h-4" />
                                                 </CustomButton>
@@ -258,7 +262,7 @@ export function AgentConfig({
                                                 onClick={() => setShowGenerateModal(true)}
                                                 startContent={<Sparkles className="w-4 h-4" />}
                                             >
-                                                Generate
+                                                Сгенерировать
                                             </CustomButton>
                                         </div>
                                         <div className="flex-1 overflow-hidden p-4">
@@ -309,7 +313,7 @@ export function AgentConfig({
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
                                     <label className={sectionHeaderStyles}>
-                                        Examples
+                                        Примеры
                                     </label>
                                     <CustomButton
                                         variant="secondary"
@@ -332,7 +336,7 @@ export function AgentConfig({
                                         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                                             <div className="flex items-center gap-2">
                                                 <label className={sectionHeaderStyles}>
-                                                    Examples
+                                                    Примеры
                                                 </label>
                                                 <CustomButton
                                                     variant="secondary"
@@ -396,7 +400,7 @@ export function AgentConfig({
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <label className={sectionHeaderStyles}>
-                                            Name
+                                            Имя
                                         </label>
                                         <div className={clsx(
                                             "border rounded-lg focus-within:ring-2",
@@ -431,10 +435,11 @@ export function AgentConfig({
                                 </div>
                             )}
 
+
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <label className={sectionHeaderStyles}>
-                                        Description
+                                        Описание
                                     </label>
                                     <Textarea
                                         value={agent.description || ""}
@@ -454,18 +459,18 @@ export function AgentConfig({
                             <div className="space-y-4">
                                 <div className="flex items-center">
                                     <label className={sectionHeaderStyles}>
-                                        Agent Type
+                                        Тип агента
                                     </label>
                                     <div className="relative ml-2 group">
                                         <Info 
                                             className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer transition-colors"
                                         />
                                         <div className="absolute bottom-full left-0 mb-2 p-3 w-80 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs invisible group-hover:visible z-50">
-                                            <div className="mb-1 font-medium">Agent Types</div>
-                                            Conversation agents&apos; responses are user-facing. You can use conversation agents for multi-turn conversations with users.
+                                            <div className="mb-1 font-medium">Типы агентов</div>
+                                            Ответы агентов для общения с пользователями. Вы можете использовать агентов для многоходовых разговоров с пользователями.
                                             <br />
                                             <br />
-                                            Task agents&apos; responses are internal and available to other agents. You can use them to build pipelines and DAGs within workflows. E.g. Conversation Agent {'->'} Task Agent {'->'} Task Agent.
+                                            Ответы агентов для внутренних целей. Вы можете использовать их для построения конвейеров и DAG в рабочих процессах. Например: Агент общения {`->`} Агент задач {`->`} Агент задач.
                                             <div className="absolute h-2 w-2 bg-white dark:bg-gray-800 transform rotate-45 -bottom-1 left-4 border-r border-b border-gray-200 dark:border-gray-700"></div>
                                         </div>
                                     </div>
@@ -473,8 +478,8 @@ export function AgentConfig({
                                 <CustomDropdown
                                     value={agent.outputVisibility}
                                     options={[
-                                        { key: "user_facing", label: "Conversation Agent" },
-                                        { key: "internal", label: "Task Agent" }
+                                        { key: "user_facing", label: "Агент общения" },
+                                        { key: "internal", label: "Агент задач" }
                                     ]}
                                     onChange={(value) => handleUpdate({
                                         ...agent,
@@ -483,24 +488,205 @@ export function AgentConfig({
                                 />
                             </div>
 
+
+
+                            {useRag && (
+                                <div className="space-y-4">
+                                    <label className={sectionHeaderStyles}>
+                                        RAG
+                                    </label>
+                                    <div className="flex flex-col gap-3">
+                                        <div>
+                                            <Select
+                                                variant="bordered"
+                                                placeholder="Добавить источник данных"
+
+                                                size="sm"
+                                                className="w-64"
+                                                onSelectionChange={(keys) => {
+                                                    const key = keys.currentKey as string;
+                                                    if (key) {
+                                                        // Находим имя источника данных по ID
+                                                        const selectedDs = dataSources.find(ds => ds._id === key);
+                                                        const sourceName = selectedDs?.name || key;
+                                                        handleUpdate({
+                                                            ...agent,
+                                                            ragDataSources: [...(agent.ragDataSources || []), sourceName]
+                                                        });
+                                                    }
+                                                }}
+                                                startContent={<PlusIcon className="w-4 h-4 text-gray-500" />}
+                                            >
+
+                                                {dataSources
+                                                    .filter((ds) => {
+                                                        // Проверяем, что ни ID, ни имя источника не входят в список уже добавленных
+                                                        return !(agent.ragDataSources || []).includes(ds._id) && 
+                                                               !(agent.ragDataSources || []).includes(ds.name);
+                                                    })
+                                                    .map((ds) => (
+                                                        <SelectItem key={ds._id}>
+                                                            {ds.name}
+                                                        </SelectItem>
+                                                    ))
+                                                }
+                                            </Select>
+
+                                        </div>
+
+
+                                        <div className="flex flex-col gap-2">
+                                            {(agent.ragDataSources || []).map((source) => {
+                                                // Ищем источник данных сначала по ID, затем по имени
+                                                const ds = dataSources.find((ds) => ds._id === source || ds.name === source);
+                                                return (
+                                                    <div 
+                                                        key={source}
+                                                        className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="flex items-center justify-center w-8 h-8 rounded-md bg-indigo-50 dark:bg-indigo-900/20">
+                                                                <svg 
+                                                                    className="w-4 h-4 text-indigo-600 dark:text-indigo-400" 
+                                                                    fill="none" 
+                                                                    viewBox="0 0 24 24" 
+                                                                    stroke="currentColor"
+
+                                                                >
+                                                                    <path 
+                                                                        strokeLinecap="round" 
+                                                                        strokeLinejoin="round" 
+                                                                        strokeWidth={2} 
+                                                                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" 
+                                                                    />
+                                                                </svg>
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                                    {ds?.name || "Unknown"}
+                                                                </span>
+                                                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                                    Источник данных
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <CustomButton
+                                                            variant="tertiary"
+                                                            size="sm"
+                                                            className="text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                            onClick={() => {
+                                                                const newSources = agent.ragDataSources?.filter((s) => s !== source);
+                                                                handleUpdate({
+                                                                    ...agent,
+                                                                    ragDataSources: newSources
+                                                                });
+                                                            }}
+                                                            startContent={<Trash2 className="w-4 h-4" />}
+                                                        >
+                                                            Удалить
+                                                        </CustomButton>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {agent.ragDataSources !== undefined && agent.ragDataSources.length > 0 && (
+                                            <>
+                                                <div className="mt-4">
+                                                    <button
+                                                        onClick={() => setIsAdvancedConfigOpen(!isAdvancedConfigOpen)}
+                                                        className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                                                    >
+                                                        {isAdvancedConfigOpen ? 
+                                                            <ChevronDown className="w-4 h-4 text-gray-400" /> : 
+                                                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                                                        }
+                                                        Расширенная конфигурация RAG
+                                                    </button>
+                                                    
+                                                    {isAdvancedConfigOpen && (
+                                                        <div className="mt-3 ml-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                                                            <div className="grid gap-6">
+                                                                <div className="space-y-2">
+                                                                    <label className={sectionHeaderStyles}>
+                                                                        Тип возвращаемого значения
+                                                                    </label>
+                                                                    <div className="flex gap-4">
+                                                                        {["chunks", "content"].map((type) => (
+                                                                            <button
+                                                                                key={type}
+                                                                                onClick={() => handleUpdate({
+                                                                                    ...agent,
+                                                                                    ragReturnType: type as z.infer<typeof WorkflowAgent>['ragReturnType']
+                                                                                })}
+                                                                                className={clsx(
+                                                                                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                                                                                    agent.ragReturnType === type
+                                                                                        ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-2 border-indigo-200 dark:border-indigo-800"
+                                                                                        : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                                                                                )}
+                                                                            >
+                                                                                {type.charAt(0).toUpperCase() + type.slice(1)}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="space-y-2">
+                                                                    <label className={sectionHeaderStyles}>
+                                                                        Количество совпадений
+                                                                    </label>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <input
+                                                                            type="number"
+                                                                            min="1"
+                                                                            max="20"
+                                                                            className="w-24 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 focus:border-indigo-500 dark:focus:border-indigo-400"
+                                                                            value={agent.ragK}
+                                                                            onChange={(e) => handleUpdate({
+                                                                                ...agent,
+                                                                                ragK: parseInt(e.target.value)
+                                                                            })}
+                                                                        />
+                                                                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                                                                            совпадений
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                                        Количество релевантных частей (1-20)
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+
+
                             <div className="space-y-4">
                                 <div className="flex items-center">
                                     <label className={sectionHeaderStyles}>
-                                        Model
+                                        Модель
                                     </label>
                                     <div className="relative ml-2 group">
                                         <Info 
                                             className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer transition-colors"
                                         />
                                         <div className="absolute bottom-full left-0 mb-2 p-3 w-80 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs invisible group-hover:visible z-50">
-                                            <div className="mb-1 font-medium">Model Configuration</div>
-                                            Set this according to the PROVIDER_BASE_URL you have set in your .env file (such as your LiteLLM, gateway). 
+                                            <div className="mb-1 font-medium">Конфигурация модели</div>
+                                            Установите это в соответствии с PROVIDER_BASE_URL, который вы установили в своем .env файле (например, LiteLLM, gateway). 
                                             <br />
                                             <br />
-                                            E.g. LiteLLM&apos;s naming convention is like: &apos;claude-3-7-sonnet-latest&apos;, but you may have set alias model names or might be using a different provider like openrouter, openai etc. 
+                                            Например: LiteLLM&apos;s naming convention is like: &apos;claude-3-7-sonnet-latest&apos;, но вы можете использовать другие имена моделей или другие поставщики, такие как openrouter, openai и т.д. 
                                             <br />
                                             <br />
-                                            By default, the model is set to gpt-4.1, assuming your OpenAI API key is set in PROVIDER_API_KEY and PROVIDER_BASE_URL is not set.
+                                            {/* По умолчанию модель установлена на Gigachat, предполагая, что ваш API ключ установлен в PROVIDER_API_KEY и PROVIDER_BASE_URL не установлен. */}
                                             <div className="absolute h-2 w-2 bg-white dark:bg-gray-800 transform rotate-45 -bottom-1 left-4 border-r border-b border-gray-200 dark:border-gray-700"></div>
                                         </div>
                                     </div>
@@ -520,15 +706,15 @@ export function AgentConfig({
                             <div className="space-y-4">
                                 <div className="flex items-center">
                                     <label className={sectionHeaderStyles}>
-                                        Max calls from parent agent per turn
+                                        Максимальное количество вызовов от родительского агента за один раз
                                     </label>
                                     <div className="relative ml-2 group">
                                         <Info 
                                             className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer transition-colors"
                                         />
                                         <div className="absolute bottom-full left-0 mb-2 p-3 w-80 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs invisible group-hover:visible z-50">
-                                            <div className="mb-1 font-medium">Max Calls Configuration</div>
-                                            This setting limits how many times a parent agent can call this agent in a single turn, to prevent infinite loops.
+                                            <div className="mb-1 font-medium">Конфигурация максимального количества вызовов</div>
+                                            Это ограничение на количество раз, которое родительский агент может вызывать этот агент в одном ходе, чтобы избежать бесконечных циклов.
                                             <div className="absolute h-2 w-2 bg-white dark:bg-gray-800 transform rotate-45 -bottom-1 left-4 border-r border-b border-gray-200 dark:border-gray-700"></div>
                                         </div>
                                     </div>
@@ -550,14 +736,14 @@ export function AgentConfig({
                             {USE_TRANSFER_CONTROL_OPTIONS && (
                                 <div className="space-y-4">
                                     <label className={sectionHeaderStyles}>
-                                        Conversation control after turn
+                                        Контроль после хода
                                     </label>
                                     <CustomDropdown
                                         value={agent.controlType}
                                         options={[
-                                            { key: "retain", label: "Retain control" },
-                                            { key: "relinquish_to_parent", label: "Relinquish to parent" },
-                                            { key: "relinquish_to_start", label: "Relinquish to 'start' agent" }
+                                            { key: "retain", label: "Сохранить контроль" },
+                                            { key: "relinquish_to_parent", label: "Передать контроль родительскому агенту" },
+                                            { key: "relinquish_to_start", label: "Передать контроль &apos;начальному&apos; агенту" }
                                         ]}
                                         onChange={(value) => handleUpdate({
                                             ...agent,
@@ -574,7 +760,7 @@ export function AgentConfig({
                             <div className="flex flex-col gap-3">
                                 <div className="space-y-2">
                                     <label className={sectionHeaderStyles}>
-                                        DATA SOURCES
+                                        ИСТОЧНИК ДАННЫХ
                                     </label>
                                     <div className="flex items-center gap-3">
                                         <Select
@@ -610,7 +796,7 @@ export function AgentConfig({
                                                 onClick={handleUpdateInstructions}
                                                 className="whitespace-nowrap"
                                             >
-                                                Update Instructions
+                                                Обновить инструкции
                                             </CustomButton>
                                         )}
                                     </div>
@@ -645,7 +831,7 @@ export function AgentConfig({
                                                             {ds?.name || "Unknown"}
                                                         </span>
                                                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                            Data Source
+                                                            Источник данных
                                                         </span>
                                                     </div>
                                                 </div>
@@ -662,7 +848,7 @@ export function AgentConfig({
                                                     }}
                                                     startContent={<Trash2 className="w-4 h-4" />}
                                                 >
-                                                    Remove
+                                                    Удалить
                                                 </CustomButton>
                                             </div>
                                         );
@@ -680,7 +866,7 @@ export function AgentConfig({
                                                     <ChevronDown className="w-4 h-4 text-gray-400" /> : 
                                                     <ChevronRight className="w-4 h-4 text-gray-400" />
                                                 }
-                                                Advanced RAG configuration
+                                                Расширенная конфигурация RAG
                                             </button>
                                             
                                             {isAdvancedConfigOpen && (
@@ -688,7 +874,7 @@ export function AgentConfig({
                                                     <div className="grid gap-6">
                                                         <div className="space-y-2">
                                                             <label className={sectionHeaderStyles}>
-                                                                Return type
+                                                                Тип возвращаемого значения
                                                             </label>
                                                             <div className="flex gap-4">
                                                                 {["chunks", "content"].map((type) => (
@@ -713,7 +899,7 @@ export function AgentConfig({
 
                                                         <div className="space-y-2">
                                                             <label className={sectionHeaderStyles}>
-                                                                Number of matches
+                                                                Количество совпадений
                                                             </label>
                                                             <div className="flex items-center gap-3">
                                                                 <input
@@ -728,11 +914,11 @@ export function AgentConfig({
                                                                     })}
                                                                 />
                                                                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                                                                    matches
+                                                                    совпадений
                                                                 </span>
                                                             </div>
                                                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                                Number of relevant chunks to retrieve (1-20)
+                                                                Количество релевантных частей (1-20)
                                                             </p>
                                                         </div>
                                                     </div>
@@ -745,6 +931,7 @@ export function AgentConfig({
                         </div>
                     )}
                 </div>
+
 
                 <PreviewModalProvider>
                     <GenerateInstructionsModal 
@@ -840,7 +1027,7 @@ function GenerateInstructionsModal({
     return (
         <Modal isOpen={isOpen} onClose={onClose} size="lg">
             <ModalContent>
-                <ModalHeader>Generate Instructions</ModalHeader>
+                <ModalHeader>Сгенерировать инструкции</ModalHeader>
                 <ModalBody>
                     <div className="flex flex-col gap-4">
                         {error && (
@@ -854,7 +1041,7 @@ function GenerateInstructionsModal({
                                         handleGenerate();
                                     }}
                                 >
-                                    Retry
+                                    Повторить
                                 </CustomButton>
                             </div>
                         )}
@@ -864,7 +1051,7 @@ function GenerateInstructionsModal({
                             onChange={(e) => setPrompt(e.target.value)}
                             onKeyDown={handleKeyDown}
                             disabled={isLoading}
-                            placeholder="e.g., This agent should help users analyze their data and provide insights..."
+                            placeholder="Например: агент помогает анализировать данные и даёт советы"
                             className={textareaStyles}
                             autoResize
                         />
@@ -877,7 +1064,7 @@ function GenerateInstructionsModal({
                         onClick={onClose}
                         disabled={isLoading}
                     >
-                        Cancel
+                        Отменить
                     </CustomButton>
                     <CustomButton
                         variant="primary"
@@ -886,7 +1073,7 @@ function GenerateInstructionsModal({
                         disabled={!prompt.trim() || isLoading}
                         isLoading={isLoading}
                     >
-                        Generate
+                        Сгенерировать
                     </CustomButton>
                 </ModalFooter>
             </ModalContent>
@@ -896,13 +1083,13 @@ function GenerateInstructionsModal({
 
 function validateAgentName(value: string, currentName?: string, usedNames?: Set<string>) {
     if (value.length === 0) {
-        return "Name cannot be empty";
+        return "Имя не может быть пустым";
     }
     if (currentName && value !== currentName && usedNames?.has(value)) {
-        return "This name is already taken";
+        return "Это имя уже занято";
     }
     if (!/^[a-zA-Z0-9_-\s]+$/.test(value)) {
-        return "Name must contain only letters, numbers, underscores, hyphens, and spaces";
+        return "Имя может содержать только буквы, цифры, подчеркивания, дефисы и пробелы";
     }
     return null;
 }

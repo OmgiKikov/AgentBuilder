@@ -1,449 +1,441 @@
-'use client';
+"use client"
 
-import { useEffect, useState, useRef } from "react";
-import { createProject, createProjectFromPrompt } from "@/app/actions/project_actions";
-import { useRouter } from 'next/navigation';
-import clsx from 'clsx';
-import { starting_copilot_prompts } from "@/app/lib/project_templates";
-import { SectionHeading } from "@/components/ui/section-heading";
-import { Textarea } from "@/components/ui/textarea";
-import { Submit } from "./submit-button";
-import { Button } from "@/components/ui/button";
-import { FolderOpenIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
-import { USE_MULTIPLE_PROJECTS } from "@/app/lib/feature_flags";
-import { HorizontalDivider } from "@/components/ui/horizontal-divider";
-import { Tooltip } from "@heroui/react";
+import type React from "react"
+import { useState, useEffect } from "react"
+import { createProject, createProjectFromPrompt } from "@/app/actions/project_actions"
+import { useRouter } from "next/navigation"
+import { starting_copilot_prompts } from "@/app/lib/project_templates"
+import { Button } from "@/components/ui/button"
+import { FolderOpenIcon, SendIcon, BotIcon, SparklesIcon, LightbulbIcon } from "lucide-react"
+import { USE_MULTIPLE_PROJECTS } from "@/app/lib/feature_flags"
+import { HorizontalDivider } from "@/components/ui/horizontal-divider"
+import Image from "next/image"
+import clsx from "clsx"
 
-// Add glow animation styles
-const glowStyles = `
-    @keyframes glow {
-        0% {
-            border-color: rgba(99, 102, 241, 0.3);
-            box-shadow: 0 0 8px 1px rgba(99, 102, 241, 0.2);
-        }
-        50% {
-            border-color: rgba(99, 102, 241, 0.6);
-            box-shadow: 0 0 12px 2px rgba(99, 102, 241, 0.4);
-        }
-        100% {
-            border-color: rgba(99, 102, 241, 0.3);
-            box-shadow: 0 0 8px 1px rgba(99, 102, 241, 0.2);
-        }
-    }
+// Define a type for the prompts dictionary
+type PromptDict = { [key: string]: string }
 
-    @keyframes glow-dark {
-        0% {
-            border-color: rgba(129, 140, 248, 0.3);
-            box-shadow: 0 0 8px 1px rgba(129, 140, 248, 0.2);
-        }
-        50% {
-            border-color: rgba(129, 140, 248, 0.6);
-            box-shadow: 0 0 12px 2px rgba(129, 140, 248, 0.4);
-        }
-        100% {
-            border-color: rgba(129, 140, 248, 0.3);
-            box-shadow: 0 0 8px 1px rgba(129, 140, 248, 0.2);
-        }
-    }
-
-    .animate-glow {
-        animation: glow 2s ease-in-out infinite;
-        border-width: 2px;
-    }
-
-    .dark .animate-glow {
-        animation: glow-dark 2s ease-in-out infinite;
-        border-width: 2px;
-    }
-`;
-
-const TabType = {
-    Describe: 'describe',
-    Blank: 'blank',
-    Example: 'example'
-} as const;
-
-type TabState = typeof TabType[keyof typeof TabType];
-
-const isNotBlankTemplate = (tab: TabState): boolean => tab !== 'blank';
-
-const tabStyles = clsx(
-    "px-4 py-2 text-sm font-medium",
-    "rounded-lg",
-    "focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20",
-    "transition-colors duration-150"
-);
-
-const activeTabStyles = clsx(
-    "bg-white dark:bg-gray-800",
-    "text-gray-900 dark:text-gray-100",
-    "shadow-sm",
-    "border border-gray-200 dark:border-gray-700"
-);
-
-const inactiveTabStyles = clsx(
-    "text-gray-600 dark:text-gray-400",
-    "hover:bg-gray-50 dark:hover:bg-gray-750"
-);
-
-const largeSectionHeaderStyles = clsx(
-    "text-lg font-medium",
-    "text-gray-900 dark:text-gray-100"
-);
-
-const textareaStyles = clsx(
-    "w-full",
-    "rounded-lg p-3",
-    "border border-gray-200 dark:border-gray-700",
-    "bg-white dark:bg-gray-800",
-    "hover:bg-gray-50 dark:hover:bg-gray-750",
-    "focus:shadow-inner focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20",
-    "placeholder:text-gray-400 dark:placeholder:text-gray-500",
-    "transition-all duration-200"
-);
-
-const emptyTextareaStyles = clsx(
-    "animate-glow",
-    "border-indigo-500/40 dark:border-indigo-400/40",
-    "shadow-[0_0_8px_1px_rgba(99,102,241,0.2)] dark:shadow-[0_0_8px_1px_rgba(129,140,248,0.2)]"
-);
-
-const tabButtonStyles = clsx(
-    "border border-gray-200 dark:border-gray-700"
-);
-
-const selectedTabStyles = clsx(
-    tabButtonStyles,
-    "text-gray-900 dark:text-gray-100",
-    "text-base"
-);
-
-const unselectedTabStyles = clsx(
-    tabButtonStyles,
-    "text-gray-900 dark:text-gray-100",
-    "text-sm"
-);
+// Filter and slice example prompts
+const examplePrompts: PromptDict = Object.entries(starting_copilot_prompts)
+  .filter(([name]) => name !== "Blank Template")
+  .slice(0, 3) // Take first 3 examples
+  .reduce((acc, [name, prompt]) => {
+    acc[name] = prompt
+    return acc
+  }, {} as PromptDict)
 
 interface CreateProjectProps {
-    defaultName: string;
-    onOpenProjectPane: () => void;
-    isProjectPaneOpen: boolean;
+  defaultName: string
+  onOpenProjectPane: () => void
+  isProjectPaneOpen: boolean
 }
 
 export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpen }: CreateProjectProps) {
-    const [selectedTab, setSelectedTab] = useState<TabState>(TabType.Describe);
-    const [isExamplesDropdownOpen, setIsExamplesDropdownOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
-    const [customPrompt, setCustomPrompt] = useState("");
-    const [name, setName] = useState(defaultName);
-    const [promptError, setPromptError] = useState<string | null>(null);
-    const router = useRouter();
+  const [customPrompt, setCustomPrompt] = useState("")
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const router = useRouter()
 
-    // Add this effect to update name when defaultName changes
-    useEffect(() => {
-        setName(defaultName);
-    }, [defaultName]);
+  // Animation on initial load
+  useEffect(() => {
+    setIsLoaded(true)
+  }, [])
 
-    // Inject glow animation styles
-    useEffect(() => {
-        const styleSheet = document.createElement("style");
-        styleSheet.innerText = glowStyles;
-        document.head.appendChild(styleSheet);
+  const handleExampleSelect = (examplePrompt: string) => {
+    setCustomPrompt(examplePrompt || "")
+    document.getElementById("prompt-textarea")?.focus()
+  }
 
-        return () => {
-            document.head.removeChild(styleSheet);
-        };
-    }, []);
+  async function handleSubmit(formData: FormData) {
+    try {
+      setIsSubmitting(true)
+      const projectName = defaultName
+      const promptContent = customPrompt.trim()
 
-    // Add click outside handler
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsExamplesDropdownOpen(false);
-            }
+      let response
+
+      if (promptContent) {
+        const promptFormData = new FormData()
+        promptFormData.append("name", projectName)
+        promptFormData.append("prompt", promptContent)
+        response = await createProjectFromPrompt(promptFormData)
+
+        if (response?.id) {
+          localStorage.setItem(`project_prompt_${response.id}`, promptContent)
         }
+      } else {
+        const blankFormData = new FormData()
+        blankFormData.append("name", projectName)
+        blankFormData.append("template", "default")
+        response = await createProject(blankFormData)
+      }
 
-        if (isExamplesDropdownOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
+      if (!response?.id) {
+        console.error("Project creation failed")
+        throw new Error("Project creation failed")
+      }
 
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isExamplesDropdownOpen]);
-
-    const handleTabChange = (tab: TabState) => {
-        setSelectedTab(tab);
-        setIsExamplesDropdownOpen(false);
-
-        if (tab === TabType.Blank) {
-            setCustomPrompt('');
-        } else if (tab === TabType.Describe) {
-            setCustomPrompt('');
-        }
-    };
-
-    const handleBlankTemplateClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        handleTabChange(TabType.Blank);
-    };
-
-    const handleExampleSelect = (exampleName: string) => {
-        setSelectedTab(TabType.Example);
-        setCustomPrompt(starting_copilot_prompts[exampleName] || '');
-        setIsExamplesDropdownOpen(false);
-    };
-
-    async function handleSubmit(formData: FormData) {
-        try {
-            if (selectedTab !== TabType.Blank && !customPrompt.trim()) {
-                setPromptError("Prompt cannot be empty");
-                return;
-            }
-
-            let response;
-            
-            if (selectedTab === TabType.Blank) {
-                const newFormData = new FormData();
-                newFormData.append('name', name);
-                newFormData.append('template', 'default');
-                response = await createProject(newFormData);
-            } else {
-                const newFormData = new FormData();
-                newFormData.append('name', name);
-                newFormData.append('prompt', customPrompt);
-                response = await createProjectFromPrompt(newFormData);
-                
-                if (response?.id && customPrompt) {
-                    localStorage.setItem(`project_prompt_${response.id}`, customPrompt);
-                }
-            }
-
-            if (!response?.id) {
-                throw new Error('Project creation failed');
-            }
-
-            router.push(`/projects/${response.id}/workflow`);
-        } catch (error) {
-            console.error('Error creating project:', error);
-        }
+      router.push(`/projects/${response.id}/workflow`)
+    } catch (error) {
+      console.error("Error creating project:", error)
+      setIsSubmitting(false)
     }
+  }
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && 
-            selectedTab !== TabType.Blank && 
-            (e.target as HTMLElement).tagName !== 'TEXTAREA') {
-            e.preventDefault();
-            const formData = new FormData();
-            formData.append('name', name);
-            handleSubmit(formData);
-        }
-    };
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && (e.target as HTMLElement).tagName === "TEXTAREA" && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit(new FormData())
+    }
+  }
 
-    return (
-        <div className={clsx(
-            "overflow-auto",
-            !USE_MULTIPLE_PROJECTS && "max-w-none px-12 py-12",
-            USE_MULTIPLE_PROJECTS && !isProjectPaneOpen && "col-span-full"
-        )}>
-            <section className={clsx(
-                "card h-full",
-                !USE_MULTIPLE_PROJECTS && "px-24",
-                USE_MULTIPLE_PROJECTS && "px-8"
-            )}>
-                {USE_MULTIPLE_PROJECTS && (
-                    <>
-                        <div className="px-4 pt-4 pb-6 flex justify-between items-center">
-                            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                                Create new assistant
-                            </h1>
-                            {!isProjectPaneOpen && (
-                                <Button
-                                    onClick={onOpenProjectPane}
-                                    variant="primary"
-                                    size="md"
-                                    startContent={<FolderOpenIcon className="w-4 h-4" />}
-                                >
-                                    View Existing Projects
-                                </Button>
-                            )}
-                        </div>
-                        <HorizontalDivider />
-                    </>
-                )}
-                
-                <form
-                    id="create-project-form"
-                    action={handleSubmit}
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        const formData = new FormData(e.currentTarget);
-                        handleSubmit(formData);
-                    }}
-                    onKeyDown={handleKeyDown}
-                    className="pt-6 pb-16 space-y-12"
+  return (
+    <div className="flex h-full min-h-0 box-border overflow-x-hidden">
+      {/* Left Column: Content */}
+      <div
+        className={clsx(
+          "flex-1 flex flex-col h-full min-h-0",
+          "transition-opacity duration-500 ease-out",
+          isLoaded ? "opacity-100" : "opacity-0",
+        )}
+      >
+        {/* Header (Fixed Height) */}
+        <header className="p-4 shrink-0">
+          {USE_MULTIPLE_PROJECTS && (
+            <div className="flex justify-between items-center">
+              <div className="flex space-x-4">
+                <Button
+                  onClick={() => {
+                    document.getElementById("prompt-textarea")?.focus();
+                  }}
+                  variant="primary"
+                  size="md"
+                  className={clsx(
+                    "flex items-center gap-2",
+                    "transition-all duration-300",
+                    "hover:scale-105 active:scale-95",
+                  )}
                 >
-                    {/* Tab Section */}
-                    <div>
-                        <div className="mb-5">
-                            <SectionHeading>
-                                ✨ Get started
-                            </SectionHeading>
-                        </div>
+                  <BotIcon className="w-4 h-4" />
+                  Создайте AI-агента
+                </Button>
+                
+                <Button
+                  onClick={() => {
+                    const blankFormData = new FormData();
+                    blankFormData.append("name", defaultName);
+                    blankFormData.append("template", "default");
+                    createProject(blankFormData);
+                  }}
+                  variant="secondary"
+                  size="md"
+                  className={clsx(
+                    "flex items-center gap-2",
+                    "transition-all duration-300",
+                    "hover:scale-105 active:scale-95",
+                  )}
+                >
+                  <SparklesIcon className="w-4 h-4" />
+                  Начнем с нуля
+                </Button>
+              </div>
+              
+              {!isProjectPaneOpen && (
+                <Button
+                  onClick={onOpenProjectPane}
+                  variant="primary"
+                  size="md"
+                  className={clsx(
+                    "flex items-center gap-2",
+                    "transition-all duration-300",
+                    "hover:scale-105 active:scale-95",
+                  )}
+                >
+                  <FolderOpenIcon className="w-4 h-4" />
+                  Мои агенты
+                </Button>
+              )}
+            </div>
+          )}
+          {!USE_MULTIPLE_PROJECTS && (
+            <div className="flex space-x-4 justify-center">
+              <Button
+                onClick={() => {
+                  document.getElementById("prompt-textarea")?.focus();
+                }}
+                variant="primary"
+                size="md"
+                className={clsx(
+                  "flex items-center gap-2",
+                  "transition-all duration-300",
+                  "hover:scale-105 active:scale-95",
+                )}
+              >
+                <BotIcon className="w-4 h-4" />
+                Создайте AI-агента
+              </Button>
+              
+              <Button
+                onClick={() => {
+                  const blankFormData = new FormData();
+                  blankFormData.append("name", defaultName);
+                  blankFormData.append("template", "default");
+                  createProject(blankFormData);
+                }}
+                variant="secondary"
+                size="md"
+                className={clsx(
+                  "flex items-center gap-2",
+                  "transition-all duration-300",
+                  "hover:scale-105 active:scale-95",
+                )}
+              >
+                <SparklesIcon className="w-4 h-4" />
+                Начнем с нуля
+              </Button>
+            </div>
+          )}
+          {isProjectPaneOpen && <HorizontalDivider className="mt-2" />}
+        </header>
 
-                        {/* Tab Navigation */}
-                        <div className="flex gap-6 relative">
-                            <Button
-                                variant={selectedTab === TabType.Describe ? 'primary' : 'tertiary'}
-                                size="md"
-                                onClick={() => handleTabChange(TabType.Describe)}
-                                className={selectedTab === TabType.Describe ? selectedTabStyles : unselectedTabStyles}
-                            >
-                                Describe your assistant
-                            </Button>
-                            <Button
-                                variant={selectedTab === TabType.Blank ? 'primary' : 'tertiary'}
-                                size="md"
-                                onClick={handleBlankTemplateClick}
-                                type="button"
-                                className={selectedTab === TabType.Blank ? selectedTabStyles : unselectedTabStyles}
-                            >
-                                Start from a blank template
-                            </Button>
-                            <div className="relative" ref={dropdownRef}>
-                                <Button
-                                    variant={selectedTab === TabType.Example ? 'primary' : 'tertiary'}
-                                    size="md"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setIsExamplesDropdownOpen(!isExamplesDropdownOpen);
-                                    }}
-                                    type="button"
-                                    className={selectedTab === TabType.Example ? selectedTabStyles : unselectedTabStyles}
-                                    endContent={
-                                        <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                        </svg>
-                                    }
-                                >
-                                    Use an example
-                                </Button>
-                                
-                                {isExamplesDropdownOpen && (
-                                    <div className="absolute z-10 mt-2 min-w-[200px] max-w-[240px] rounded-lg shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                                        <div className="py-1">
-                                            {Object.entries(starting_copilot_prompts)
-                                                .filter(([name]) => name !== 'Blank Template')
-                                                .map(([name]) => (
-                                                    <Button
-                                                        key={name}
-                                                        variant="tertiary"
-                                                        size="sm"
-                                                        className="w-full justify-start text-left text-sm py-1.5"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            handleExampleSelect(name);
-                                                        }}
-                                                        type="button"
-                                                    >
-                                                        {name}
-                                                    </Button>
-                                                ))
-                                            }
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+        {/* Main Scrollable Content */}
+        <main className="flex-1 min-h-0 overflow-y-auto p-4">
+          <div
+            className={clsx(
+              "flex flex-wrap gap-2",
+              "transition-all duration-700 ease-out delay-100",
+              isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
+            )}
+          >
+            {Object.entries(examplePrompts).map(([name, prompt], index) => (
+              <button
+                key={name}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleExampleSelect(prompt)
+                }}
+                className={clsx(
+                  "px-4 py-1.5",
+                  "border border-gray-300 dark:border-gray-600",
+                  "rounded-full",
+                  "text-sm text-gray-600 dark:text-gray-300",
+                  "bg-transparent",
+                  "hover:bg-gray-100 dark:hover:bg-gray-700/50",
+                  "hover:border-gray-400 dark:hover:border-gray-500",
+                  "hover:scale-105",
+                  "focus:outline-none focus:ring-1 focus:ring-indigo-500/30 dark:focus:ring-indigo-400/30",
+                  "transition-all duration-300",
+                  "active:scale-95",
+                  "transition-all duration-500 ease-out"
+                )}
+                style={{
+                  transitionDelay: `${150 + index * 75}ms`,
+                }}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </main>
 
-                    {/* Custom Prompt Section - Only show when needed */}
-                    {(selectedTab === TabType.Describe || selectedTab === TabType.Example) && (
-                        <div className="space-y-4">
-                            <div className="flex flex-col gap-4">
-                                <label className={largeSectionHeaderStyles}>
-                                    {selectedTab === TabType.Describe ? '✏️ What do you want to build?' : '✏️ Customize the description'}
-                                </label>
-                                <div className="flex items-center gap-2">
-                                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                                        In the next step, our AI copilot will create agents for you, complete with mock-tools.
-                                    </p>
-                                    <Tooltip content={<div>If you already know the specific agents and tools you need, mention them below.<br /><br />Specify &apos;internal agents&apos; for task agents that will not interact with the user and &apos;user-facing agents&apos; for conversational agents that will interact with users.</div>} className="max-w-[560px]">
-                                        <InformationCircleIcon className="w-4 h-4 text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 cursor-help" />
-                                    </Tooltip>
-                                </div>
-                                <div className="space-y-2">
-                                    <Textarea
-                                        value={customPrompt}
-                                        onChange={(e) => {
-                                            setCustomPrompt(e.target.value);
-                                            setPromptError(null);
-                                        }}
-                                        placeholder="Example: Create a customer support assistant that can handle product inquiries and returns"
-                                        className={clsx(
-                                            textareaStyles,
-                                            "text-base",
-                                            "text-gray-900 dark:text-gray-100",
-                                            promptError && "border-red-500 focus:ring-red-500/20",
-                                            !customPrompt && emptyTextareaStyles
-                                        )}
-                                        style={{ minHeight: "120px" }}
-                                        autoFocus
-                                        autoResize
-                                        required={isNotBlankTemplate(selectedTab)}
-                                    />
-                                    {promptError && (
-                                        <p className="text-sm text-red-500">
-                                            {promptError}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+        {/* Footer (Form - Fixed Height) */}
+        <footer className={clsx(
+          "p-4 shrink-0 border-t border-gray-200 dark:border-gray-700",
+          "transition-all duration-700 ease-out delay-300",
+          isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8",
+        )}>
+          <form
+            id="create-project-form"
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSubmit(new FormData())
+            }}
+            onKeyDown={handleKeyDown}
+          >
+            <div
+              className={clsx(
+                "relative rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 shadow-sm overflow-hidden",
+                "transition-all duration-300",
+                "hover:border-gray-300 dark:hover:border-gray-600",
+                "focus-within:border-indigo-400 dark:focus-within:border-indigo-500",
+                "focus-within:ring-1 focus-within:ring-indigo-500/20 dark:focus-within:ring-indigo-400/20",
+              )}
+            >
+              <div className="p-3 pb-14">
+                <textarea
+                  id="prompt-textarea"
+                  name="prompt"
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  placeholder="✏️ Опишите, какие задачи должен выполнять ваш AI-агент..."
+                  className="w-full resize-none bg-transparent border-0 focus:ring-0 focus:outline-none text-base text-gray-800 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  style={{ minHeight: "60px" }}
+                  rows={2}
+                />
+              </div>
+              <div className="absolute bottom-3 right-3">
+                <button
+                  type="submit"
+                  disabled={!customPrompt.trim() || isSubmitting}
+                  className={clsx(
+                    "p-2 rounded-full",
+                    "bg-gray-900 dark:bg-gray-700",
+                    "hover:bg-gray-800 dark:hover:bg-gray-600",
+                    "transition-all duration-300",
+                    "hover:scale-110 active:scale-95",
+                    "disabled:hover:scale-100",
+                    "disabled:opacity-40 disabled:cursor-not-allowed",
+                    customPrompt.trim() ? "opacity-100" : "opacity-40",
+                    isSubmitting && "animate-pulse",
+                  )}
+                >
+                  <SendIcon
+                    className={clsx(
+                      "w-5 h-5 text-white",
+                      "transition-transform duration-300",
+                      isSubmitting ? "animate-spin" : "group-hover:translate-x-0.5",
                     )}
+                  />
+                </button>
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white dark:from-gray-800/90 to-transparent pointer-events-none"></div>
+            </div>
+          </form>
+        </footer>
+      </div>
 
-                    {selectedTab === TabType.Blank && (
-                        <div className="space-y-4">
-                            <div className="flex flex-col gap-4">
-                                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                                    👇 Click &ldquo;Create assistant&rdquo; below to get started
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Name Section */}
-                    {USE_MULTIPLE_PROJECTS && (
-                        <div className="space-y-4">
-                            <div className="flex flex-col gap-4">
-                                <label className={largeSectionHeaderStyles}>
-                                    🏷️ Name the project
-                                </label>
-                                <Textarea
-                                    required
-                                    name="name"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    className={clsx(
-                                        textareaStyles,
-                                        "min-h-[60px]",
-                                        "text-base",
-                                        "text-gray-900 dark:text-gray-100"
-                                    )}
-                                    placeholder={defaultName}
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Submit Button */}
-                    <div className="pt-1 w-full -mt-4">
-                        <Submit />
-                    </div>
-                </form>
-            </section>
+      {/* Right Column: Redesigned with modern UI and updated text */}
+      <div
+        className={clsx(
+          "w-1/2 relative hidden md:block h-full overflow-y-auto",
+          "transition-opacity duration-700 ease-out delay-300",
+          isLoaded ? "opacity-100" : "opacity-0",
+        )}
+      >
+        {/* Modern gradient background with animation */}
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+          {/* Animated decorative elements */}
+          <div
+            className={clsx(
+              "absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-purple-200/30 dark:bg-purple-900/20 blur-3xl",
+              "animate-pulse-slow",
+            )}
+            style={{ animationDuration: "8s" }}
+          ></div>
+          <div
+            className={clsx(
+              "absolute bottom-1/3 right-1/3 w-72 h-72 rounded-full bg-blue-200/30 dark:bg-blue-900/20 blur-3xl",
+              "animate-pulse-slow",
+            )}
+            style={{ animationDuration: "12s", animationDelay: "2s" }}
+          ></div>
         </div>
-    );
+
+        {/* Content container */}
+        <div className="relative z-10 h-full flex flex-col justify-between p-8">
+          {/* Top section with illustration and welcome text */}
+          <div
+            className={clsx(
+              "flex flex-col items-center justify-center pt-12",
+              "transition-all duration-1000 ease-out delay-500",
+              isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8",
+            )}
+          >
+            <div
+              className={clsx(
+                "relative w-48 h-48 mb-6",
+                "transition-transform duration-1000 ease-out",
+                isLoaded ? "scale-100" : "scale-90",
+                "hover:scale-105 transition-transform duration-500",
+              )}
+            >
+              <BotIcon 
+                className="w-48 h-48 text-purple-600 dark:text-purple-400"
+              />
+            </div>
+            <div className="text-center space-y-2 max-w-md">
+              <h2
+                className={clsx(
+                  "text-2xl font-bold text-gray-800 dark:text-gray-100",
+                  "transition-all duration-700 ease-out delay-600",
+                  isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
+                )}
+              >
+                Платформа для создания AI-агентов
+              </h2>
+              <p
+                className={clsx(
+                  "text-gray-600 dark:text-gray-300",
+                  "transition-all duration-700 ease-out delay-700",
+                  isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
+                )}
+              >
+                Создавайте персонализированных AI-агентов без навыков программирования
+              </p>
+            </div>
+          </div>
+
+          {/* Feature cards */}
+          <div className="space-y-3 mt-auto">
+            {[
+              {
+                icon: <BotIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />,
+                bgColor: "bg-purple-100 dark:bg-purple-900/30",
+                title: "Персонализированные агенты",
+                description: "Создавайте агентов для любых задач — от анализа данных до автоматизации",
+                delay: 800,
+              },
+              {
+                icon: <SparklesIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />,
+                bgColor: "bg-blue-100 dark:bg-blue-900/30",
+                title: "Простота использования",
+                description: "Просто опишите задачи, и платформа создаст агента за считанные минуты",
+                delay: 900,
+              },
+              {
+                icon: <LightbulbIcon className="w-4 h-4 text-green-600 dark:text-green-400" />,
+                bgColor: "bg-green-100 dark:bg-green-900/30",
+                title: "Начните прямо сейчас",
+                description: "Опишите задачи вашего агента в поле слева и создайте своего первого AI-помощника",
+                delay: 1000,
+              },
+            ].map((feature, index) => (
+              <div
+                key={index}
+                className={clsx(
+                  "bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-sm",
+                  "transition-all duration-500 ease-out",
+                  "hover:border-gray-300 dark:hover:border-gray-600",
+                  "hover:shadow-md hover:translate-y-[-2px]",
+                  isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
+                )}
+                style={{
+                  transitionDelay: `${feature.delay}ms`,
+                  transitionDuration: `${500 + index * 100}ms`,
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={clsx(
+                      "p-1.5 rounded-full",
+                      feature.bgColor,
+                      "transition-transform duration-300 ease-out",
+                      "group-hover:scale-110",
+                    )}
+                  >
+                    {feature.icon}
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-gray-900 dark:text-gray-100 text-sm">{feature.title}</h3>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">{feature.description}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
