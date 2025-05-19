@@ -189,7 +189,9 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
           </div>
 
           {/* Theme and Auth Controls */}
-          {/* <div className="p-3 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
+          <div className="p-3 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
+            {/* Кнопка Help скрыта по требованию */}
+            {/*
             {USE_PRODUCT_TOUR && !isProjectsRoute && (
               <Tooltip content={collapsed ? "Help" : ""} showArrow placement="right">
                 <button 
@@ -207,10 +209,9 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
                   {!collapsed && <span>Help</span>}
                 </button>
               </Tooltip>
-            )} */}
-
+            )}
+            */}
             <Tooltip content={collapsed ? "Сменить тему" : ""} showArrow placement="right">
-
               <button 
                 onClick={toggleTheme}
                 className={`
@@ -223,10 +224,8 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
               >
                 { theme == "light" ? <Moon size={COLLAPSED_ICON_SIZE} /> : <Sun size={COLLAPSED_ICON_SIZE} /> }
                 {!collapsed && <span>Сменить тему</span>}
-
               </button>
             </Tooltip>
-
             {useAuth && (
               <Tooltip content={collapsed ? "Аккаунт" : ""} showArrow placement="right">
                 <div 
