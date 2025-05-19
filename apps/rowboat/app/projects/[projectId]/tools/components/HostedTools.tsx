@@ -168,6 +168,17 @@ const ToolCard = ({
   );
 };
 
+const ServerOperationBanner = ({ serverName, operation }: { serverName: string, operation: 'setup' | 'delete' }) => (
+  <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 
+    border border-blue-100 dark:border-blue-800 rounded-lg p-2 text-center text-sm
+    text-blue-700 dark:text-blue-300 animate-fadeIn">
+    <div className="flex items-center justify-center gap-2">
+      <div className="animate-spin rounded-full h-4 w-4 border-2 border-b-transparent border-current" />
+      <span>{operation === 'setup' ? 'Setting up server...' : 'Deleting server...'}</span>
+    </div>
+  </div>
+);
+
 export function HostedTools() {
   const params = useParams();
   const projectId = typeof params.projectId === 'string' ? params.projectId : params.projectId?.[0];
@@ -182,6 +193,7 @@ export function HostedTools() {
   const [toggleError, setToggleError] = useState<{serverId: string; message: string} | null>(null);
   const [enabledServers, setEnabledServers] = useState<Set<string>>(new Set());
   const [togglingServers, setTogglingServers] = useState<Set<string>>(new Set());
+  const [serverOperations, setServerOperations] = useState<Map<string, 'setup' | 'delete'>>(new Map());
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const [togglingTools, setTogglingTools] = useState<Set<string>>(new Set());
   const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
@@ -267,92 +279,103 @@ export function HostedTools() {
 
   const handleToggleTool = async (server: McpServerType) => {
     try {
-        const serverKey = server.name;
-        console.log('Toggle:', { server: serverKey, newState: !enabledServers.has(serverKey) });
+      const serverKey = server.name;
+      console.log('Toggle:', { server: serverKey, newState: !enabledServers.has(serverKey) });
 
-        setTogglingServers(prev => new Set([...prev, serverKey]));
-        setToggleError(null);
+      setTogglingServers(prev => new Set([...prev, serverKey]));
+      setToggleError(null);
 
-        const isCurrentlyEnabled = enabledServers.has(serverKey);
-        const newState = !isCurrentlyEnabled;
+      const isCurrentlyEnabled = enabledServers.has(serverKey);
+      const newState = !isCurrentlyEnabled;
+      
+      // Set the operation type
+      setServerOperations(prev => {
+        const next = new Map(prev);
+        next.set(serverKey, newState ? 'setup' : 'delete');
+        return next;
+      });
+
+      try {
+        const result = await enableServer(server.name, projectId || "", newState);
         
-        try {
-            const result = await enableServer(server.name, projectId || "", newState);
-            
-            // Update local state after all operations are complete
-            setEnabledServers(prev => {
-                const next = new Set(prev);
-                if (!newState) {
-                    next.delete(serverKey);
-                } else if ('instanceId' in result) {
-                    next.add(serverKey);
-                }
-                return next;
-            });
-
-            // Update only the specific server in the servers state
-            setServers(prevServers => {
-                return prevServers.map(s => {
-                    if (s.name === serverKey) {
-                        if (!newState) {
-                            // If disabling, preserve server structure but clear operational data
-                            return {
-                                ...s,
-                                isActive: false,
-                                serverUrl: undefined,
-                                tools: [],
-                                availableTools: s.availableTools, // Keep available tools list
-                                isAuthenticated: false
-                            };
-                        } else if ('instanceId' in result) {
-                            // If enabling, wait for server response to update tools
-                            return {
-                                ...s,
-                                isActive: true,
-                                instanceId: result.instanceId,
-                                serverUrl: result.serverUrl,
-                                isAuthenticated: false
-                            };
-                        }
-                    }
-                    return s;
-                });
-            });
-
-            // Update tool counts
-            setServerToolCounts(prev => {
-                const next = new Map(prev);
-                if (!newState) {
-                    next.set(serverKey, 0); // Set to 0 instead of deleting
-                }
-                return next;
-            });
-
-        } catch (err) {
-            console.error('Toggle failed:', { server: serverKey, error: err });
-            // Revert local state on error
-            setEnabledServers(prev => {
-                const next = new Set(prev);
-                if (newState) {
-                    next.delete(serverKey);
-                } else {
-                    next.add(serverKey);
-                }
-                return next;
-            });
-            setToggleError({
-                serverId: serverKey,
-                message: "We're having trouble setting up this server. Please reach out on discord."
-            });
-        }
-    } finally {
-        setTogglingServers(prev => {
-            const next = new Set(prev);
-            next.delete(server.name);
-            return next;
+        // Update local state after all operations are complete
+        setEnabledServers(prev => {
+          const next = new Set(prev);
+          if (!newState) {
+            next.delete(serverKey);
+          } else if ('instanceId' in result) {
+            next.add(serverKey);
+          }
+          return next;
         });
+
+        // Update only the specific server in the servers state
+        setServers(prevServers => {
+          return prevServers.map(s => {
+            if (s.name === serverKey) {
+              if (!newState) {
+                return {
+                  ...s,
+                  isActive: false,
+                  serverUrl: undefined,
+                  tools: [],
+                  availableTools: s.availableTools,
+                  isAuthenticated: false
+                };
+              } else if ('instanceId' in result) {
+                return {
+                  ...s,
+                  isActive: true,
+                  instanceId: result.instanceId,
+                  serverUrl: result.serverUrl,
+                  isAuthenticated: false
+                };
+              }
+            }
+            return s;
+          });
+        });
+
+        // Update tool counts
+        setServerToolCounts(prev => {
+          const next = new Map(prev);
+          if (!newState) {
+            next.set(serverKey, 0);
+          }
+          return next;
+        });
+
+      } catch (err) {
+        console.error('Toggle failed:', { server: serverKey, error: err });
+        // Revert local state on error
+        setEnabledServers(prev => {
+          const next = new Set(prev);
+          if (newState) {
+            next.delete(serverKey);
+          } else {
+            next.add(serverKey);
+          }
+          return next;
+        });
+        setToggleError({
+          serverId: serverKey,
+          message: "We're having trouble setting up this server. Please reach out on discord."
+        });
+      }
+    } finally {
+      const serverKey = server.name;
+      setTogglingServers(prev => {
+        const next = new Set(prev);
+        next.delete(serverKey);
+        return next;
+      });
+      setServerOperations(prev => {
+        const next = new Map(prev);
+        next.delete(serverKey);
+        return next;
+      });
     }
-};
+  };
 
   const handleAuthenticate = async (server: McpServerType) => {
     try {
@@ -583,6 +606,12 @@ export function HostedTools() {
                 hover:border-blue-200 dark:hover:border-blue-900"
             >
               <div className="flex flex-col h-full">
+                {serverOperations.get(server.name) && (
+                  <ServerOperationBanner 
+                    serverName={server.name} 
+                    operation={serverOperations.get(server.name)!} 
+                  />
+                )}
                 <div className="flex justify-between items-center mb-6">
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-2">
