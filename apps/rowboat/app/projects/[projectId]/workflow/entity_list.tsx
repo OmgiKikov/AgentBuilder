@@ -4,15 +4,15 @@ import { WorkflowPrompt } from "../../../lib/types/workflow_types";
 import { WorkflowAgent } from "../../../lib/types/workflow_types";
 import { Dropdown, DropdownItem, DropdownTrigger, DropdownMenu } from "@heroui/react";
 import { useRef, useEffect, useState } from "react";
-import { EllipsisVerticalIcon, ImportIcon, PlusIcon, Brain, Wrench, PenLine } from "lucide-react";
+import { EllipsisVerticalIcon, ImportIcon, PlusIcon, Brain, Wrench, PenLine, Library } from "lucide-react";
 import { Panel } from "@/components/common/panel-common";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
 
 const SECTION_HEIGHT_PERCENTAGES = {
-    AGENTS: 40,    // 50% of available height
+    AGENTS: 40,    // 40% of available height
     TOOLS: 30,     // 30% of available height
-    PROMPTS: 30,   // 20% of available height
+    PROMPTS: 30,   // 30% of available height
 } as const;
 
 const GAP_SIZE = 24; // 6 units * 4px (tailwind's default spacing unit)
@@ -61,6 +61,7 @@ const ListItemWithMenu = ({
     menuContent,
     statusLabel,
     icon,
+    iconClassName,
 }: {
     name: string;
     isSelected?: boolean;
@@ -70,6 +71,7 @@ const ListItemWithMenu = ({
     menuContent: React.ReactNode;
     statusLabel?: React.ReactNode;
     icon?: React.ReactNode;
+    iconClassName?: string;
 }) => (
     <div className={clsx(
         "group flex items-center gap-2 px-2 py-1.5 rounded-md",
@@ -90,7 +92,11 @@ const ListItemWithMenu = ({
             onClick={onClick}
             disabled={disabled}
         >
-            {icon}
+            {icon && (
+                <div className={clsx("flex-shrink-0", iconClassName)}>
+                    {icon}
+                </div>
+            )}
             {name}
         </button>
         <div className="flex items-center gap-2">
@@ -223,6 +229,20 @@ export function EntityList({
                             <div className="flex items-center gap-2">
                                 <Wrench className="w-4 h-4" />
                                 <span>Инструменты</span>
+                                <div className="flex items-center gap-1 ml-2">
+                                    {tools.some(t => t.isMcp) && (
+                                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20">
+                                            <ImportIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                            <span className="text-xs text-blue-600 dark:text-blue-400">MCP</span>
+                                        </div>
+                                    )}
+                                    {tools.some(t => t.isLibrary) && (
+                                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/20">
+                                            <Library className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                                            <span className="text-xs text-purple-600 dark:text-purple-400">Library</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
                                 <Button
@@ -238,18 +258,15 @@ export function EntityList({
                                 <Button
                                     variant="secondary"
                                     size="sm"
-                                    onClick={() => onAddTool({
-                                        mockTool: true,
-                                        parameters: {
-                                            type: 'object',
-                                            properties: {}
-                                        }
-                                    })}
+                                    onClick={() => onAddTool({})}
                                     className={`group ${buttonClasses}`}
                                     showHoverContent={true}
                                     hoverContent="Добавить инструмент"
                                 >
-                                    <PlusIcon className="w-4 h-4" />
+                                    <div className="flex items-center gap-1.5">
+                                        <PlusIcon className="w-4 h-4" />
+                                        <span>Добавить инструмент</span>
+                                    </div>
                                 </Button>
                             </div>
                         </div>
@@ -260,22 +277,34 @@ export function EntityList({
                     <div className="flex flex-col h-full overflow-y-auto">
                         {tools.length > 0 ? (
                             <div className="space-y-1 pb-2">
-                                {tools.map((tool, index) => (
-                                    <ListItemWithMenu
-                                        key={`tool-${index}`}
-                                        name={tool.name}
-                                        isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
-                                        onClick={() => onSelectTool(tool.name)}
-                                        selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
-                                        icon={tool.isMcp ? <ImportIcon className="w-4 h-4 text-blue-700" /> : undefined}
-                                        menuContent={
-                                            <EntityDropdown 
-                                                name={tool.name} 
-                                                onDelete={onDeleteTool} 
-                                            />
-                                        }
-                                    />
-                                ))}
+                                {tools.map((tool, index) => {
+                                    let toolIcon;
+                                    let iconClassName = "w-4 h-4";
+                                    if (tool.isMcp) {
+                                        toolIcon = <ImportIcon className={clsx(iconClassName, "text-blue-600 dark:text-blue-500")} />;
+                                    } else if (tool.isLibrary) {
+                                        toolIcon = <Library className={clsx(iconClassName, "text-purple-600 dark:text-purple-500")} />;
+                                    } else {
+                                        toolIcon = <Wrench className={clsx(iconClassName, "text-gray-600 dark:text-gray-500")} />;
+                                    }
+                                    return (
+                                        <ListItemWithMenu
+                                            key={`tool-${index}`}
+                                            name={tool.name}
+                                            isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
+                                            onClick={() => onSelectTool(tool.name)}
+                                            selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
+                                            icon={toolIcon}
+                                            menuContent={
+                                                <EntityDropdown 
+                                                    name={tool.name} 
+                                                    onDelete={onDeleteTool}
+                                                    isLocked={tool.isMcp || tool.isLibrary}
+                                                />
+                                            }
+                                        />
+                                    );
+                                })}
                             </div>
                         ) : (
                             <EmptyState entity="tools" />
@@ -384,10 +413,12 @@ function AgentDropdown({
 
 function EntityDropdown({
     name,
-    onDelete
+    onDelete,
+    isLocked,
 }: {
     name: string;
     onDelete: (name: string) => void;
+    isLocked?: boolean;
 }) {
     return (
         <Dropdown>
@@ -395,6 +426,7 @@ function EntityDropdown({
                 <EllipsisVerticalIcon size={16} />
             </DropdownTrigger>
             <DropdownMenu
+                disabledKeys={isLocked ? ['delete'] : []}
                 onAction={(key) => {
                     if (key === 'delete') {
                         onDelete(name);

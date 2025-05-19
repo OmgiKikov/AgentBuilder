@@ -29,7 +29,7 @@ import { PublishedBadge } from "./published_badge";
 import { BackIcon, HamburgerIcon, WorkflowIcon } from "../../../lib/components/icons";
 import { CopyIcon, ImportIcon, Layers2Icon, RadioIcon, RedoIcon, ServerIcon, Sparkles, UndoIcon, RocketIcon, PenLine, AlertTriangle, Trash2Icon, Settings2Icon, XIcon } from "lucide-react";
 import { EntityList } from "./entity_list";
-import { McpImportTools } from "./mcp_imports";
+// import { McpImportTools } from "./mcp_imports";
 import { ProductTour } from "@/components/common/product-tour";
 
 enablePatches();
@@ -757,10 +757,6 @@ export function WorkflowEditor({
         }, 1500);
     }
 
-    function triggerMcpImport() {
-        setIsMcpImportModalOpen(true);
-    }
-
     const processQueue = useCallback(async (state: State, dispatch: React.Dispatch<Action>) => {
         if (saving.current || saveQueue.current.length === 0) return;
 
@@ -783,10 +779,6 @@ export function WorkflowEditor({
             }
         }
     }, [isLive]);
-
-    function handleImportMcpTools(tools: z.infer<typeof WorkflowTool>[]) {
-        dispatch({ type: "import_mcp_tools", tools });
-    }
 
     useEffect(() => {
         if (state.present.pendingChanges && state.present.workflow) {
@@ -1228,11 +1220,5 @@ export function WorkflowEditor({
                 onComplete={() => setShowTour(false)}
             />
         )}
-        <McpImportTools
-            projectId={state.present.workflow.projectId}
-            isOpen={isMcpImportModalOpen}
-            onOpenChange={setIsMcpImportModalOpen}
-            onImport={handleImportMcpTools}
-        />
     </div>;
 }
