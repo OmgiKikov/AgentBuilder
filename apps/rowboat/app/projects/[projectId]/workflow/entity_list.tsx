@@ -71,41 +71,47 @@ const ListItemWithMenu = ({
     statusLabel?: React.ReactNode;
     icon?: React.ReactNode;
     iconClassName?: string;
-}) => (
-    <div className={clsx(
-        "group flex items-center gap-2 px-2 py-1.5 rounded-md",
-        {
-            "bg-indigo-50 dark:bg-indigo-950/30": isSelected,
-            "hover:bg-zinc-50 dark:hover:bg-zinc-800": !isSelected
-        }
-    )}>
-        <button
-            ref={selectedRef}
-            className={clsx(
-                "flex-1 flex items-center gap-2 text-sm text-left",
-                {
-                    "text-zinc-900 dark:text-zinc-100": !disabled,
-                    "text-zinc-400 dark:text-zinc-600": disabled,
-                }
-            )}
-            onClick={onClick}
-            disabled={disabled}
-        >
-            {icon && (
-                <div className={clsx("flex-shrink-0", iconClassName)}>
-                    {icon}
+}) => {
+    console.log('DEBUG: ListItemWithMenu render:', { name, isSelected });  // Debug render
+    return (
+        <div className={clsx(
+            "group flex items-center gap-2 px-2 py-1.5 rounded-md",
+            {
+                "bg-indigo-50 dark:bg-indigo-950/30": isSelected,
+                "hover:bg-zinc-50 dark:hover:bg-zinc-800": !isSelected
+            }
+        )}>
+            <button
+                ref={selectedRef}
+                className={clsx(
+                    "flex-1 flex items-center gap-2 text-sm text-left",
+                    {
+                        "text-zinc-900 dark:text-zinc-100": !disabled,
+                        "text-zinc-400 dark:text-zinc-600": disabled,
+                    }
+                )}
+                onClick={() => {
+                    console.log('DEBUG: ListItemWithMenu clicked:', name);  // Debug click
+                    onClick?.();
+                }}
+                disabled={disabled}
+            >
+                {icon && (
+                    <div className={clsx("flex-shrink-0", iconClassName)}>
+                        {icon}
+                    </div>
+                )}
+                {name}
+            </button>
+            <div className="flex items-center gap-2">
+                {statusLabel}
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    {menuContent}
                 </div>
-            )}
-            {name}
-        </button>
-        <div className="flex items-center gap-2">
-            {statusLabel}
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                {menuContent}
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 const StartLabel = () => (
     <div className="text-xs text-indigo-500 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded">
@@ -161,15 +167,64 @@ export function EntityList({
     useEffect(() => {
         async function fetchAndMergeTools() {
             try {
+                console.log('[EntityList] Starting tool merge. Current workflow tools:', {
+                    toolCount: tools.length,
+                    tools: tools.map(t => ({
+                        name: t.name,
+                        isMcp: t.isMcp,
+                        hasParams: !!t.parameters,
+                        paramCount: t.parameters ? Object.keys(t.parameters.properties).length : 0,
+                        parameters: t.parameters
+                    }))
+                });
+
                 // Get MCP tools from server action
                 const mcpTools = await getMcpToolsFromProject(projectId);
+                console.log('[EntityList] Fetched MCP tools from project:', {
+                    mcpToolCount: mcpTools.length,
+                    mcpTools: mcpTools.map(t => ({
+                        name: t.name,
+                        isMcp: t.isMcp,
+                        hasParams: !!t.parameters,
+                        paramCount: t.parameters ? Object.keys(t.parameters.properties).length : 0,
+                        parameters: t.parameters
+                    }))
+                });
 
                 // Merge with existing workflow tools
                 // Replace any existing MCP tools with their latest versions
                 const nonMcpTools = tools.filter(t => !t.isMcp);
-                setMergedTools([...nonMcpTools, ...mcpTools]);
+                
+                // Update workflow tools state
+                const merged = [
+                    ...nonMcpTools,
+                    ...mcpTools.map(tool => ({
+                        ...tool,
+                        isMcp: true as const,  // Ensure isMcp is set
+                        parameters: {
+                            type: 'object' as const,
+                            properties: tool.parameters?.properties || {},
+                            required: tool.parameters?.required || []
+                        }
+                    }))
+                ];
+
+                console.log('[EntityList] Final merged tools:', {
+                    totalCount: merged.length,
+                    nonMcpCount: nonMcpTools.length,
+                    mcpCount: mcpTools.length,
+                    tools: merged.map(t => ({
+                        name: t.name,
+                        isMcp: t.isMcp,
+                        hasParams: !!t.parameters,
+                        paramCount: t.parameters ? Object.keys(t.parameters.properties).length : 0,
+                        parameters: t.parameters
+                    }))
+                });
+
+                setMergedTools(merged);
             } catch (error) {
-                console.error('Error merging MCP tools:', error);
+                console.error('[EntityList] Error merging MCP tools:', error);
             }
         }
 
@@ -182,6 +237,15 @@ export function EntityList({
         const availableHeight = containerHeight - totalGaps;
         return `${(availableHeight * percentage) / 100}px`;
     };
+
+    function handleToolSelection(tool: z.infer<typeof AgenticAPITool>) {
+        console.log('[EntityList] Tool selected:', {
+            name: tool.name,
+            fullTool: tool,
+            parameters: tool.parameters
+        });
+        onSelectTool(tool.name);
+    }
 
     return (
         <div ref={containerRef} className="flex flex-col h-full">
@@ -285,6 +349,13 @@ export function EntityList({
                         {mergedTools.length > 0 ? (
                             <div className="space-y-1 pb-2">
                                 {mergedTools.map((tool, index) => {
+                                    console.log('[EntityList] Processing tool for render:', {
+                                        name: tool.name,
+                                        isMcp: tool.isMcp,
+                                        fullTool: tool,
+                                        parameters: tool.parameters
+                                    });
+
                                     let toolIcon;
                                     let iconClassName = "w-4 h-4";
                                     
@@ -301,7 +372,10 @@ export function EntityList({
                                             key={`tool-${index}`}
                                             name={tool.name}
                                             isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
-                                            onClick={() => onSelectTool(tool.name)}
+                                            onClick={() => {
+                                                console.log('DEBUG: Tool clicked:', tool.name);  // Basic debug log
+                                                handleToolSelection(tool);
+                                            }}
                                             selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
                                             icon={toolIcon}
                                             menuContent={

@@ -353,23 +353,42 @@ export async function getMcpToolsFromProject(projectId: string): Promise<z.infer
         const project = await projectsCollection.findOne({ _id: projectId });
         if (!project?.mcpServers) return [];
 
+        console.log('[MCP] Getting tools from project:', {
+            serverCount: project.mcpServers.length,
+            servers: project.mcpServers.map(s => ({
+                name: s.name,
+                toolCount: s.tools.length,
+                tools: s.tools.map(t => ({
+                    name: t.name,
+                    hasParams: !!t.parameters,
+                    paramCount: t.parameters ? Object.keys(t.parameters.properties).length : 0,
+                    required: t.parameters?.required || []
+                }))
+            }))
+        });
+
         // Convert MCP tools to workflow tools format
         const mcpTools = project.mcpServers.flatMap(server => {
-            return server.tools.map(tool => 
-                convertMcpServerToolToWorkflowTool(
-                    {
-                        name: tool.name,
-                        description: tool.description || "",
-                        inputSchema: {
-                            type: 'object',
-                            properties: tool.parameters?.properties || {},
-                            required: tool.parameters?.required || [],
-                        }
-                    },
-                    server
-                )
-            );
+            return server.tools.map(tool => ({
+                name: tool.name,
+                description: tool.description || "",
+                parameters: {
+                    type: 'object' as const,
+                    properties: tool.parameters?.properties || {},
+                    required: tool.parameters?.required || []
+                },
+                isMcp: true,
+                mcpServerName: server.name,
+                mcpServerURL: server.serverUrl,
+            }));
         });
+
+        console.log('[MCP] Converted tools:', mcpTools.map(t => ({
+            name: t.name,
+            hasParams: !!t.parameters,
+            paramCount: t.parameters ? Object.keys(t.parameters.properties).length : 0,
+            required: t.parameters?.required || []
+        })));
 
         return mcpTools;
     } catch (error) {

@@ -180,13 +180,13 @@ async function enrichToolsWithParameters(
             enrichedToolNames: Array.from(enrichedToolMap.keys())
         });
 
-        // Enrich the basic tools with parameters
+        // Enrich the basic tools with parameters and descriptions
         const result = basicTools.map(basicTool => {
             const enrichedTool = enrichedToolMap.get(basicTool.name);
             const tool: McpToolType = {
                 id: basicTool.name,
                 name: basicTool.name,
-                description: basicTool.description,
+                description: enrichedTool?.description || basicTool.description || '', // Use MCP server description if available
                 parameters: {
                     type: 'object',
                     properties: enrichedTool?.parameters?.properties || {},
@@ -339,6 +339,7 @@ export async function listAvailableMcpServers(projectId: string): Promise<McpSer
                         const availableTool = availableToolMap.get(tool.name);
                         return {
                             ...tool,
+                            description: availableTool?.description || tool.description,
                             parameters: availableTool?.parameters || {
                                 type: 'object',
                                 properties: {},
