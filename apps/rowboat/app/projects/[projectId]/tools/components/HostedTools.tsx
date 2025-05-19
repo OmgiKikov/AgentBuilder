@@ -6,14 +6,14 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { SlidePanel } from '@/components/ui/slide-panel';
-import { Info, Lock, Power, RefreshCw, Search } from 'lucide-react';
+import { Info, Lock, Power, RefreshCw, Search, RefreshCcw } from 'lucide-react';
 import { clsx } from 'clsx';
 import { 
   listAvailableMcpServers,
   enableServer,
   updateProjectServers
 } from '@/app/actions/klavis_actions';
-import { toggleMcpTool, getSelectedMcpTools } from '@/app/actions/mcp_actions';
+import { toggleMcpTool, getSelectedMcpTools, fetchMcpToolsForServer } from '@/app/actions/mcp_actions';
 import { z } from 'zod';
 import { MCPServer } from '@/app/lib/types/types';
 import { Checkbox } from '@heroui/react';
@@ -201,6 +201,7 @@ export function HostedTools() {
   const [savingTools, setSavingTools] = useState(false);
   const [serverToolCounts, setServerToolCounts] = useState<Map<string, number>>(new Map());
   const [availableTools, setAvailableTools] = useState<Map<string, McpToolType[]>>(new Map());
+  const [syncingServers, setSyncingServers] = useState<Set<string>>(new Set());
 
   const fetchServers = useCallback(async () => {
     try {
@@ -487,6 +488,67 @@ export function HostedTools() {
     }
 };
 
+  const handleSyncServer = async (server: McpServerType) => {
+    if (!projectId || !server.isActive) return;
+
+    try {
+      setSyncingServers(prev => new Set([...prev, server.name]));
+      console.log('[MCP] Starting server sync:', { serverName: server.name });
+
+      const enrichedTools = await fetchMcpToolsForServer(projectId, server.name);
+      
+      // Update the server's tools in the state
+      setServers(prevServers => {
+        return prevServers.map(s => {
+          if (s.name === server.name) {
+            return {
+              ...s,
+              availableTools: enrichedTools.map(tool => ({
+                id: tool.name,
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.parameters
+              }))
+            };
+          }
+          return s;
+        });
+      });
+
+      // If this server is currently selected in the slide panel, update its tools
+      if (selectedServer?.name === server.name) {
+        setSelectedServer(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            availableTools: enrichedTools.map(tool => ({
+              id: tool.name,
+              name: tool.name,
+              description: tool.description,
+              parameters: tool.parameters
+            }))
+          };
+        });
+      }
+
+      console.log('[MCP] Server sync complete:', { 
+        serverName: server.name,
+        toolCount: enrichedTools.length 
+      });
+    } catch (error) {
+      console.error('[MCP] Server sync failed:', { 
+        serverName: server.name,
+        error 
+      });
+    } finally {
+      setSyncingServers(prev => {
+        const next = new Set(prev);
+        next.delete(server.name);
+        return next;
+      });
+    }
+  };
+
   const filteredServers = sortServers(servers.filter(server => {
     // First apply the search filter
     const searchLower = searchQuery.toLowerCase();
@@ -698,17 +760,36 @@ export function HostedTools() {
                     </div>
                   )}
                   {(server.availableTools || []).length > 0 && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setSelectedServer(server)}
-                      className="ml-auto"
-                    >
-                      <div className="inline-flex items-center">
-                        <Info className="h-4 w-4" />
-                        <span className="ml-1.5">{isServerEligible(server) ? 'Manage Tools' : 'Tools'}</span>
-                      </div>
-                    </Button>
+                    <div className="ml-auto flex items-center gap-2">
+                      {server.isActive && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleSyncServer(server)}
+                          disabled={syncingServers.has(server.name)}
+                        >
+                          <div className="inline-flex items-center">
+                            <RefreshCcw className={clsx(
+                              "h-3.5 w-3.5",
+                              syncingServers.has(server.name) && "animate-spin"
+                            )} />
+                            <span className="ml-1.5">
+                              {syncingServers.has(server.name) ? 'Syncing...' : 'Sync'}
+                            </span>
+                          </div>
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setSelectedServer(server)}
+                      >
+                        <div className="inline-flex items-center">
+                          <Info className="h-4 w-4" />
+                          <span className="ml-1.5">{isServerEligible(server) ? 'Manage Tools' : 'Tools'}</span>
+                        </div>
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -745,6 +826,22 @@ export function HostedTools() {
                 </div>
                 {isServerEligible(selectedServer) && (
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleSyncServer(selectedServer)}
+                      disabled={syncingServers.has(selectedServer.name)}
+                    >
+                      <div className="inline-flex items-center">
+                        <RefreshCcw className={clsx(
+                          "h-3.5 w-3.5",
+                          syncingServers.has(selectedServer.name) && "animate-spin"
+                        )} />
+                        <span className="ml-1.5">
+                          {syncingServers.has(selectedServer.name) ? 'Syncing...' : 'Sync'}
+                        </span>
+                      </div>
+                    </Button>
                     <Button
                       variant="secondary"
                       size="sm"

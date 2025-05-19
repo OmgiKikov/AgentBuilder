@@ -325,41 +325,12 @@ export async function listAvailableMcpServers(projectId: string): Promise<McpSer
                     mongoToolCount: mongodbServer?.tools.length || 0
                 });
 
-                try {
-                    // Enrich available tools with parameters
-                    availableTools = await enrichToolsWithParameters(
-                        projectId,
-                        server.name,
-                        basicTools
-                    );
+                // Use basic tools data instead of enriching
+                availableTools = basicTools;
+                selectedTools = mongodbServer?.tools || [];
 
-                    // For selected tools, use the same parameters as available tools
-                    const availableToolMap = new Map(availableTools.map(t => [t.name, t]));
-                    selectedTools = (mongodbServer?.tools || []).map(tool => {
-                        const availableTool = availableToolMap.get(tool.name);
-                        return {
-                            ...tool,
-                            description: availableTool?.description || tool.description,
-                            parameters: availableTool?.parameters || {
-                                type: 'object',
-                                properties: {},
-                                required: []
-                            }
-                        };
-                    });
-
-                    if (selectedTools.length > 0) {
-                        serversWithToolsCount++;
-                    }
-
-                } catch (enrichError) {
-                    console.error('[Klavis API] Error during tool enrichment:', {
-                        serverName: server.name,
-                        error: enrichError instanceof Error ? enrichError.message : 'Unknown error'
-                    });
-                    // Fall back to basic tools on error
-                    availableTools = basicTools;
-                    selectedTools = mongodbServer?.tools || [];
+                if (selectedTools.length > 0) {
+                    serversWithToolsCount++;
                 }
             } else {
                 availableTools = basicTools;
