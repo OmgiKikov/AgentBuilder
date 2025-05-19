@@ -1,8 +1,15 @@
 'use server';
 
 import { projectAuthCheck } from './project_actions';
+import { z } from 'zod';
+import { MCPServer, McpTool, McpServerResponse } from '../lib/types/types';
+import { projectsCollection } from '../lib/mongodb';
 
-// API Response Types
+type McpServerType = z.infer<typeof MCPServer>;
+type McpToolType = z.infer<typeof McpTool>;
+type McpServerResponseType = z.infer<typeof McpServerResponse>;
+
+// Internal API Response Types
 interface KlavisServerMetadata {
   id: string;
   name: string;
@@ -58,14 +65,13 @@ export interface McpServer {
   isActive?: boolean;
   authNeeded: boolean;
   isAuthenticated: boolean;
+  requiresAuth: boolean;
 }
 
 export interface McpTool {
   id: string;
   name: string;
   description: string;
-  isEnabled: boolean;
-  requiresAuth: boolean;
 }
 
 export interface McpServerResponse {
@@ -170,6 +176,11 @@ export async function listAvailableMcpServers(projectId: string): Promise<McpSer
 
     console.log('[Klavis API] Fetching all servers');
     
+    // Get MongoDB project data first
+    const project = await projectsCollection.findOne({ _id: projectId });
+    const mongodbServers = project?.mcpServers || [];
+    const mongodbServerMap = new Map(mongodbServers.map(server => [server.name, server]));
+
     const serversEndpoint = '/mcp-server/servers';
     const rawData = await klavisApiCall<GetAllServersResponse>(serversEndpoint, {
       additionalHeaders: { 'Accept': 'application/json' }
@@ -220,23 +231,44 @@ export async function listAvailableMcpServers(projectId: string): Promise<McpSer
     // Transform the data to match our expected format
     const transformedData = rawData.servers.map((server) => {
       const activeInstance = activeInstanceMap.get(server.name);
-      const serverTools = server.tools || [];
+      const mongodbServer = mongodbServerMap.get(server.name);
+      
+      // Always get available tools from Klavis
+      const availableTools = (server.tools || []).map(tool => ({
+        id: tool.name || '',
+        name: tool.name || '',
+        description: tool.description || '',
+      }));
+
+      // Get selected tools from MongoDB only if server is eligible
+      const isActive = !!activeInstance;
+      const authNeeded = activeInstance ? activeInstance.authNeeded : (server.authNeeded || false);
+      const isAuthenticated = activeInstance ? activeInstance.isAuthenticated : false;
+      const isEligible = isActive && (!authNeeded || isAuthenticated);
+      
+      // Selected tools only come from MongoDB and only for eligible servers
+      const selectedTools = (isEligible && mongodbServer) ? mongodbServer.tools : [];
+
+      console.log('[Server Tools] Processing server:', {
+        serverName: server.name,
+        isActive,
+        isEligible,
+        authNeeded,
+        isAuthenticated,
+        availableToolCount: availableTools.length,
+        selectedToolCount: selectedTools.length
+      });
       
       return {
         ...server,
         instanceId: activeInstance?.id || server.id,
         serverName: server.name,
-        tools: serverTools.map(tool => ({
-          id: tool.name || '',
-          name: tool.name || '',
-          description: tool.description || '',
-          isEnabled: true,
-          requiresAuth: server.authNeeded || false
-        })),
-        isActive: !!activeInstance,
-        // For active instances, use the instance's auth flags, otherwise use server defaults
-        authNeeded: activeInstance ? activeInstance.authNeeded : (server.authNeeded || false),
-        isAuthenticated: activeInstance ? activeInstance.isAuthenticated : false
+        tools: selectedTools,           // Selected tools from MongoDB
+        availableTools: availableTools, // Available tools from Klavis
+        isActive,
+        authNeeded,
+        isAuthenticated,
+        requiresAuth: server.authNeeded || false
       };
     });
 
@@ -276,6 +308,40 @@ export async function createMcpServerInstance(
   }
 }
 
+// Helper function to filter eligible servers
+function getEligibleServers(servers: McpServerType[]): McpServerType[] {
+  return servers.filter(server => 
+    server.isActive && (!server.authNeeded || server.isAuthenticated)
+  );
+}
+
+export async function updateProjectServers(projectId: string): Promise<void> {
+  try {
+    await projectAuthCheck(projectId);
+    
+    console.log('[Klavis API] Fetching latest server data after OAuth:', { projectId });
+    const updatedServers = await listAvailableMcpServers(projectId);
+    
+    if (updatedServers.data) {
+      const eligibleServers = getEligibleServers(updatedServers.data);
+      console.log('[MongoDB] Updating eligible server data:', { 
+        projectId, 
+        eligibleCount: eligibleServers.length,
+        totalCount: updatedServers.data.length 
+      });
+      
+      await projectsCollection.updateOne(
+        { _id: projectId },
+        { $set: { mcpServers: eligibleServers } }
+      );
+      console.log('[MongoDB] Server data updated successfully');
+    }
+  } catch (error) {
+    console.error('[MongoDB] Error updating server data:', error);
+    throw error;
+  }
+}
+
 export async function enableServer(
   serverName: string,
   projectId: string,
@@ -289,6 +355,25 @@ export async function enableServer(
     if (enabled) {
       const result = await createMcpServerInstance(serverName, projectId, "Rowboat");
       console.log('[Klavis API] Enabled server:', { serverName, result });
+
+      // Get the latest server data to update MongoDB
+      const updatedServers = await listAvailableMcpServers(projectId);
+      if (updatedServers.data) {
+        const eligibleServers = getEligibleServers(updatedServers.data);
+        console.log('[MongoDB] Updating eligible server data after enable:', { 
+          projectId, 
+          serverName,
+          eligibleCount: eligibleServers.length,
+          totalCount: updatedServers.data.length 
+        });
+        
+        await projectsCollection.updateOne(
+          { _id: projectId },
+          { $set: { mcpServers: eligibleServers } }
+        );
+        console.log('[MongoDB] Server data updated successfully');
+      }
+
       return result;
     } else {
       // Get active instances to find the one to delete
@@ -296,8 +381,26 @@ export async function enableServer(
       const instance = instances.find(i => i.name === serverName);
       
       if (instance?.id) {
-        await deleteMcpServerInstance(instance.id);
+        await deleteMcpServerInstance(instance.id, projectId);
         console.log('[Klavis API] Disabled server:', { serverName, instanceId: instance.id });
+
+        // Get the latest server data to update MongoDB
+        const updatedServers = await listAvailableMcpServers(projectId);
+        if (updatedServers.data) {
+          const eligibleServers = getEligibleServers(updatedServers.data);
+          console.log('[MongoDB] Updating eligible server data after disable:', { 
+            projectId, 
+            serverName,
+            eligibleCount: eligibleServers.length,
+            totalCount: updatedServers.data.length 
+          });
+          
+          await projectsCollection.updateOne(
+            { _id: projectId },
+            { $set: { mcpServers: eligibleServers } }
+          );
+          console.log('[MongoDB] Server data updated successfully');
+        }
       } else {
         console.log('[Klavis API] No instance found to disable:', { serverName });
       }
@@ -313,9 +416,9 @@ export async function enableServer(
 export async function setMcpServerAuthToken(
   instanceId: string,
   authToken: string,
+  projectId: string,
 ): Promise<void> {
   try {
-    // Note: No projectAuthCheck here since this is called with instanceId, not projectId
     console.log('[Klavis API] Setting auth token for instance:', { instanceId });
     
     const endpoint = `/mcp-server/instance/${instanceId}/auth`;
@@ -325,15 +428,35 @@ export async function setMcpServerAuthToken(
     });
 
     console.log('[Klavis API] Auth token set successfully:', { instanceId });
+
+    // Update MongoDB with latest server data
+    const updatedServers = await listAvailableMcpServers(projectId);
+    if (updatedServers.data) {
+      const eligibleServers = getEligibleServers(updatedServers.data);
+      console.log('[MongoDB] Updating eligible server data after auth:', { 
+        projectId, 
+        instanceId,
+        eligibleCount: eligibleServers.length,
+        totalCount: updatedServers.data.length 
+      });
+      
+      await projectsCollection.updateOne(
+        { _id: projectId },
+        { $set: { mcpServers: eligibleServers } }
+      );
+      console.log('[MongoDB] Server data updated successfully');
+    }
   } catch (error: any) {
     console.error('[Klavis API] Error setting auth token:', error);
     throw error;
   }
 }
 
-export async function deleteMcpServerInstance(instanceId: string): Promise<void> {
+export async function deleteMcpServerInstance(
+  instanceId: string,
+  projectId: string,
+): Promise<void> {
   try {
-    // Note: No projectAuthCheck here since this is called with instanceId, not projectId
     console.log('[Klavis API] Deleting instance:', { instanceId });
     
     const endpoint = `/mcp-server/instance/delete/${instanceId}`;
@@ -342,6 +465,24 @@ export async function deleteMcpServerInstance(instanceId: string): Promise<void>
         method: 'DELETE'
       });
       console.log('[Klavis API] Instance deleted successfully:', { instanceId });
+
+      // Update MongoDB with latest server data
+      const updatedServers = await listAvailableMcpServers(projectId);
+      if (updatedServers.data) {
+        const eligibleServers = getEligibleServers(updatedServers.data);
+        console.log('[MongoDB] Updating eligible server data after deletion:', { 
+          projectId, 
+          instanceId,
+          eligibleCount: eligibleServers.length,
+          totalCount: updatedServers.data.length 
+        });
+        
+        await projectsCollection.updateOne(
+          { _id: projectId },
+          { $set: { mcpServers: eligibleServers } }
+        );
+        console.log('[MongoDB] Server data updated successfully');
+      }
     } catch (error: any) {
       if (error.message.includes('404')) {
         console.log('[Klavis API] Instance already deleted:', { instanceId });

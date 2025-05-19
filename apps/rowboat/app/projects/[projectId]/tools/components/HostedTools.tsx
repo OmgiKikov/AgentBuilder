@@ -9,11 +9,19 @@ import { SlidePanel } from '@/components/ui/slide-panel';
 import { Info, Lock, Power, RefreshCw, Search } from 'lucide-react';
 import { clsx } from 'clsx';
 import { 
-  McpServer, 
-  McpTool,
   listAvailableMcpServers,
-  enableServer
+  enableServer,
+  updateProjectServers
 } from '@/app/actions/klavis_actions';
+import { toggleMcpTool, getSelectedMcpTools } from '@/app/actions/mcp_actions';
+import { z } from 'zod';
+import { MCPServer } from '@/app/lib/types/types';
+import { Checkbox } from '@heroui/react';
+import { projectsCollection } from '@/app/lib/mongodb';
+
+type McpServerType = z.infer<typeof MCPServer>;
+type McpToolType = z.infer<typeof MCPServer>['tools'][number];
+type FilterType = 'all' | 'available' | 'coming-soon' | 'popular';
 
 const SERVER_PRIORITY: Record<string, number> = {
   'GitHub': 1,
@@ -28,20 +36,20 @@ const SERVER_PRIORITY: Record<string, number> = {
   'Notion': 10
 };
 
-function sortServers(servers: McpServer[], filterType: FilterType = 'all'): McpServer[] {
+function sortServers(servers: McpServerType[], filterType: FilterType = 'all'): McpServerType[] {
   return [...servers].sort((a, b) => {
     // For popular view, only sort priority servers
     if (filterType === 'popular') {
-      const priorityA = SERVER_PRIORITY[a.serverName] || 999;
-      const priorityB = SERVER_PRIORITY[b.serverName] || 999;
+      const priorityA = SERVER_PRIORITY[a.name] || 999;
+      const priorityB = SERVER_PRIORITY[b.name] || 999;
       if (priorityA === 999 && priorityB === 999) return 0;
       return priorityA - priorityB;
     }
 
     // For all view, sort by priority first, then available/coming soon
     if (filterType === 'all') {
-      const priorityA = SERVER_PRIORITY[a.serverName] || 999;
-      const priorityB = SERVER_PRIORITY[b.serverName] || 999;
+      const priorityA = SERVER_PRIORITY[a.name] || 999;
+      const priorityB = SERVER_PRIORITY[b.name] || 999;
       const hasToolsA = (a.tools || []).length > 0;
       const hasToolsB = (b.tools || []).length > 0;
 
@@ -57,11 +65,11 @@ function sortServers(servers: McpServer[], filterType: FilterType = 'all'): McpS
         return hasToolsA ? -1 : 1;
       }
       // If both are same type (available or coming soon), sort alphabetically
-      return a.serverName.localeCompare(b.serverName);
+      return a.name.localeCompare(b.name);
     }
 
     // For other views, sort alphabetically
-    return a.serverName.localeCompare(b.serverName);
+    return a.name.localeCompare(b.name);
   });
 }
 
@@ -114,13 +122,59 @@ export function ServerLogo({ serverName, className = "" }: ServerLogoProps) {
   );
 }
 
-type FilterType = 'all' | 'available' | 'coming-soon' | 'popular';
+const toolCardStyles = {
+    base: clsx(
+        "group p-4 rounded-lg transition-all duration-200",
+        "bg-gray-50/50 dark:bg-gray-800/50",
+        "hover:bg-gray-100/50 dark:hover:bg-gray-700/50",
+        "border border-transparent",
+        "hover:border-gray-200 dark:hover:border-gray-600"
+    ),
+};
+
+const ToolCard = ({ 
+  tool, 
+  server, 
+  isSelected, 
+  onSelect, 
+  showCheckbox = false 
+}: { 
+  tool: McpToolType; 
+  server: McpServerType; 
+  isSelected?: boolean; 
+  onSelect?: (selected: boolean) => void;
+  showCheckbox?: boolean;
+}) => {
+  return (
+    <div className={toolCardStyles.base}>
+      <div className="flex items-start gap-3">
+        {showCheckbox && (
+          <Checkbox
+            isSelected={isSelected}
+            onValueChange={onSelect}
+            size="sm"
+          />
+        )}
+        <div className="flex-1">
+          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+            {tool.name}
+          </h4>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {tool.description}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export function HostedTools() {
   const params = useParams();
   const projectId = typeof params.projectId === 'string' ? params.projectId : params.projectId?.[0];
-  const [servers, setServers] = useState<McpServer[]>([]);
-  const [selectedServer, setSelectedServer] = useState<McpServer | null>(null);
+  if (!projectId) throw new Error('Project ID is required');
+  
+  const [servers, setServers] = useState<McpServerType[]>([]);
+  const [selectedServer, setSelectedServer] = useState<McpServerType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -128,6 +182,13 @@ export function HostedTools() {
   const [toggleError, setToggleError] = useState<{serverId: string; message: string} | null>(null);
   const [enabledServers, setEnabledServers] = useState<Set<string>>(new Set());
   const [togglingServers, setTogglingServers] = useState<Set<string>>(new Set());
+  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
+  const [togglingTools, setTogglingTools] = useState<Set<string>>(new Set());
+  const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
+  const [hasToolChanges, setHasToolChanges] = useState(false);
+  const [savingTools, setSavingTools] = useState(false);
+  const [serverToolCounts, setServerToolCounts] = useState<Map<string, number>>(new Map());
+  const [availableTools, setAvailableTools] = useState<Map<string, McpToolType[]>>(new Map());
 
   const fetchServers = useCallback(async () => {
     try {
@@ -142,27 +203,11 @@ export function HostedTools() {
         throw new Error('No data received from server');
       }
       
-      // Log active servers
-      const activeServers = response.data.filter(server => server.isActive);
-      console.log('[Klavis API] =================== Active Servers in UI ===================');
-      activeServers.forEach((server, index) => {
-        console.log(`[Klavis API] Active Server ${index + 1}:`, JSON.stringify({
-          id: server.id,
-          instanceId: server.instanceId,
-          name: server.serverName,
-          description: server.description,
-          isAuthenticated: server.isAuthenticated,
-          tools: server.tools,
-        }, null, 2));
-      });
-      console.log('[Klavis API] ========================================================');
-      
       setServers(response.data);
       setError(null);
     } catch (err: any) {
       setError(err?.message || 'Failed to load MCP servers');
       console.error('Error fetching servers:', err);
-      // Initialize empty array to prevent map errors
       setServers([]);
     } finally {
       setLoading(false);
@@ -177,20 +222,52 @@ export function HostedTools() {
   useEffect(() => {
     if (servers) {
       console.log('Updating enabled servers from server data:', servers);
-      // A server is considered enabled if it is active
+      // A server is considered enabled if it is active (from Klavis)
       const enabled = new Set(
         servers
           .filter(server => server.isActive)
-          .map(server => server.serverName)
+          .map(server => server.name)
       );
       console.log('New enabled servers state:', Array.from(enabled));
       setEnabledServers(enabled);
     }
   }, [servers]);
 
-  const handleToggleTool = async (server: McpServer) => {
+  // Initialize tool counts from Klavis and MongoDB when servers are loaded
+  useEffect(() => {
+    const newCounts = new Map<string, number>();
+    servers.forEach(server => {
+      if (isServerEligible(server)) {
+        // Count selected tools from MongoDB
+        newCounts.set(server.name, server.tools.length);
+        
+        console.log('[Tools] Server tool counts:', {
+          server: server.name,
+          availableFromKlavis: server.availableTools?.length || 0,
+          selectedFromMongo: server.tools.length
+        });
+      }
+    });
+    setServerToolCounts(newCounts);
+  }, [servers]);
+
+  // Initialize selected tools when opening the panel
+  useEffect(() => {
+    if (selectedServer) {
+      // Initialize selected tools from MongoDB data
+      setSelectedTools(new Set(selectedServer.tools.map(t => t.id)));
+      setHasToolChanges(false);
+    }
+  }, [selectedServer]);
+
+  // Helper function to check if a server is eligible (using Klavis status)
+  const isServerEligible = (server: McpServerType) => {
+    return server.isActive && (!server.authNeeded || server.isAuthenticated);
+  };
+
+  const handleToggleTool = async (server: McpServerType) => {
     try {
-      const serverKey = server.serverName;
+      const serverKey = server.name;
       console.log('Toggle:', { server: serverKey, newState: !enabledServers.has(serverKey) });
 
       setTogglingServers(prev => new Set([...prev, serverKey]));
@@ -200,9 +277,24 @@ export function HostedTools() {
       const newState = !isCurrentlyEnabled;
       
       try {
-        const result = await enableServer(server.serverName, projectId || "", newState);
+        const result = await enableServer(server.name, projectId || "", newState);
         
-        // Update local state immediately
+        if (newState && 'instanceId' in result) {
+          // When enabling a server, automatically select all available tools
+          const availableTools = server.availableTools || [];
+          console.log('[Toggle] Selecting all available tools:', {
+            server: serverKey,
+            toolCount: availableTools.length,
+            tools: availableTools.map(t => t.id)
+          });
+          
+          // Use Promise.all to wait for all tool toggles to complete
+          await Promise.all(availableTools.map(tool => 
+            toggleMcpTool(projectId, server.serverName, tool.id, true)
+          ));
+        }
+
+        // Update local state after all operations are complete
         setEnabledServers(prev => {
           const next = new Set(prev);
           if (!newState) {
@@ -216,7 +308,7 @@ export function HostedTools() {
         // Update servers state immediately
         setServers(prevServers => {
           return prevServers.map(s => {
-            if (s.serverName === serverKey) {
+            if (s.name === serverKey) {
               return {
                 ...s,
                 isActive: newState,
@@ -235,7 +327,7 @@ export function HostedTools() {
         if (updatedServers.data) {
           setServers(updatedServers.data);
           // Verify our local state matches server state
-          const serverState = updatedServers.data.find((s: McpServer) => s.serverName === serverKey);
+          const serverState = updatedServers.data.find(s => s.name === serverKey);
           const serverEnabled = Boolean(serverState?.isActive);
           
           if (serverEnabled !== newState) {
@@ -271,25 +363,30 @@ export function HostedTools() {
     } finally {
       setTogglingServers(prev => {
         const next = new Set(prev);
-        next.delete(server.serverName);
+        next.delete(server.name);
         return next;
       });
     }
   };
 
-  const handleAuthenticate = async (server: McpServer) => {
+  const handleAuthenticate = async (server: McpServerType) => {
     try {
       const authWindow = window.open(
-        `https://api.klavis.ai/oauth/${server.serverName.toLowerCase()}/authorize?instance_id=${server.instanceId}&redirect_url=${window.location.origin}/projects/${projectId}/tools/oauth/callback`,
+        `https://api.klavis.ai/oauth/${server.name.toLowerCase()}/authorize?instance_id=${server.instanceId}&redirect_url=${window.location.origin}/projects/${projectId}/tools/oauth/callback`,
         '_blank',
         'width=600,height=700'
       );
 
       if (authWindow) {
-        const checkInterval = setInterval(() => {
+        const checkInterval = setInterval(async () => {
           if (authWindow.closed) {
             clearInterval(checkInterval);
             console.log('OAuth window closed, refreshing server status...');
+            
+            // Update MongoDB through server action
+            await updateProjectServers(projectId);
+            
+            // Refresh UI
             fetchServers();
           }
         }, 500);
@@ -311,12 +408,55 @@ export function HostedTools() {
       await fetchServers();
       
       const updatedServers = await listAvailableMcpServers(projectId);
-      const server = updatedServers.data?.find((s: McpServer) => s.serverName === serverName);
-      if (server?.tools?.[0]?.requiresAuth) {
+      const server = updatedServers.data?.find(s => s.name === serverName);
+      if (server?.requiresAuth) {
         window.open(`https://api.klavis.ai/oauth/${serverName.toLowerCase()}/authorize?instance_id=${server.instanceId}`, '_blank');
       }
     } catch (err) {
       console.error('Error creating server:', err);
+    }
+  };
+
+  const handleSaveToolSelection = async () => {
+    if (!selectedServer || !projectId) return;
+    
+    setSavingTools(true);
+    try {
+      // Get all available tools from Klavis and current selection state
+      const availableTools = selectedServer.availableTools || [];
+      
+      // Update each available tool's state based on our selection
+      for (const tool of availableTools) {
+        const isSelected = selectedTools.has(tool.id);
+        await toggleMcpTool(projectId, selectedServer.serverName, tool.id, isSelected);
+      }
+      
+      // Refresh the server list to get updated state
+      const updatedServers = await listAvailableMcpServers(projectId);
+      if (updatedServers.data) {
+        setServers(updatedServers.data);
+        
+        // Update tool counts
+        const newCounts = new Map<string, number>();
+        updatedServers.data.forEach(server => {
+          if (isServerEligible(server)) {
+            newCounts.set(server.name, server.tools.length);
+          }
+        });
+        setServerToolCounts(newCounts);
+        
+        // Update selected server data
+        const updatedServer = updatedServers.data.find(s => s.name === selectedServer.name);
+        if (updatedServer) {
+          setSelectedServer(updatedServer);
+        }
+      }
+      
+      setHasToolChanges(false);
+    } catch (error) {
+      console.error('Error saving tool selection:', error);
+    } finally {
+      setSavingTools(false);
     }
   };
 
@@ -325,7 +465,7 @@ export function HostedTools() {
     const searchLower = searchQuery.toLowerCase();
     const serverTools = server.tools || [];
     const matchesSearch = (
-      server.serverName.toLowerCase().includes(searchLower) ||
+      server.name.toLowerCase().includes(searchLower) ||
       server.description.toLowerCase().includes(searchLower) ||
       serverTools.some(tool => 
         tool.name.toLowerCase().includes(searchLower) ||
@@ -335,7 +475,7 @@ export function HostedTools() {
 
     // Then apply the type filter
     const hasTools = (serverTools.length > 0);
-    const isPriority = SERVER_PRIORITY[server.serverName] !== undefined;
+    const isPriority = SERVER_PRIORITY[server.name] !== undefined;
     
     switch (activeFilter) {
       case 'available':
@@ -435,7 +575,7 @@ export function HostedTools() {
               className="relative border-2 border-gray-200/80 dark:border-gray-700/80 rounded-xl p-6 
                 bg-white dark:bg-gray-900 shadow-sm dark:shadow-none 
                 backdrop-blur-sm hover:shadow-md dark:hover:shadow-none 
-                transition-all duration-200 flex flex-col
+                transition-all duration-200 
                 hover:border-blue-200 dark:hover:border-blue-900"
             >
               <div className="flex flex-col h-full">
@@ -443,12 +583,14 @@ export function HostedTools() {
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <ServerLogo serverName={server.serverName} className="mr-2" />
-                        <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{server.serverName}</h3>
-                        {(server.tools || []).length > 0 ? (
+                        <ServerLogo serverName={server.name} className="mr-2" />
+                        <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">
+                          {server.name}
+                        </h3>
+                        {(server.availableTools || []).length > 0 ? (
                           <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
                             bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
-                            {(server.tools || []).length} tools
+                            {(server.availableTools || []).length} tools available
                           </span>
                         ) : (
                           <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
@@ -456,21 +598,27 @@ export function HostedTools() {
                             Coming soon
                           </span>
                         )}
+                        {isServerEligible(server) && server.tools.length > 0 && (
+                          <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
+                            bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300">
+                            {server.tools.length} tools selected
+                          </span>
+                        )}
                       </div>
-                      {(server.tools || []).length > 0 && (
+                      {(server.availableTools || []).length > 0 && (
                         <Switch
-                          checked={enabledServers.has(server.serverName)}
+                          checked={enabledServers.has(server.name)}
                           onCheckedChange={() => handleToggleTool(server)}
-                          disabled={togglingServers.has(server.serverName)}
+                          disabled={togglingServers.has(server.name)}
                           className={clsx(
                             "data-[state=checked]:bg-blue-500 dark:data-[state=checked]:bg-blue-600",
                             "data-[state=unchecked]:bg-gray-200 dark:data-[state=unchecked]:bg-gray-700",
-                            togglingServers.has(server.serverName) && "opacity-50 cursor-not-allowed"
+                            togglingServers.has(server.name) && "opacity-50 cursor-not-allowed"
                           )}
                         />
                       )}
                     </div>
-                    {toggleError?.serverId === server.serverName && (
+                    {toggleError?.serverId === server.name && (
                       <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 
                         py-1 px-2 rounded-md mt-2 animate-fadeIn">
                         {toggleError.message}
@@ -516,7 +664,7 @@ export function HostedTools() {
                       </div>
                     </div>
                   )}
-                  {(server.tools || []).length > 0 && (
+                  {(server.availableTools || []).length > 0 && (
                     <Button
                       size="sm"
                       variant="secondary"
@@ -525,7 +673,7 @@ export function HostedTools() {
                     >
                       <div className="inline-flex items-center">
                         <Info className="h-4 w-4" />
-                        <span className="ml-1.5">Tools</span>
+                        <span className="ml-1.5">{isServerEligible(server) ? 'Manage Tools' : 'Tools'}</span>
                       </div>
                     </Button>
                   )}
@@ -538,37 +686,88 @@ export function HostedTools() {
 
       <SlidePanel
         isOpen={!!selectedServer}
-        onClose={() => setSelectedServer(null)}
-        title={selectedServer?.serverName || 'Server Details'}
+        onClose={() => {
+          const closePanel = () => {
+            setSelectedServer(null);
+            setSelectedTools(new Set());
+            setHasToolChanges(false);
+          };
+
+          if (hasToolChanges) {
+            if (window.confirm('You have unsaved changes. Are you sure you want to close?')) {
+              closePanel();
+            }
+          } else {
+            closePanel();
+          }
+        }}
+        title={selectedServer?.name || 'Server Details'}
       >
         {selectedServer && (
           <div className="space-y-6">
             <div>
-              <div className="flex items-center gap-3 mb-6">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Available Tools</h4>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium 
-                  bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                  {(selectedServer.tools || []).length}
-                </span>
-              </div>
-              <div className="space-y-4">
-                {(selectedServer.tools || []).map((tool) => (
-                  <div
-                    key={`${selectedServer.instanceId}-${tool.id}`}
-                    className="group p-4 rounded-lg bg-gray-50/50 dark:bg-gray-800/50"
-                  >
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <div className="px-2.5 py-1 rounded-md text-sm font-medium 
-                          bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                          {tool.name}
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 pl-2.5">
-                        {tool.description}
-                      </p>
-                    </div>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Available Tools</h4>
+                </div>
+                {isServerEligible(selectedServer) && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        const allTools = new Set<string>(selectedServer.availableTools?.map(t => t.id) || []);
+                        setSelectedTools(prev => {
+                          const next = prev.size === allTools.size ? new Set<string>() : allTools;
+                          setHasToolChanges(true);
+                          return next;
+                        });
+                      }}
+                    >
+                      {selectedTools.size === (selectedServer.availableTools || []).length ? 'Deselect All' : 'Select All'}
+                    </Button>
+                    {hasToolChanges && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleSaveToolSelection}
+                        disabled={savingTools}
+                      >
+                        {savingTools ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-b-transparent border-white mr-2" />
+                            Saving...
+                          </>
+                        ) : (
+                          'Save Changes'
+                        )}
+                      </Button>
+                    )}
                   </div>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {(selectedServer.availableTools || []).map((tool) => (
+                  <ToolCard
+                    key={tool.id}
+                    tool={tool}
+                    server={selectedServer}
+                    isSelected={selectedTools.has(tool.id)}
+                    onSelect={(selected) => {
+                      setSelectedTools(prev => {
+                        const next = new Set(prev);
+                        if (selected) {
+                          next.add(tool.id);
+                        } else {
+                          next.delete(tool.id);
+                        }
+                        setHasToolChanges(true);
+                        return next;
+                      });
+                    }}
+                    showCheckbox={isServerEligible(selectedServer)}
+                  />
                 ))}
               </div>
             </div>

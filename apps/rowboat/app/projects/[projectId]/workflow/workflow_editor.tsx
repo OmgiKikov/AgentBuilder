@@ -29,7 +29,6 @@ import { PublishedBadge } from "./published_badge";
 import { BackIcon, HamburgerIcon, WorkflowIcon } from "../../../lib/components/icons";
 import { CopyIcon, ImportIcon, Layers2Icon, RadioIcon, RedoIcon, ServerIcon, Sparkles, UndoIcon, RocketIcon, PenLine, AlertTriangle } from "lucide-react";
 import { EntityList } from "./entity_list";
-import { ToolsModal } from "./tools_modal";
 import { ProductTour } from "@/components/common/product-tour";
 
 enablePatches();
@@ -608,7 +607,6 @@ export function WorkflowEditor({
     const [showCopySuccess, setShowCopySuccess] = useState(false);
     const [showCopilot, setShowCopilot] = useState(true);
     const [copilotWidth, setCopilotWidth] = useState<number>(PANEL_RATIOS.copilot);
-    const [isMcpImportModalOpen, setIsMcpImportModalOpen] = useState(false);
     const [isInitialState, setIsInitialState] = useState(true);
     const [showTour, setShowTour] = useState(true);
     const copilotRef = useRef<{ handleUserMessage: (message: string) => void }>(null);
@@ -747,10 +745,6 @@ export function WorkflowEditor({
         }, 1500);
     }
 
-    function triggerMcpImport() {
-        setIsMcpImportModalOpen(true);
-    }
-
     const processQueue = useCallback(async (state: State, dispatch: React.Dispatch<Action>) => {
         if (saving.current || saveQueue.current.length === 0) return;
 
@@ -773,10 +767,6 @@ export function WorkflowEditor({
             }
         }
     }, [isLive]);
-
-    function handleImportMcpTools(tools: z.infer<typeof WorkflowTool>[]) {
-        dispatch({ type: "import_mcp_tools", tools });
-    }
 
     useEffect(() => {
         if (state.present.pendingChanges && state.present.workflow) {
@@ -969,7 +959,6 @@ export function WorkflowEditor({
                     onDeleteAgent={handleDeleteAgent}
                     onDeleteTool={handleDeleteTool}
                     onDeletePrompt={handleDeletePrompt}
-                    triggerMcpImport={triggerMcpImport}
                 />
             </ResizablePanel>
             <ResizableHandle className="w-[3px] bg-transparent" />
@@ -1057,19 +1046,5 @@ export function WorkflowEditor({
                 onComplete={() => setShowTour(false)}
             />
         )}
-        <ToolsModal
-            projectId={state.present.workflow.projectId}
-            isOpen={isMcpImportModalOpen}
-            onOpenChange={setIsMcpImportModalOpen}
-            onImport={handleImportMcpTools}
-            onConfigureWebhook={() => handleAddTool({
-                mockTool: true,
-                parameters: {
-                    type: 'object',
-                    properties: {}
-                }
-            })}
-            webhookUrl={toolWebhookUrl}
-        />
     </div>;
 }
