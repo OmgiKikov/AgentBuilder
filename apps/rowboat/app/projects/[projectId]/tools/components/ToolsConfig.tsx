@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { HostedTools } from './HostedTools';
+import { HostedServers } from './HostedServers';
 import { CustomServers } from './CustomServers';
 import { WebhookConfig } from './WebhookConfig';
 
@@ -24,7 +24,7 @@ export function ToolsConfig() {
 
         <div className="flex-1 p-6">
           <TabsContent value="hosted" className="mt-0 h-full">
-            <HostedTools />
+            <HostedServers />
           </TabsContent>
 
           <TabsContent value="custom" className="mt-0 h-full">

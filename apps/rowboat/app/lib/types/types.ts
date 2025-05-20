@@ -38,13 +38,15 @@ export const MCPServer = z.object({
     description: z.string(),
     tools: z.array(McpTool),  // Selected tools from MongoDB
     availableTools: z.array(McpTool).optional(),  // Available tools from Klavis
-    instanceId: z.string(),
-    serverName: z.string(),
-    serverUrl: z.string().optional(),
     isActive: z.boolean().optional(),
-    authNeeded: z.boolean(),
-    isAuthenticated: z.boolean(),
-    requiresAuth: z.boolean().default(false),
+    isReady: z.boolean().optional(),
+    authNeeded: z.boolean().optional(),
+    isAuthenticated: z.boolean().optional(),
+    requiresAuth: z.boolean().optional(),
+    serverUrl: z.string().optional(),
+    instanceId: z.string().optional(),
+    serverName: z.string().optional(),
+    serverType: z.enum(['hosted', 'custom']).optional(),
 });
 
 // Response types for Klavis API
@@ -171,6 +173,7 @@ export function convertMcpServerToolToWorkflowTool(
     mcpTool: z.infer<typeof McpServerTool>,
     mcpServer: z.infer<typeof MCPServer>
 ): z.infer<typeof WorkflowTool> {
+
     // Get the input schema with defaults
     const inputSchema = McpToolInputSchema.parse(mcpTool.inputSchema ?? {
         type: 'object',
@@ -178,7 +181,7 @@ export function convertMcpServerToolToWorkflowTool(
         required: [],
     });
 
-    return {
+    const converted = {
         name: mcpTool.name,
         description: mcpTool.description ?? "",
         parameters: inputSchema,
@@ -186,4 +189,6 @@ export function convertMcpServerToolToWorkflowTool(
         mcpServerName: mcpServer.name,
         mcpServerURL: mcpServer.serverUrl,
     };
+
+    return converted;
 }

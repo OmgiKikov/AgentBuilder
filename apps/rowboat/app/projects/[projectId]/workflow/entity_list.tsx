@@ -8,6 +8,8 @@ import { EllipsisVerticalIcon, ImportIcon, PlusIcon, Brain, Wrench, PenLine, Lib
 import { Panel } from "@/components/common/panel-common";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
+import { MCPServer } from "@/app/lib/types/types";
+import { getMcpToolsFromProject } from "@/app/actions/mcp_actions";
 
 const SECTION_HEIGHT_PERCENTAGES = {
     AGENTS: 40,    // 40% of available height
@@ -71,41 +73,45 @@ const ListItemWithMenu = ({
     statusLabel?: React.ReactNode;
     icon?: React.ReactNode;
     iconClassName?: string;
-}) => (
-    <div className={clsx(
-        "group flex items-center gap-2 px-2 py-1.5 rounded-md",
-        {
-            "bg-indigo-50 dark:bg-indigo-950/30": isSelected,
-            "hover:bg-zinc-50 dark:hover:bg-zinc-800": !isSelected
-        }
-    )}>
-        <button
-            ref={selectedRef}
-            className={clsx(
-                "flex-1 flex items-center gap-2 text-sm text-left",
-                {
-                    "text-zinc-900 dark:text-zinc-100": !disabled,
-                    "text-zinc-400 dark:text-zinc-600": disabled,
-                }
-            )}
-            onClick={onClick}
-            disabled={disabled}
-        >
-            {icon && (
-                <div className={clsx("flex-shrink-0", iconClassName)}>
-                    {icon}
+}) => {
+    return (
+        <div className={clsx(
+            "group flex items-center gap-2 px-2 py-1.5 rounded-md",
+            {
+                "bg-indigo-50 dark:bg-indigo-950/30": isSelected,
+                "hover:bg-zinc-50 dark:hover:bg-zinc-800": !isSelected
+            }
+        )}>
+            <button
+                ref={selectedRef}
+                className={clsx(
+                    "flex-1 flex items-center gap-2 text-sm text-left",
+                    {
+                        "text-zinc-900 dark:text-zinc-100": !disabled,
+                        "text-zinc-400 dark:text-zinc-600": disabled,
+                    }
+                )}
+                onClick={() => {
+                    onClick?.();
+                }}
+                disabled={disabled}
+            >
+                {icon && (
+                    <div className={clsx("flex-shrink-0", iconClassName)}>
+                        {icon}
+                    </div>
+                )}
+                {name}
+            </button>
+            <div className="flex items-center gap-2">
+                {statusLabel}
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    {menuContent}
                 </div>
-            )}
-            {name}
-        </button>
-        <div className="flex items-center gap-2">
-            {statusLabel}
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                {menuContent}
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 const StartLabel = () => (
     <div className="text-xs text-indigo-500 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded">
@@ -130,7 +136,9 @@ export function EntityList({
     onDeleteAgent,
     onDeleteTool,
     onDeletePrompt,
-}: EntityListProps) {
+    projectId
+}: EntityListProps & { projectId: string }) {
+    const [mergedTools, setMergedTools] = useState(tools);
     const selectedRef = useRef<HTMLButtonElement | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerHeight, setContainerHeight] = useState<number>(0);
@@ -155,12 +163,63 @@ export function EntityList({
         }
     }, [selectedEntity]);
 
+    // Fetch and merge MCP tools from project settings
+    useEffect(() => {
+        async function fetchAndMergeTools() {
+            try {
+                // Get MCP tools from server action
+                const mcpTools = await getMcpToolsFromProject(projectId);
+
+                // Merge with existing workflow tools
+                // Replace any existing MCP tools with their latest versions
+                const nonMcpTools = tools.filter(t => !t.isMcp);
+                
+                // Update workflow tools state
+                const merged = [
+                    ...nonMcpTools,
+                    ...mcpTools.map(tool => ({
+                        ...tool,
+                        isMcp: true as const,  // Ensure isMcp is set
+                        parameters: {
+                            type: 'object' as const,
+                            properties: tool.parameters?.properties || {},
+                            required: tool.parameters?.required || []
+                        }
+                    }))
+                ];
+
+                console.log('[EntityList] Final merged tools:', {
+                    totalCount: merged.length,
+                    nonMcpCount: nonMcpTools.length,
+                    mcpCount: mcpTools.length,
+                    tools: merged.map(t => ({
+                        name: t.name,
+                        isMcp: t.isMcp,
+                        hasParams: !!t.parameters,
+                        paramCount: t.parameters ? Object.keys(t.parameters.properties).length : 0,
+                        parameters: t.parameters
+                    }))
+                });
+
+                setMergedTools(merged);
+            } catch (error) {
+                console.error('[EntityList] Error merging MCP tools:', error);
+            }
+        }
+
+        fetchAndMergeTools();
+    }, [projectId, tools]);
+
     const calculateSectionHeight = (percentage: number) => {
         // Total gaps = 2 gaps between 3 sections
         const totalGaps = GAP_SIZE * 2;
         const availableHeight = containerHeight - totalGaps;
         return `${(availableHeight * percentage) / 100}px`;
     };
+
+    function handleToolSelection(tool: z.infer<typeof AgenticAPITool>) {
+        onSelectTool(tool.name);
+    }
 
     return (
         <div ref={containerRef} className="flex flex-col h-full">
@@ -229,13 +288,13 @@ export function EntityList({
 
                                 <span>Инструменты</span>
                                 <div className="flex items-center gap-1 ml-2">
-                                    {tools.some(t => t.isMcp) && (
+                                    {mergedTools.some(t => t.isMcp) && (
                                         <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20">
                                             <ImportIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                                             <span className="text-xs text-blue-600 dark:text-blue-400">MCP</span>
                                         </div>
                                     )}
-                                    {tools.some(t => t.isLibrary) && (
+                                    {mergedTools.some(t => t.isLibrary) && (
                                         <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/20">
                                             <Library className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                                             <span className="text-xs text-purple-600 dark:text-purple-400">Library</span>
@@ -265,9 +324,10 @@ export function EntityList({
                     className="overflow-hidden flex-[30]"
                 >
                     <div className="flex flex-col h-full overflow-y-auto">
-                        {tools.length > 0 ? (
+                        {mergedTools.length > 0 ? (
                             <div className="space-y-1 pb-2">
-                                {tools.map((tool, index) => {
+                                {mergedTools.map((tool, index) => {
+
                                     let toolIcon;
                                     let iconClassName = "w-4 h-4";
 
@@ -286,7 +346,9 @@ export function EntityList({
                                             key={`tool-${index}`}
                                             name={tool.name}
                                             isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
-                                            onClick={() => onSelectTool(tool.name)}
+                                            onClick={() => {
+                                                handleToolSelection(tool);
+                                            }}
                                             selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
                                             icon={toolIcon}
                                             menuContent={
