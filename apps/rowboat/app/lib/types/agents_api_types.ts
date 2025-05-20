@@ -3,7 +3,7 @@ import { sanitizeTextWithMentions, Workflow, WorkflowAgent, WorkflowPrompt, Work
 import { apiV1 } from "rowboat-shared";
 import { ApiMessage } from "./types";
 import { TestProfile } from "./testing_types";
-import { MCPServer } from "./types";
+import { MCPServer, MCPServerMinimal } from "./types";
 import { getMcpToolsFromProject, mergeMcpTools } from "@/app/actions/mcp_actions";
 
 export const AgenticAPIChatMessage = z.object({
@@ -56,7 +56,7 @@ export const AgenticAPIChatRequest = z.object({
     prompts: z.array(WorkflowPrompt),
     startAgent: z.string(),
     testProfile: TestProfile.optional(),
-    mcpServers: z.array(MCPServer),
+    mcpServers: z.array(MCPServerMinimal),
     toolWebhookUrl: z.string(),
 });
 

@@ -103,7 +103,11 @@ export async function POST(
             tools,
             prompts,
             startAgent,
-            mcpServers: projectSettings.mcpServers ?? [],
+            mcpServers: (projectSettings.mcpServers ?? []).map(server => ({
+                name: server.name,
+                serverUrl: server.serverUrl || '',
+                isReady: server.isReady
+            })),
             toolWebhookUrl: projectSettings.webhookUrl ?? '',
             testProfile: undefined,
         };

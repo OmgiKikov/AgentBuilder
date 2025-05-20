@@ -141,7 +141,11 @@ export function Chat({
                 tools,
                 prompts,
                 startAgent,
-                mcpServers: mcpServerUrls,
+                mcpServers: mcpServerUrls.map(server => ({
+                    name: server.name,
+                    serverUrl: server.serverUrl || '',
+                    isReady: server.isReady
+                })),
                 toolWebhookUrl: toolWebhookUrl,
                 testProfile: testProfile ?? undefined,
             };

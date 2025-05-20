@@ -49,6 +49,13 @@ export const MCPServer = z.object({
     serverType: z.enum(['hosted', 'custom']).optional(),
 });
 
+// Minimal MCP server info needed by agents service
+export const MCPServerMinimal = z.object({
+    name: z.string(),
+    serverUrl: z.string(),
+    isReady: z.boolean().optional(),
+});
+
 // Response types for Klavis API
 export const McpServerResponse = z.object({
     data: z.array(z.lazy(() => MCPServer)).nullable(),
