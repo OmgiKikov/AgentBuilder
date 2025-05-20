@@ -73,7 +73,7 @@ export function ComposeBox({
             {/* Keyboard shortcut hint */}
             <div className="absolute -top-6 right-0 text-xs text-gray-500 dark:text-gray-400 opacity-0 
                           group-hover:opacity-100 transition-opacity">
-                Press ⌘ + Enter to send
+                Нажать ⌘ + Enter для отправки
             </div>
 
             {/* Outer container with padding */}

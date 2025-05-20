@@ -7,6 +7,7 @@ import { tokens } from "@/app/styles/design-tokens";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+import { ru } from 'date-fns/locale';
 
 interface ProjectListProps {
     projects: z.infer<typeof Project>[];
@@ -27,7 +28,7 @@ export function ProjectList({ projects, isLoading, searchQuery }: ProjectListPro
     if (isLoading) {
         return (
             <div className="px-4 py-6 text-center text-sm text-gray-500">
-                Loading projects...
+                Загрузка проектов...
             </div>
         );
     }
@@ -36,8 +37,8 @@ export function ProjectList({ projects, isLoading, searchQuery }: ProjectListPro
         return (
             <div className="px-4 py-6 text-center text-sm text-gray-500">
                 {searchQuery
-                    ? "No projects match your search"
-                    : "You haven't created any projects yet"}
+                    ? "Нет проектов, соответствующих вашему запросу"
+                    : "Вы еще не создали ни одного проекта"}
             </div>
         );
     }
@@ -75,7 +76,7 @@ export function ProjectList({ projects, isLoading, searchQuery }: ProjectListPro
                                     tokens.colors.light.text.muted,
                                     tokens.colors.dark.text.muted
                                 )}>
-                                    Created {formatDistanceToNow(new Date(project.createdAt))} ago
+                                    Создан {formatDistanceToNow(new Date(project.createdAt), { locale: ru })} назад
                                 </p>
                             </div>
                             <ChevronRightIcon className={clsx(
@@ -108,7 +109,7 @@ export function ProjectList({ projects, isLoading, searchQuery }: ProjectListPro
                         tokens.colors.light.text.secondary,
                         tokens.colors.dark.text.secondary
                     )}>
-                        Page {currentPage} of {totalPages}
+                        Страница {currentPage} из {totalPages}
                     </span>
                     <button
                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}

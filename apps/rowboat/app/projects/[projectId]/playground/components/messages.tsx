@@ -14,7 +14,7 @@ function UserMessage({ content }: { content: string }) {
     return (
         <div className="self-end flex flex-col items-end gap-1 mt-5 mb-8">
             <div className="text-gray-500 dark:text-gray-400 text-xs">
-                User
+                Пользователь
             </div>
             <div className="max-w-[85%] inline-block">
                 <div className="bg-blue-100 dark:bg-blue-900/40 px-4 py-2.5 
@@ -61,7 +61,7 @@ function InternalAssistantMessage({ content, sender, latency, delta }: { content
                             <div className="flex justify-between items-center gap-6">
                                 <button className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 hover:underline self-start" onClick={() => setExpanded(true)}>
                                     <ChevronDownIcon size={16} />
-                                    Show internal message
+                                    Показать внутреннее сообщение
                                 </button>
                                 <div className="text-right text-xs">
                                     {deltaDisplay}
@@ -76,7 +76,7 @@ function InternalAssistantMessage({ content, sender, latency, delta }: { content
                             <div className="flex justify-between items-center gap-6 mt-2">
                                 <button className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 hover:underline self-start" onClick={() => setExpanded(false)}>
                                     <ChevronUpIcon size={16} />
-                                    Hide internal message
+                                    Скрыть внутреннее сообщение
                                 </button>
                                 <div className="text-right text-xs">
                                     {deltaDisplay}
@@ -260,7 +260,7 @@ function ClientToolCall({
                             {!availableResult && <Spinner size="sm" />}
                             {availableResult && <CheckCircleIcon size={16} className="text-green-500" />}
                             <div className="flex items-center font-semibold text-sm gap-2">
-                                <span>Function Call:</span>
+                                <span>Вызов функции:</span>
                                 <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-800 dark:bg-purple-900/30 dark:text-purple-100 font-bold text-sm align-middle">
                                     {toolCall.function.name}
                                 </span>
@@ -269,8 +269,8 @@ function ClientToolCall({
                     </div>
 
                     <div className="flex flex-col gap-2">
-                        <ExpandableContent label="Params" content={toolCall.function.arguments} expanded={false} icon={<CodeIcon size={14} />} />
-                        {availableResult && <ExpandableContent label="Result" content={availableResult.content} expanded={false} icon={<FileTextIcon size={14} className="text-blue-500" />} />}
+                        <ExpandableContent label="Параметры" content={toolCall.function.arguments} expanded={false} icon={<CodeIcon size={14} />} />
+                        {availableResult && <ExpandableContent label="Результат" content={availableResult.content} expanded={false} icon={<FileTextIcon size={14} className="text-blue-500" />} />}
                     </div>
                 </div>
             </div>

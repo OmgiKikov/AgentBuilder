@@ -108,7 +108,7 @@ const ListItemWithMenu = ({
 
 const StartLabel = () => (
     <div className="text-xs text-indigo-500 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded">
-        Start
+        Начать
     </div>
 );
 
@@ -282,7 +282,7 @@ export function EntityList({
                                     <ChevronRight className="w-4 h-4" />
                                 )}
                                 <Brain className="w-4 h-4" />
-                                <span>Agents</span>
+                                <span>Агенты</span>
                             </div>
                             <Button
                                 variant="secondary"
@@ -294,7 +294,7 @@ export function EntityList({
                                 }}
                                 className={`group ${buttonClasses}`}
                                 showHoverContent={true}
-                                hoverContent="Add Agent"
+                                hoverContent="Добавить агента"
                             >
                                 <PlusIcon className="w-4 h-4" />
                             </Button>
@@ -350,7 +350,7 @@ export function EntityList({
                                     <ChevronRight className="w-4 h-4" />
                                 )}
                                 <Wrench className="w-4 h-4" />
-                                <span>Tools</span>
+                                <span>Инструменты</span>
                             </div>
                             <Button
                                 variant="secondary"
@@ -362,7 +362,7 @@ export function EntityList({
                                 }}
                                 className={`group ${buttonClasses}`}
                                 showHoverContent={true}
-                                hoverContent="Add Tool"
+                                hoverContent="Добавить инструмент"
                             >
                                 <PlusIcon className="w-4 h-4" />
                             </Button>
@@ -376,7 +376,7 @@ export function EntityList({
                             {/* Filter checkboxes - Made sticky */}
                             <div className="sticky top-0 z-10 bg-white dark:bg-zinc-900 border-b border-gray-100 dark:border-gray-800">
                                 <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-gray-500 dark:text-gray-400">
-                                    <span>Show:</span>
+                                    <span>Показать:</span>
                                     <div className="flex items-center gap-1.5">
                                         <label className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
                                             <input
@@ -387,7 +387,7 @@ export function EntityList({
                                             />
                                             <div className="flex items-center gap-1">
                                                 <ImportIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                                                <span>MCP</span>
+                                                <span>MCP инструменты</span>
                                             </div>
                                         </label>
                                         <label className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
@@ -399,7 +399,7 @@ export function EntityList({
                                             />
                                             <div className="flex items-center gap-1">
                                                 <Library className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                                                <span>Library</span>
+                                                <span>Библиотека</span>
                                             </div>
                                         </label>
                                         <label className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
@@ -409,7 +409,7 @@ export function EntityList({
                                                 onChange={(e) => setFilters(prev => ({ ...prev, webhook: e.target.checked }))}
                                                 className="h-3 w-3 rounded border-gray-300 text-indigo-600 focus:ring-0"
                                             />
-                                            <span>Webhook</span>
+                                            <span>Webhook инструменты</span>
                                         </label>
                                     </div>
                                 </div>
@@ -502,7 +502,7 @@ export function EntityList({
                                     <ChevronRight className="w-4 h-4" />
                                 )}
                                 <PenLine className="w-4 h-4" />
-                                <span>Prompts</span>
+                                <span>Промпты</span>
                             </div>
                             <Button
                                 variant="secondary"
@@ -514,7 +514,7 @@ export function EntityList({
                                 }}
                                 className={`group ${buttonClasses}`}
                                 showHoverContent={true}
-                                hoverContent="Add Prompt"
+                                hoverContent="Добавить промпт"
                             >
                                 <PlusIcon className="w-4 h-4" />
                             </Button>
@@ -592,9 +592,9 @@ function AgentDropdown({
                     }
                 }}
             >
-                <DropdownItem key="set-main-agent">Set as start agent</DropdownItem>
-                <DropdownItem key="toggle">{agent.disabled ? 'Enable' : 'Disable'}</DropdownItem>
-                <DropdownItem key="delete" className="text-danger">Delete</DropdownItem>
+                <DropdownItem key="set-main-agent">Установить как стартовый агент</DropdownItem>
+                <DropdownItem key="toggle">{agent.disabled ? 'Включить' : 'Выключить'}</DropdownItem>
+                <DropdownItem key="delete" className="text-danger">Удалить</DropdownItem>
             </DropdownMenu>
         </Dropdown>
     );
@@ -622,7 +622,7 @@ function EntityDropdown({
                     }
                 }}
             >
-                <DropdownItem key="delete" className="text-danger">Delete</DropdownItem>
+                <DropdownItem key="delete" className="text-danger">Удалить</DropdownItem>
             </DropdownMenu>
         </Dropdown>
     );

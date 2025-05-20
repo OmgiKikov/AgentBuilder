@@ -27,24 +27,24 @@ export function App() {
                 <div className="bg-white/70 backdrop-blur-sm rounded-xl p-10 flex flex-col items-center gap-8 shadow-lg">
                     <Image
                         src={logo}
-                        alt="RowBoat Logo"
+                        alt="Логотип RowBoat"
                         height={40}
                     />
                     {(isLoading || (!user && !error)) && <Spinner size="sm" />}
                     {error && <div className="text-red-500">{error.message}</div>}
                     {user && <div className="flex items-center gap-2">
                         <Spinner size="sm" />
-                        <div className="text-sm text-gray-400">Welcome, {user.name}</div>
+                        <div className="text-sm text-gray-400">Добро пожаловать, {user.name}</div>
                     </div>}
                 </div>
             </div>
 
             {/* Footer */}
             <div className="flex flex-col items-center gap-2 text-xs text-white/70">
-                <div>&copy; 2025 RowBoat Labs</div>
+                <div>&copy; 2025 AgentBuilder Labs</div>
                 <div className="flex gap-4">
-                    <a className="hover:text-white transition-colors" href="https://www.rowboatlabs.com/terms-of-service" target="_blank" rel="noopener noreferrer">Terms of Service</a>
-                    <a className="hover:text-white transition-colors" href="https://www.rowboatlabs.com/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+                    <a className="hover:text-white transition-colors" href="https://www.AgentBuilderlabs.com/terms-of-service" target="_blank" rel="noopener noreferrer">Условия использования</a>
+                    <a className="hover:text-white transition-colors" href="https://www.AgentBuilderlabs.com/privacy-policy" target="_blank" rel="noopener noreferrer">Политика конфиденциальности</a>
                 </div>
             </div>
         </div>

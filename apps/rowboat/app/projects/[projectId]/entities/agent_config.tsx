@@ -130,15 +130,15 @@ export function AgentConfig({
 
     const validateName = (value: string) => {
         if (value.length === 0) {
-            setNameError("Name cannot be empty");
+            setNameError("Имя не может быть пустым");
             return false;
         }
         if (value !== agent.name && usedAgentNames.has(value)) {
-            setNameError("This name is already taken");
+            setNameError("Это имя уже занято");
             return false;
         }
         if (!/^[a-zA-Z0-9_-\s]+$/.test(value)) {
-            setNameError("Name must contain only letters, numbers, underscores, hyphens, and spaces");
+            setNameError("Имя должно содержать только буквы, цифры, подчеркивания, дефисы и пробелы");
             return false;
         }
         setNameError(null);
@@ -176,7 +176,7 @@ export function AgentConfig({
                         size="sm"
                         onClick={handleClose}
                         showHoverContent={true}
-                        hoverContent="Close"
+                        hoverContent="Закрыть"
                     >
                         <XIcon className="w-4 h-4" />
                     </CustomButton>
@@ -186,20 +186,28 @@ export function AgentConfig({
             <div className="flex flex-col gap-6 p-4 h-[calc(100vh-100px)] min-h-0 flex-1">
                 {/* Tabs */}
                 <div className="flex border-b border-gray-200 dark:border-gray-700">
-                    {(['instructions', 'examples', 'configurations', 'rag'] as TabType[]).map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={clsx(
-                                "px-4 py-2 text-sm font-medium transition-colors relative",
-                                activeTab === tab
-                                    ? "text-indigo-600 dark:text-indigo-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-indigo-500 dark:after:bg-indigo-400"
-                                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                            )}
-                        >
-                            {tab === 'rag' ? 'RAG' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-                        </button>
-                    ))}
+                    {(['instructions', 'examples', 'configurations', 'rag'] as TabType[]).map((tab) => {
+                        const tabNames = {
+                            'instructions': 'Инструкции',
+                            'examples': 'Примеры',
+                            'configurations': 'Настройки',
+                            'rag': 'RAG'
+                        };
+                        return (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={clsx(
+                                    "px-4 py-2 text-sm font-medium transition-colors relative",
+                                    activeTab === tab
+                                        ? "text-indigo-600 dark:text-indigo-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-indigo-500 dark:after:bg-indigo-400"
+                                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                )}
+                            >
+                                {tabNames[tab]}
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {/* Tab Content */}
@@ -209,14 +217,14 @@ export function AgentConfig({
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
                                     <label className={sectionHeaderStyles}>
-                                        Instructions
+                                        Инструкции
                                     </label>
                                     <CustomButton
                                         variant="secondary"
                                         size="sm"
                                         onClick={() => setIsInstructionsMaximized(!isInstructionsMaximized)}
                                         showHoverContent={true}
-                                        hoverContent={isInstructionsMaximized ? "Minimize" : "Maximize"}
+                                        hoverContent={isInstructionsMaximized ? "Свернуть" : "Развернуть"}
                                     >
                                         {isInstructionsMaximized ? (
                                             <Minimize2 className="w-4 h-4" />
@@ -231,7 +239,7 @@ export function AgentConfig({
                                     onClick={() => setShowGenerateModal(true)}
                                     startContent={<Sparkles className="w-4 h-4" />}
                                 >
-                                    Generate
+                                    Сгенерировать
                                 </CustomButton>
                             </div>
                             {isInstructionsMaximized ? (
@@ -240,14 +248,14 @@ export function AgentConfig({
                                         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                                             <div className="flex items-center gap-2">
                                                 <label className={sectionHeaderStyles}>
-                                                    Instructions
+                                                    Инструкции
                                                 </label>
                                                 <CustomButton
                                                     variant="secondary"
                                                     size="sm"
                                                     onClick={() => setIsInstructionsMaximized(false)}
                                                     showHoverContent={true}
-                                                    hoverContent="Minimize"
+                                                    hoverContent="Свернуть"
                                                 >
                                                     <Minimize2 className="w-4 h-4" />
                                                 </CustomButton>
@@ -258,7 +266,7 @@ export function AgentConfig({
                                                 onClick={() => setShowGenerateModal(true)}
                                                 startContent={<Sparkles className="w-4 h-4" />}
                                             >
-                                                Generate
+                                                Сгенерировать
                                             </CustomButton>
                                         </div>
                                         <div className="flex-1 overflow-hidden p-4">
@@ -309,14 +317,14 @@ export function AgentConfig({
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
                                     <label className={sectionHeaderStyles}>
-                                        Examples
+                                        Примеры
                                     </label>
                                     <CustomButton
                                         variant="secondary"
                                         size="sm"
                                         onClick={() => setIsExamplesMaximized(!isExamplesMaximized)}
                                         showHoverContent={true}
-                                        hoverContent={isExamplesMaximized ? "Minimize" : "Maximize"}
+                                        hoverContent={isExamplesMaximized ? "Свернуть" : "Развернуть"}
                                     >
                                         {isExamplesMaximized ? (
                                             <Minimize2 className="w-4 h-4" />
@@ -332,14 +340,14 @@ export function AgentConfig({
                                         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                                             <div className="flex items-center gap-2">
                                                 <label className={sectionHeaderStyles}>
-                                                    Examples
+                                                    Примеры
                                                 </label>
                                                 <CustomButton
                                                     variant="secondary"
                                                     size="sm"
                                                     onClick={() => setIsExamplesMaximized(false)}
                                                     showHoverContent={true}
-                                                    hoverContent="Minimize"
+                                                    hoverContent="Свернуть"
                                                 >
                                                     <Minimize2 className="w-4 h-4" />
                                                 </CustomButton>
@@ -355,7 +363,7 @@ export function AgentConfig({
                                                         examples: value
                                                     });
                                                 }}
-                                                placeholder="Enter examples for this agent"
+                                                placeholder="Введите примеры для этого агента"
                                                 markdown
                                                 multiline
                                                 mentions
@@ -377,7 +385,7 @@ export function AgentConfig({
                                             examples: value
                                         });
                                     }}
-                                    placeholder="Enter examples for this agent"
+                                    placeholder="Введите примеры для этого агента"
                                     markdown
                                     multiline
                                     mentions
@@ -396,7 +404,7 @@ export function AgentConfig({
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <label className={sectionHeaderStyles}>
-                                            Name
+                                            Имя
                                         </label>
                                         <div className={clsx(
                                             "border rounded-lg focus-within:ring-2",
@@ -419,7 +427,7 @@ export function AgentConfig({
                                                         name: value
                                                     });
                                                 }}
-                                                placeholder="Enter agent name..."
+                                                placeholder="Введите имя агента..."
                                                 className="w-full text-sm bg-transparent focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 transition-colors px-4 py-3"
                                                 autoResize
                                             />
@@ -434,7 +442,7 @@ export function AgentConfig({
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <label className={sectionHeaderStyles}>
-                                        Description
+                                        Описание
                                     </label>
                                     <Textarea
                                         value={agent.description || ""}
@@ -444,7 +452,7 @@ export function AgentConfig({
                                                 description: e.target.value
                                             });
                                         }}
-                                        placeholder="Enter a description for this agent"
+                                        placeholder="Введите описание для этого агента"
                                         className={textareaStyles}
                                         autoResize
                                     />
@@ -454,18 +462,18 @@ export function AgentConfig({
                             <div className="space-y-4">
                                 <div className="flex items-center">
                                     <label className={sectionHeaderStyles}>
-                                        Agent Type
+                                        Тип агента
                                     </label>
                                     <div className="relative ml-2 group">
                                         <Info 
                                             className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer transition-colors"
                                         />
                                         <div className="absolute bottom-full left-0 mb-2 p-3 w-80 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs invisible group-hover:visible z-50">
-                                            <div className="mb-1 font-medium">Agent Types</div>
-                                            Conversation agents&apos; responses are user-facing. You can use conversation agents for multi-turn conversations with users.
+                                            <div className="mb-1 font-medium">Типы агентов</div>
+                                            Ответы Conversation агентов доступны пользователям. Вы можете использовать Conversation агентов для многоходовых диалогов с пользователями.
                                             <br />
                                             <br />
-                                            Task agents&apos; responses are internal and available to other agents. You can use them to build pipelines and DAGs within workflows. E.g. Conversation Agent {'->'} Task Agent {'->'} Task Agent.
+                                            Ответы Task агентов доступны другим агентам. Вы можете использовать их для построения конвейеров и DAG в рабочих процессах. Например, Conversation Agent {'->'} Task Agent {'->'} Task Agent.
                                             <div className="absolute h-2 w-2 bg-white dark:bg-gray-800 transform rotate-45 -bottom-1 left-4 border-r border-b border-gray-200 dark:border-gray-700"></div>
                                         </div>
                                     </div>
@@ -473,8 +481,8 @@ export function AgentConfig({
                                 <CustomDropdown
                                     value={agent.outputVisibility}
                                     options={[
-                                        { key: "user_facing", label: "Conversation Agent" },
-                                        { key: "internal", label: "Task Agent" }
+                                        { key: "user_facing", label: "Conversation агент" },
+                                        { key: "internal", label: "Task агент" }
                                     ]}
                                     onChange={(value) => handleUpdate({
                                         ...agent,
@@ -486,21 +494,21 @@ export function AgentConfig({
                             <div className="space-y-4">
                                 <div className="flex items-center">
                                     <label className={sectionHeaderStyles}>
-                                        Model
+                                        Модель
                                     </label>
                                     <div className="relative ml-2 group">
                                         <Info 
                                             className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer transition-colors"
                                         />
                                         <div className="absolute bottom-full left-0 mb-2 p-3 w-80 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs invisible group-hover:visible z-50">
-                                            <div className="mb-1 font-medium">Model Configuration</div>
-                                            Set this according to the PROVIDER_BASE_URL you have set in your .env file (such as your LiteLLM, gateway). 
+                                            <div className="mb-1 font-medium">Настройка модели</div>
+                                            Установите это в соответствии с PROVIDER_BASE_URL, который вы установили в вашем .env файле (например, LiteLLM, gateway). 
                                             <br />
                                             <br />
-                                            E.g. LiteLLM&apos;s naming convention is like: &apos;claude-3-7-sonnet-latest&apos;, but you may have set alias model names or might be using a different provider like openrouter, openai etc. 
+                                            Например, LiteLLM&apos;s naming convention is like: &apos;claude-3-7-sonnet-latest&apos;, но вы можете установить псевдонимы моделей или использовать другого провайдера, например openrouter, openai и т.д. 
                                             <br />
                                             <br />
-                                            By default, the model is set to gpt-4.1, assuming your OpenAI API key is set in PROVIDER_API_KEY and PROVIDER_BASE_URL is not set.
+                                            По умолчанию модель установлена на gpt-4.1, предполагая, что ваш OpenAI API ключ установлен в PROVIDER_API_KEY, а PROVIDER_BASE_URL не установлен.
                                             <div className="absolute h-2 w-2 bg-white dark:bg-gray-800 transform rotate-45 -bottom-1 left-4 border-r border-b border-gray-200 dark:border-gray-700"></div>
                                         </div>
                                     </div>
@@ -520,15 +528,15 @@ export function AgentConfig({
                             <div className="space-y-4">
                                 <div className="flex items-center">
                                     <label className={sectionHeaderStyles}>
-                                        Max calls from parent agent per turn
+                                        Максимальное количество вызовов от родительского агента за ход
                                     </label>
                                     <div className="relative ml-2 group">
                                         <Info 
                                             className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer transition-colors"
                                         />
                                         <div className="absolute bottom-full left-0 mb-2 p-3 w-80 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs invisible group-hover:visible z-50">
-                                            <div className="mb-1 font-medium">Max Calls Configuration</div>
-                                            This setting limits how many times a parent agent can call this agent in a single turn, to prevent infinite loops.
+                                            <div className="mb-1 font-medium">Настройка максимального количества вызовов</div>
+                                            Этот параметр ограничивает количество вызовов родительского агента за ход, чтобы избежать бесконечных циклов.
                                             <div className="absolute h-2 w-2 bg-white dark:bg-gray-800 transform rotate-45 -bottom-1 left-4 border-r border-b border-gray-200 dark:border-gray-700"></div>
                                         </div>
                                     </div>
@@ -550,14 +558,14 @@ export function AgentConfig({
                             {USE_TRANSFER_CONTROL_OPTIONS && (
                                 <div className="space-y-4">
                                     <label className={sectionHeaderStyles}>
-                                        Conversation control after turn
+                                        Контроль Conversation после хода
                                     </label>
                                     <CustomDropdown
                                         value={agent.controlType}
                                         options={[
-                                            { key: "retain", label: "Retain control" },
-                                            { key: "relinquish_to_parent", label: "Relinquish to parent" },
-                                            { key: "relinquish_to_start", label: "Relinquish to 'start' agent" }
+                                            { key: "retain", label: "Сохранить контроль" },
+                                            { key: "relinquish_to_parent", label: "Передать контроль родительскому агенту" },
+                                            { key: "relinquish_to_start", label: "Передать контроль 'start' агенту" }
                                         ]}
                                         onChange={(value) => handleUpdate({
                                             ...agent,
@@ -574,12 +582,12 @@ export function AgentConfig({
                             <div className="flex flex-col gap-3">
                                 <div className="space-y-2">
                                     <label className={sectionHeaderStyles}>
-                                        DATA SOURCES
+                                        Источники данных
                                     </label>
                                     <div className="flex items-center gap-3">
                                         <Select
                                             variant="bordered"
-                                            placeholder="Add data source"
+                                            placeholder="Добавить источник данных"
                                             size="sm"
                                             className="w-64"
                                             onSelectionChange={(keys) => {
@@ -617,7 +625,7 @@ export function AgentConfig({
                                                 onClick={handleUpdateInstructions}
                                                 className="whitespace-nowrap"
                                             >
-                                                Update Instructions
+                                                Обновить инструкции
                                             </CustomButton>
                                         )}
                                     </div>
@@ -654,7 +662,7 @@ export function AgentConfig({
                                                             {ds?.name || "Unknown"}
                                                         </span>
                                                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                            Data Source
+                                                            Источник данных
                                                         </span>
                                                     </div>
                                                 </div>
@@ -672,7 +680,7 @@ export function AgentConfig({
                                                     }}
                                                     startContent={<Trash2 className="w-4 h-4" />}
                                                 >
-                                                    Remove
+                                                    Удалить
                                                 </CustomButton>
                                             </div>
                                         );
@@ -690,7 +698,7 @@ export function AgentConfig({
                                                     <ChevronDown className="w-4 h-4 text-gray-400" /> : 
                                                     <ChevronRight className="w-4 h-4 text-gray-400" />
                                                 }
-                                                Advanced RAG configuration
+                                                Расширенная настройка RAG
                                             </button>
                                             
                                             {isAdvancedConfigOpen && (
@@ -698,7 +706,7 @@ export function AgentConfig({
                                                     <div className="grid gap-6">
                                                         <div className="space-y-2">
                                                             <label className={sectionHeaderStyles}>
-                                                                Return type
+                                                                Тип возврата
                                                             </label>
                                                             <div className="flex gap-4">
                                                                 {["chunks", "content"].map((type) => (
@@ -723,7 +731,7 @@ export function AgentConfig({
 
                                                         <div className="space-y-2">
                                                             <label className={sectionHeaderStyles}>
-                                                                Number of matches
+                                                                Количество совпадений
                                                             </label>
                                                             <div className="flex items-center gap-3">
                                                                 <input
@@ -738,11 +746,11 @@ export function AgentConfig({
                                                                     })}
                                                                 />
                                                                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                                                                    matches
+                                                                    совпадений
                                                                 </span>
                                                             </div>
                                                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                                Number of relevant chunks to retrieve (1-20)
+                                                                Количество релевантных частей для извлечения (1-20)
                                                             </p>
                                                         </div>
                                                     </div>
@@ -827,8 +835,8 @@ function GenerateInstructionsModal({
                 currentInstructions,
                 newInstructions,
                 true,
-                "Generated Instructions",
-                "Review the changes below:",
+                "Сгенерированные инструкции",
+                "Просмотрите изменения ниже:",
                 () => onApply(newInstructions)
             );
         } catch (err) {
@@ -850,7 +858,7 @@ function GenerateInstructionsModal({
     return (
         <Modal isOpen={isOpen} onClose={onClose} size="lg">
             <ModalContent>
-                <ModalHeader>Generate Instructions</ModalHeader>
+                <ModalHeader>Сгенерировать инструкции</ModalHeader>
                 <ModalBody>
                     <div className="flex flex-col gap-4">
                         {error && (
@@ -864,7 +872,7 @@ function GenerateInstructionsModal({
                                         handleGenerate();
                                     }}
                                 >
-                                    Retry
+                                    Повторить
                                 </CustomButton>
                             </div>
                         )}
@@ -874,7 +882,7 @@ function GenerateInstructionsModal({
                             onChange={(e) => setPrompt(e.target.value)}
                             onKeyDown={handleKeyDown}
                             disabled={isLoading}
-                            placeholder="e.g., This agent should help users analyze their data and provide insights..."
+                            placeholder="Например, этот агент должен помочь пользователям анализировать свои данные и предоставлять аналитические данные..."
                             className={textareaStyles}
                             autoResize
                         />
@@ -887,7 +895,7 @@ function GenerateInstructionsModal({
                         onClick={onClose}
                         disabled={isLoading}
                     >
-                        Cancel
+                        Отмена
                     </CustomButton>
                     <CustomButton
                         variant="primary"
@@ -896,7 +904,7 @@ function GenerateInstructionsModal({
                         disabled={!prompt.trim() || isLoading}
                         isLoading={isLoading}
                     >
-                        Generate
+                        Сгенерировать
                     </CustomButton>
                 </ModalFooter>
             </ModalContent>
@@ -906,13 +914,13 @@ function GenerateInstructionsModal({
 
 function validateAgentName(value: string, currentName?: string, usedNames?: Set<string>) {
     if (value.length === 0) {
-        return "Name cannot be empty";
+        return "Имя не может быть пустым";
     }
     if (currentName && value !== currentName && usedNames?.has(value)) {
-        return "This name is already taken";
+        return "Это имя уже занято";
     }
     if (!/^[a-zA-Z0-9_-\s]+$/.test(value)) {
-        return "Name must contain only letters, numbers, underscores, hyphens, and spaces";
+        return "Имя должно содержать только буквы, цифры, подчеркивания, дефисы и пробелы";
     }
     return null;
 }

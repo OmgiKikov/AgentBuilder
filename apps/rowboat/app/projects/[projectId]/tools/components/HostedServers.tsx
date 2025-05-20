@@ -579,7 +579,7 @@ export function HostedServers() {
             <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
           <p className="text-sm text-blue-700 dark:text-blue-300">
-            To make hosted MCP tools available to agents in the Build view, first toggle the servers ON here. Some tools may require authentication after enabling.
+            Чтобы сделать доступными MCP инструменты в представлении Build, сначала переключите серверы ВКЛ. Некоторые инструменты могут потребовать аутентификации после включения.
           </p>
         </div>
       </div>
@@ -587,10 +587,10 @@ export function HostedServers() {
       <div className="flex flex-col gap-6">
         <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
           {[
-            { id: 'all', label: 'All' },
-            { id: 'popular', label: 'Popular' },
-            { id: 'available', label: 'More' },
-            { id: 'coming-soon', label: 'Coming Soon' }
+            { id: 'all', label: 'Все' },
+            { id: 'popular', label: 'Популярные' },
+            { id: 'available', label: 'Больше' },
+            { id: 'coming-soon', label: 'Скоро' }
           ].map((filter) => (
             <button
               key={filter.id}
@@ -618,7 +618,7 @@ export function HostedServers() {
             </div>
             <input
               type="text"
-              placeholder="Search servers or tools..."
+              placeholder="Поиск серверов или инструментов..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-8 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md 
@@ -636,7 +636,7 @@ export function HostedServers() {
           >
             <div className="inline-flex items-center">
               <RefreshCw className={clsx("h-4 w-4", loading && "animate-spin")} />
-              <span className="ml-2">Refresh</span>
+              <span className="ml-2">Обновить</span>
             </div>
           </Button>
         </div>
@@ -645,7 +645,7 @@ export function HostedServers() {
       {loading ? (
         <div className="text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 dark:border-gray-200 mx-auto"></div>
-          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Loading tools...</p>
+          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Загрузка инструментов...</p>
         </div>
       ) : error ? (
         <div className="text-center py-8 text-red-500 dark:text-red-400">{error}</div>
