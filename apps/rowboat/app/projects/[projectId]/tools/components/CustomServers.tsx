@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Info, Plus, RefreshCw, Search } from 'lucide-react';
+import { Info, Plus, Search } from 'lucide-react';
 import { clsx } from 'clsx';
 import { z } from 'zod';
 import { MCPServer } from '@/app/lib/types/types';
@@ -297,6 +297,16 @@ export function CustomServers() {
       </div>
 
       <div className="flex items-center justify-between gap-4">
+        <Button
+          size="sm"
+          variant="primary"
+          onClick={() => setShowAddServer(true)}
+        >
+          <div className="inline-flex items-center">
+            <Plus className="h-4 w-4" />
+            <span className="ml-2">Add Server</span>
+          </div>
+        </Button>
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-2 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
@@ -312,29 +322,6 @@ export function CustomServers() {
               focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
               hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
           />
-        </div>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={fetchServers}
-            disabled={loading}
-          >
-            <div className="inline-flex items-center">
-              <RefreshCw className={clsx("h-4 w-4", loading && "animate-spin")} />
-              <span className="ml-2">Refresh</span>
-            </div>
-          </Button>
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => setShowAddServer(true)}
-          >
-            <div className="inline-flex items-center">
-              <Plus className="h-4 w-4" />
-              <span className="ml-2">Add Server</span>
-            </div>
-          </Button>
         </div>
       </div>
 
