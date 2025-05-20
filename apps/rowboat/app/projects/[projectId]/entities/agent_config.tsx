@@ -585,16 +585,23 @@ export function AgentConfig({
                                             onSelectionChange={(keys) => {
                                                 const key = keys.currentKey as string;
                                                 if (key) {
-                                                    handleUpdate({
-                                                        ...agent,
-                                                        ragDataSources: [...(agent.ragDataSources || []), key]
-                                                    });
+                                                    const dataSource = dataSources.find(ds => ds._id === key);
+                                                    if (dataSource) {
+                                                        handleUpdate({
+                                                            ...agent,
+                                                            ragDataSources: [...(agent.ragDataSources || []), dataSource.name]
+                                                        });
+                                                    }
                                                 }
                                             }}
                                             startContent={<PlusIcon className="w-4 h-4 text-gray-500" />}
                                         >
                                             {dataSources
-                                                .filter((ds) => !(agent.ragDataSources || []).includes(ds._id))
+                                                .filter((ds) => {
+                                                    // Исключаем источники, которые уже добавлены как по id, так и по имени
+                                                    return !(agent.ragDataSources || []).includes(ds._id) && 
+                                                           !(agent.ragDataSources || []).includes(ds.name);
+                                                })
                                                 .map((ds) => (
                                                     <SelectItem key={ds._id}>
                                                         {ds.name}
@@ -618,7 +625,9 @@ export function AgentConfig({
 
                                 <div className="flex flex-col gap-2">
                                     {(agent.ragDataSources || []).map((source) => {
-                                        const ds = dataSources.find((ds) => ds._id === source);
+                                        // Сначала пробуем найти по _id, если не найдено - ищем по name
+                                        const ds = dataSources.find((ds) => ds._id === source) || 
+                                                  dataSources.find((ds) => ds.name === source);
                                         return (
                                             <div 
                                                 key={source}
@@ -654,6 +663,7 @@ export function AgentConfig({
                                                     size="sm"
                                                     className="text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
                                                     onClick={() => {
+                                                        // Фильтруем по точному совпадению с source (может быть либо id, либо имя)
                                                         const newSources = agent.ragDataSources?.filter((s) => s !== source);
                                                         handleUpdate({
                                                             ...agent,

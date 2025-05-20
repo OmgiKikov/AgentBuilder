@@ -1,6 +1,6 @@
 from openai import OpenAI
 from flask import Flask, request, jsonify
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, Field
 from typing import List, Dict, Any, Literal, Optional
 import json
 from lib import AgentContext, PromptContext, ToolContext, ChatContext
@@ -16,13 +16,16 @@ class AssistantMessage(BaseModel):
     content: str
 
 class DataSource(BaseModel):
-    _id: str
+    id: str = Field(alias='_id')
     name: str
     description: Optional[str] = None
     active: bool = True
     status: str  # 'pending' | 'ready' | 'error' | 'deleted'
     error: Optional[str] = None
     data: dict  # The discriminated union based on type
+
+    class Config:
+        populate_by_name = True
 
 with open('copilot_edit_agent.md', 'r', encoding='utf-8') as file:
     copilot_instructions_edit_agent = file.read()
@@ -69,7 +72,7 @@ def get_response(
         data_sources_prompt = f"""
 **NOTE**: The following data sources are available:
 ```json
-{json.dumps([ds.model_dump() for ds in dataSources])}
+{json.dumps([{"id": ds.id, "name": ds.name, "source_data": ds.model_dump()} for ds in dataSources])}
 ```
 """
 
