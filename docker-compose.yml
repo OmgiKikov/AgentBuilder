@@ -28,6 +28,7 @@ services:
       - AGENTS_API_KEY=${AGENTS_API_KEY}
       - COPILOT_API_URL=http://copilot:3002
       - COPILOT_API_KEY=${COPILOT_API_KEY}
+      - KLAVIS_API_KEY=${KLAVIS_API_KEY}
       - REDIS_URL=redis://redis:6379
       - USE_RAG=${USE_RAG}
       - QDRANT_URL=http://qdrant:6333
