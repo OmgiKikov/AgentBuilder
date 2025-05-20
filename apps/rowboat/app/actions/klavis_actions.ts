@@ -248,14 +248,7 @@ export async function listAvailableMcpServers(projectId: string): Promise<McpSer
         const mongodbServers = project?.mcpServers || [];
         const mongodbServerMap = new Map(mongodbServers.map(server => [server.name, server]));
 
-        console.log('[Klavis API] Current MongoDB servers:', { 
-            serverCount: mongodbServers.length,
-            servers: mongodbServers.map(s => ({
-                name: s.name,
-                isActive: s.isActive,
-                toolCount: s.tools.length
-            }))
-        });
+        console.log('[Klavis API] Found ', mongodbServers.length, ' MongoDB servers');
 
         const serversEndpoint = '/mcp-server/servers';
         const rawData = await klavisApiCall<GetAllServersResponse>(serversEndpoint, {

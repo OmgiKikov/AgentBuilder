@@ -214,6 +214,7 @@ export function HostedTools() {
       const response = await listAvailableMcpServers(projectId || "");
       
       if (response.error) {
+        console.error(`Call to listAvailableMcpServers failed with projectId: ${projectId} and error: ${response.error}`);
         throw new Error(response.error);
       }
       
