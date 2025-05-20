@@ -46,6 +46,7 @@ export const MCPServer = z.object({
     serverUrl: z.string().optional(),
     instanceId: z.string().optional(),
     serverName: z.string().optional(),
+    serverType: z.enum(['hosted', 'custom']).optional(),
 });
 
 // Response types for Klavis API

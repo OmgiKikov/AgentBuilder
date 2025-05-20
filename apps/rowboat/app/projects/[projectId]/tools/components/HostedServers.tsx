@@ -18,6 +18,11 @@ import { z } from 'zod';
 import { MCPServer } from '@/app/lib/types/types';
 import { Checkbox } from '@heroui/react';
 import { projectsCollection } from '@/app/lib/mongodb';
+import { 
+  ServerCard, 
+  ToolManagementPanel,
+  ServerOperationBanner 
+} from './MCPServersCommon';
 
 type McpServerType = z.infer<typeof MCPServer>;
 type McpToolType = z.infer<typeof MCPServer>['tools'][number];
@@ -168,22 +173,7 @@ const ToolCard = ({
   );
 };
 
-const ServerOperationBanner = ({ serverName, operation }: { serverName: string, operation: 'setup' | 'delete' | 'checking-auth' }) => (
-  <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 
-    border border-blue-100 dark:border-blue-800 rounded-lg p-2 text-center text-sm
-    text-blue-700 dark:text-blue-300 animate-fadeIn">
-    <div className="flex items-center justify-center gap-2">
-      <div className="animate-spin rounded-full h-4 w-4 border-2 border-b-transparent border-current" />
-      <span>
-        {operation === 'setup' ? 'Setting up server...' : 
-         operation === 'delete' ? 'Deleting server...' :
-         'Checking authentication...'}
-      </span>
-    </div>
-  </div>
-);
-
-export function HostedTools() {
+export function HostedServers() {
   const params = useParams();
   const projectId = typeof params.projectId === 'string' ? params.projectId : params.projectId?.[0];
   if (!projectId) throw new Error('Project ID is required');
@@ -198,15 +188,11 @@ export function HostedTools() {
   const [enabledServers, setEnabledServers] = useState<Set<string>>(new Set());
   const [togglingServers, setTogglingServers] = useState<Set<string>>(new Set());
   const [serverOperations, setServerOperations] = useState<Map<string, 'setup' | 'delete' | 'checking-auth'>>(new Map());
-  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
-  const [togglingTools, setTogglingTools] = useState<Set<string>>(new Set());
   const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
   const [hasToolChanges, setHasToolChanges] = useState(false);
   const [savingTools, setSavingTools] = useState(false);
   const [serverToolCounts, setServerToolCounts] = useState<Map<string, number>>(new Map());
-  const [availableTools, setAvailableTools] = useState<Map<string, McpToolType[]>>(new Map());
   const [syncingServers, setSyncingServers] = useState<Set<string>>(new Set());
-  const [checkingAuth, setCheckingAuth] = useState<Set<string>>(new Set());
 
   const fetchServers = useCallback(async () => {
     try {
@@ -222,7 +208,13 @@ export function HostedTools() {
         throw new Error('No data received from server');
       }
       
-      setServers(response.data);
+      // Mark all servers as hosted type
+      const serversWithType = response.data.map(server => ({
+        ...server,
+        serverType: 'hosted' as const
+      }));
+      
+      setServers(serversWithType);
       setError(null);
     } catch (err: any) {
       setError(err?.message || 'Failed to load MCP servers');
@@ -241,7 +233,6 @@ export function HostedTools() {
   useEffect(() => {
     if (servers) {
       console.log('Updating enabled servers from server data:', servers);
-      // A server is considered enabled if it is active (from Klavis)
       const enabled = new Set(
         servers
           .filter(server => server.isActive)
@@ -252,19 +243,12 @@ export function HostedTools() {
     }
   }, [servers]);
 
-  // Initialize tool counts from Klavis and MongoDB when servers are loaded
+  // Initialize tool counts when servers are loaded
   useEffect(() => {
     const newCounts = new Map<string, number>();
     servers.forEach(server => {
       if (isServerEligible(server)) {
-        // Count selected tools from MongoDB
         newCounts.set(server.name, server.tools.length);
-        
-        console.log('[Tools] Server tool counts:', {
-          server: server.name,
-          availableFromKlavis: server.availableTools?.length || 0,
-          selectedFromMongo: server.tools.length
-        });
       }
     });
     setServerToolCounts(newCounts);
@@ -273,13 +257,11 @@ export function HostedTools() {
   // Initialize selected tools when opening the panel
   useEffect(() => {
     if (selectedServer) {
-      // Initialize selected tools from MongoDB data
       setSelectedTools(new Set(selectedServer.tools.map(t => t.id)));
       setHasToolChanges(false);
     }
   }, [selectedServer]);
 
-  // Helper function to check if a server is eligible (using Klavis status)
   const isServerEligible = (server: McpServerType) => {
     return server.isActive && (!server.authNeeded || server.isAuthenticated);
   };
@@ -287,15 +269,12 @@ export function HostedTools() {
   const handleToggleTool = async (server: McpServerType) => {
     try {
       const serverKey = server.name;
-      console.log('Toggle:', { server: serverKey, newState: !enabledServers.has(serverKey) });
-
       setTogglingServers(prev => new Set([...prev, serverKey]));
       setToggleError(null);
 
       const isCurrentlyEnabled = enabledServers.has(serverKey);
       const newState = !isCurrentlyEnabled;
       
-      // Set the operation type
       setServerOperations(prev => {
         const next = new Map(prev);
         next.set(serverKey, newState ? 'setup' : 'delete');
@@ -305,7 +284,6 @@ export function HostedTools() {
       try {
         const result = await enableServer(server.name, projectId || "", newState);
         
-        // Update local state after all operations are complete
         setEnabledServers(prev => {
           const next = new Set(prev);
           if (!newState) {
@@ -317,22 +295,19 @@ export function HostedTools() {
         });
 
         if (newState) {
-          // Fetch updated server data to get the tools
           const response = await listAvailableMcpServers(projectId || "");
           if (response.data) {
             const updatedServer = response.data.find(s => s.name === serverKey);
             if (updatedServer) {
-              // Update server state with complete data including tools
               setServers(prevServers => {
                 return prevServers.map(s => {
                   if (s.name === serverKey) {
-                    return updatedServer;
+                    return { ...updatedServer, serverType: 'hosted' as const };
                   }
                   return s;
                 });
               });
 
-              // Update tool counts
               setServerToolCounts(prev => {
                 const next = new Map(prev);
                 next.set(serverKey, updatedServer.tools.length);
@@ -341,7 +316,6 @@ export function HostedTools() {
             }
           }
         } else {
-          // Handle disable case
           setServers(prevServers => {
             return prevServers.map(s => {
               if (s.name === serverKey) {
@@ -358,7 +332,6 @@ export function HostedTools() {
             });
           });
 
-          // Update tool counts
           setServerToolCounts(prev => {
             const next = new Map(prev);
             next.set(serverKey, 0);
@@ -367,7 +340,6 @@ export function HostedTools() {
         }
       } catch (err) {
         console.error('Toggle failed:', { server: serverKey, error: err });
-        // Revert local state on error
         setEnabledServers(prev => {
           const next = new Set(prev);
           if (newState) {
@@ -399,16 +371,7 @@ export function HostedTools() {
 
   const handleAuthenticate = async (server: McpServerType) => {
     try {
-      console.log('[Auth] Starting authentication flow:', {
-        serverName: server.name,
-        instanceId: server.instanceId,
-        isAuthenticated: server.isAuthenticated,
-        authNeeded: server.authNeeded
-      });
-
       const authUrl = `https://api.klavis.ai/oauth/${server.name.toLowerCase()}/authorize?instance_id=${server.instanceId}&redirect_url=${window.location.origin}/projects/${projectId}/tools/oauth/callback`;
-      console.log('[Auth] Opening auth window with URL:', authUrl);
-
       const authWindow = window.open(
         authUrl,
         '_blank',
@@ -416,84 +379,42 @@ export function HostedTools() {
       );
 
       if (authWindow) {
-        console.log('[Auth] Auth window opened successfully');
         const checkInterval = setInterval(async () => {
           if (authWindow.closed) {
             clearInterval(checkInterval);
-            console.log('[Auth] OAuth window closed, starting server refresh...');
             
             try {
-              // Set checking auth state
               setServerOperations(prev => {
                 const next = new Map(prev);
                 next.set(server.name, 'checking-auth');
                 return next;
               });
               
-              // Update MongoDB through server action
-              console.log('[Auth] Calling updateProjectServers...');
               await updateProjectServers(projectId);
-              console.log('[Auth] updateProjectServers completed');
               
-              // Update only this server's state
-              console.log('[Auth] Fetching updated server list...');
               const response = await listAvailableMcpServers(projectId);
-              console.log('[Auth] Server list response:', {
-                success: !!response.data,
-                error: response.error,
-                serverCount: response.data?.length
-              });
-
               if (response.data) {
                 const updatedServer = response.data.find(us => us.name === server.name);
-                console.log('[Auth] Found updated server:', {
-                  found: !!updatedServer,
-                  name: server.name,
-                  isAuthenticated: updatedServer?.isAuthenticated,
-                  authNeeded: updatedServer?.authNeeded,
-                  isActive: updatedServer?.isActive
-                });
-
                 if (updatedServer) {
                   setServers(prevServers => {
                     return prevServers.map(s => {
                       if (s.name === server.name) {
-                        console.log('[Auth] Updating server state:', {
-                          oldAuth: s.isAuthenticated,
-                          newAuth: updatedServer.isAuthenticated
-                        });
-                        return updatedServer;
+                        return { ...updatedServer, serverType: 'hosted' as const };
                       }
                       return s;
                     });
                   });
 
-                  // If this server is currently selected in the panel, update it there too
                   if (selectedServer?.name === server.name) {
-                    console.log('[Auth] Updating selected server in panel');
-                    setSelectedServer(updatedServer);
+                    setSelectedServer({ ...updatedServer, serverType: 'hosted' as const });
                   }
 
-                  // If server is now eligible, trigger a sync to get tools
                   if (!server.authNeeded || updatedServer.isAuthenticated) {
-                    console.log('[Auth] Server is eligible, triggering sync');
                     await handleSyncServer(updatedServer);
-                  } else {
-                    console.log('[Auth] Server is not eligible after auth:', {
-                      authNeeded: server.authNeeded,
-                      isAuthenticated: updatedServer.isAuthenticated
-                    });
                   }
-                } else {
-                  console.error('[Auth] Updated server not found in response');
                 }
-              } else {
-                console.error('[Auth] Failed to get updated server list:', response.error);
               }
-            } catch (error) {
-              console.error('[Auth] Error during server refresh:', error);
             } finally {
-              // Clear checking auth state
               setServerOperations(prev => {
                 const next = new Map(prev);
                 next.delete(server.name);
@@ -503,7 +424,6 @@ export function HostedTools() {
           }
         }, 500);
       } else {
-        console.error('[Auth] Failed to open auth window');
         window.alert('Failed to open authentication window. Please check your popup blocker settings.');
       }
     } catch (error) {
@@ -512,37 +432,15 @@ export function HostedTools() {
     }
   };
 
-  const handleCreateServer = async (serverName: string) => {
-    if (!projectId) {
-      console.error('No project ID available');
-      return;
-    }
-
-    try {
-      await enableServer(serverName, projectId, true);
-      await fetchServers();
-      
-      const updatedServers = await listAvailableMcpServers(projectId);
-      const server = updatedServers.data?.find(s => s.name === serverName);
-      if (server?.requiresAuth) {
-        window.open(`https://api.klavis.ai/oauth/${serverName.toLowerCase()}/authorize?instance_id=${server.instanceId}`, '_blank');
-      }
-    } catch (err) {
-      console.error('Error creating server:', err);
-    }
-  };
-
   const handleSaveToolSelection = async () => {
     if (!selectedServer || !projectId) return;
     
     setSavingTools(true);
     try {
-        // Get all available tools from Klavis and current selection state
         const availableTools = selectedServer.availableTools || [];
         const previousTools = new Set(selectedServer.tools.map(t => t.id));
         const updatedTools = new Set<string>();
         
-        // Update each available tool's state based on our selection
         for (const tool of availableTools) {
             const isSelected = selectedTools.has(tool.id);
             await toggleMcpTool(projectId, selectedServer.name, tool.id, isSelected);
@@ -551,17 +449,6 @@ export function HostedTools() {
             }
         }
         
-        // Log summary of changes
-        const addedTools = Array.from(updatedTools).filter(t => !previousTools.has(t));
-        const removedTools = Array.from(previousTools).filter(t => !updatedTools.has(t));
-        console.log('[Tools] Tool selection updated:', {
-            server: selectedServer.name,
-            totalTools: updatedTools.size,
-            added: addedTools.length > 0 ? addedTools : undefined,
-            removed: removedTools.length > 0 ? removedTools : undefined
-        });
-        
-        // Update only the specific server in the servers state
         setServers(prevServers => {
             return prevServers.map(s => {
                 if (s.name === selectedServer.name) {
@@ -574,7 +461,6 @@ export function HostedTools() {
             });
         });
 
-        // Update selected server data
         setSelectedServer(prev => {
             if (!prev) return null;
             return {
@@ -583,7 +469,6 @@ export function HostedTools() {
             };
         });
 
-        // Update tool counts for this server
         setServerToolCounts(prev => {
             const next = new Map(prev);
             next.set(selectedServer.name, selectedTools.size);
@@ -603,15 +488,11 @@ export function HostedTools() {
 
     try {
       setSyncingServers(prev => new Set([...prev, server.name]));
-      console.log('[MCP] Starting server sync:', { serverName: server.name });
-
       const enrichedTools = await fetchMcpToolsForServer(projectId, server.name);
       
-      // Update the server's tools in the state
       setServers(prevServers => {
         return prevServers.map(s => {
           if (s.name === server.name) {
-            // Keep the original availableTools and just update their parameters
             const updatedAvailableTools = (s.availableTools || []).map(originalTool => {
               const enrichedTool = enrichedTools.find(t => t.name === originalTool.name);
               return enrichedTool ? {
@@ -630,7 +511,6 @@ export function HostedTools() {
         });
       });
 
-      // If this server is currently selected in the slide panel, update its tools
       if (selectedServer?.name === server.name) {
         setSelectedServer(prev => {
           if (!prev) return null;
@@ -649,16 +529,6 @@ export function HostedTools() {
           };
         });
       }
-
-      console.log('[MCP] Server sync complete:', { 
-        serverName: server.name,
-        toolCount: enrichedTools.length 
-      });
-    } catch (error) {
-      console.error('[MCP] Server sync failed:', { 
-        serverName: server.name,
-        error 
-      });
     } finally {
       setSyncingServers(prev => {
         const next = new Set(prev);
@@ -669,7 +539,6 @@ export function HostedTools() {
   };
 
   const filteredServers = sortServers(servers.filter(server => {
-    // First apply the search filter
     const searchLower = searchQuery.toLowerCase();
     const serverTools = server.tools || [];
     const matchesSearch = (
@@ -681,7 +550,6 @@ export function HostedTools() {
       )
     );
 
-    // Then apply the type filter
     const hasTools = (serverTools.length > 0);
     const isPriority = SERVER_PRIORITY[server.name] !== undefined;
     
@@ -778,247 +646,49 @@ export function HostedTools() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredServers.map((server) => (
-            <div
+            <ServerCard
               key={server.instanceId}
-              className="relative border-2 border-gray-200/80 dark:border-gray-700/80 rounded-xl p-6 
-                bg-white dark:bg-gray-900 shadow-sm dark:shadow-none 
-                backdrop-blur-sm hover:shadow-md dark:hover:shadow-none 
-                transition-all duration-200 
-                hover:border-blue-200 dark:hover:border-blue-900"
-            >
-              <div className="flex flex-col h-full">
-                {serverOperations.get(server.name) && (
-                  <ServerOperationBanner 
-                    serverName={server.name} 
-                    operation={serverOperations.get(server.name)!} 
-                  />
-                )}
-                <div className="flex justify-between items-center mb-6">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <ServerLogo serverName={server.name} className="mr-2" />
-                        <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">
-                          {server.name}
-                        </h3>
-                        {(server.availableTools || []).length > 0 ? (
-                          <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
-                            bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
-                            {(server.availableTools || []).length} tools available
-                          </span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
-                            bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300">
-                            Coming soon
-                          </span>
-                        )}
-                        {isServerEligible(server) && server.tools.length > 0 && (
-                          <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
-                            bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300">
-                            {server.tools.length} tools selected
-                          </span>
-                        )}
-                      </div>
-                      <Switch
-                        checked={enabledServers.has(server.name)}
-                        onCheckedChange={() => handleToggleTool(server)}
-                        disabled={togglingServers.has(server.name)}
-                        className={clsx(
-                          "data-[state=checked]:bg-blue-500 dark:data-[state=checked]:bg-blue-600",
-                          "data-[state=unchecked]:bg-gray-200 dark:data-[state=unchecked]:bg-gray-700",
-                          togglingServers.has(server.name) && "opacity-50 cursor-not-allowed"
-                        )}
-                      />
-                    </div>
-                    {toggleError?.serverId === server.name && (
-                      <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 
-                        py-1 px-2 rounded-md mt-2 animate-fadeIn">
-                        {toggleError.message}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"></span>
-                      Klavis AI
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 line-clamp-2">
-                    {server.description}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 mt-auto">
-                  {server.isActive && server.authNeeded && (
-                    <div className="inline-flex items-center space-x-2">
-                      {!server.isAuthenticated && (
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          onClick={() => handleAuthenticate(server)}
-                        >
-                          <div className="inline-flex items-center">
-                            <Lock className="h-3.5 w-3.5" />
-                            <span className="ml-1.5">Auth</span>
-                          </div>
-                        </Button>
-                      )}
-                      <div className={clsx(
-                        "text-xs py-1 px-2 rounded-full",
-                        server.isAuthenticated 
-                          ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20"
-                          : "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20"
-                      )}>
-                        {server.isAuthenticated ? 'Authenticated' : 'Not authenticated'}
-                      </div>
-                    </div>
-                  )}
-                  <div className="ml-auto flex items-center gap-2">
-                    {isServerEligible(server) && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleSyncServer(server)}
-                        disabled={syncingServers.has(server.name)}
-                      >
-                        <div className="inline-flex items-center">
-                          <RefreshCcw className={clsx(
-                            "h-3.5 w-3.5",
-                            syncingServers.has(server.name) && "animate-spin"
-                          )} />
-                          <span className="ml-1.5">
-                            {syncingServers.has(server.name) ? 'Syncing...' : 'Sync Tools'}
-                          </span>
-                        </div>
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setSelectedServer(server)}
-                    >
-                      <div className="inline-flex items-center">
-                        <Info className="h-4 w-4" />
-                        <span className="ml-1.5">{isServerEligible(server) ? 'Manage Tools' : 'Tools'}</span>
-                      </div>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+              server={server}
+              onToggle={() => handleToggleTool(server)}
+              onManageTools={() => setSelectedServer(server)}
+              onSync={() => handleSyncServer(server)}
+              onAuth={() => handleAuthenticate(server)}
+              isToggling={togglingServers.has(server.name)}
+              isSyncing={syncingServers.has(server.name)}
+              operation={serverOperations.get(server.name)}
+              error={toggleError?.serverId === server.name ? toggleError : undefined}
+              showAuth={true}
+            />
           ))}
         </div>
       )}
 
-      <SlidePanel
-        isOpen={!!selectedServer}
+      <ToolManagementPanel
+        server={selectedServer}
         onClose={() => {
-          const closePanel = () => {
-            setSelectedServer(null);
-            setSelectedTools(new Set());
-            setHasToolChanges(false);
-          };
-
-          if (hasToolChanges) {
-            if (window.confirm('You have unsaved changes. Are you sure you want to close?')) {
-              closePanel();
-            }
-          } else {
-            closePanel();
-          }
+          setSelectedServer(null);
+          setSelectedTools(new Set());
+          setHasToolChanges(false);
         }}
-        title={selectedServer?.name || 'Server Details'}
-      >
-        {selectedServer && (
-          <div className="space-y-6">
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Available Tools</h4>
-                </div>
-                {isServerEligible(selectedServer) && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleSyncServer(selectedServer)}
-                      disabled={syncingServers.has(selectedServer.name)}
-                    >
-                      <div className="inline-flex items-center">
-                        <RefreshCcw className={clsx(
-                          "h-3.5 w-3.5",
-                          syncingServers.has(selectedServer.name) && "animate-spin"
-                        )} />
-                        <span className="ml-1.5">
-                          {syncingServers.has(selectedServer.name) ? 'Syncing...' : 'Sync'}
-                        </span>
-                      </div>
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        const allTools = new Set<string>(selectedServer.availableTools?.map(t => t.id) || []);
-                        setSelectedTools(prev => {
-                          const next = prev.size === allTools.size ? new Set<string>() : allTools;
-                          setHasToolChanges(true);
-                          return next;
-                        });
-                      }}
-                    >
-                      {selectedTools.size === (selectedServer.availableTools || []).length ? 'Deselect All' : 'Select All'}
-                    </Button>
-                    {hasToolChanges && (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={handleSaveToolSelection}
-                        disabled={savingTools}
-                      >
-                        {savingTools ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-b-transparent border-white mr-2" />
-                            Saving...
-                          </>
-                        ) : (
-                          'Save Changes'
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                {(selectedServer.availableTools || []).map((tool) => (
-                  <ToolCard
-                    key={tool.id}
-                    tool={tool}
-                    server={selectedServer}
-                    isSelected={selectedTools.has(tool.id)}
-                    onSelect={(selected) => {
-                      setSelectedTools(prev => {
-                        const next = new Set(prev);
-                        if (selected) {
-                          next.add(tool.id);
-                        } else {
-                          next.delete(tool.id);
-                        }
-                        setHasToolChanges(true);
-                        return next;
-                      });
-                    }}
-                    showCheckbox={isServerEligible(selectedServer)}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </SlidePanel>
+        selectedTools={selectedTools}
+        onToolSelectionChange={(toolId, selected) => {
+          setSelectedTools(prev => {
+            const next = new Set(prev);
+            if (selected) {
+              next.add(toolId);
+            } else {
+              next.delete(toolId);
+            }
+            setHasToolChanges(true);
+            return next;
+          });
+        }}
+        onSaveTools={handleSaveToolSelection}
+        onSyncTools={selectedServer ? () => handleSyncServer(selectedServer) : undefined}
+        hasChanges={hasToolChanges}
+        isSaving={savingTools}
+        isSyncing={selectedServer ? syncingServers.has(selectedServer.name) : false}
+      />
     </div>
   );
 }
