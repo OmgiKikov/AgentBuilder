@@ -4,7 +4,7 @@ import { WorkflowPrompt } from "../../../lib/types/workflow_types";
 import { WorkflowAgent } from "../../../lib/types/workflow_types";
 import { Dropdown, DropdownItem, DropdownTrigger, DropdownMenu } from "@heroui/react";
 import { useRef, useEffect, useState } from "react";
-import { EllipsisVerticalIcon, ImportIcon, PlusIcon, Brain, Wrench, PenLine, Library } from "lucide-react";
+import { EllipsisVerticalIcon, ImportIcon, PlusIcon, Brain, Wrench, PenLine, Library, ChevronDown, ChevronRight } from "lucide-react";
 import { Panel } from "@/components/common/panel-common";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
@@ -117,6 +117,69 @@ const StartLabel = () => (
     </div>
 );
 
+interface ServerCardProps {
+    serverName: string;
+    tools: z.infer<typeof AgenticAPITool>[];
+    selectedEntity: {
+        type: "agent" | "tool" | "prompt";
+        name: string;
+    } | null;
+    onSelectTool: (name: string) => void;
+    onDeleteTool: (name: string) => void;
+    selectedRef: React.RefObject<HTMLButtonElement>;
+}
+
+const ServerCard = ({
+    serverName,
+    tools,
+    selectedEntity,
+    onSelectTool,
+    onDeleteTool,
+    selectedRef,
+}: ServerCardProps) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    return (
+        <div className="mb-2">
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md text-sm text-left"
+            >
+                {isExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                ) : (
+                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                )}
+                <div className="flex items-center gap-1">
+                    <ImportIcon className="w-4 h-4 text-blue-600 dark:text-blue-500" />
+                    <span>{serverName}</span>
+                </div>
+            </button>
+            {isExpanded && (
+                <div className="ml-6 mt-1 space-y-1">
+                    {tools.map((tool, index) => (
+                        <ListItemWithMenu
+                            key={`tool-${index}`}
+                            name={tool.name}
+                            isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
+                            onClick={() => onSelectTool(tool.name)}
+                            selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
+                            icon={<Wrench className="w-4 h-4 text-gray-600 dark:text-gray-500" />}
+                            menuContent={
+                                <EntityDropdown 
+                                    name={tool.name} 
+                                    onDelete={onDeleteTool}
+                                    isLocked={tool.isMcp || tool.isLibrary}
+                                />
+                            }
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 export function EntityList({
     agents,
     tools,
@@ -215,8 +278,8 @@ export function EntityList({
         return `${(availableHeight * percentage) / 100}px`;
     };
 
-    function handleToolSelection(tool: z.infer<typeof AgenticAPITool>) {
-        onSelectTool(tool.name);
+    function handleToolSelection(name: string) {
+        onSelectTool(name);
     }
 
     return (
@@ -284,20 +347,6 @@ export function EntityList({
                             <div className="flex items-center gap-2">
                                 <Wrench className="w-4 h-4" />
                                 <span>Tools</span>
-                                <div className="flex items-center gap-1 ml-2">
-                                    {mergedTools.some(t => t.isMcp) && (
-                                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20">
-                                            <ImportIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                                            <span className="text-xs text-blue-600 dark:text-blue-400">MCP</span>
-                                        </div>
-                                    )}
-                                    {mergedTools.some(t => t.isLibrary) && (
-                                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/20">
-                                            <Library className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                                            <span className="text-xs text-purple-600 dark:text-purple-400">Library</span>
-                                        </div>
-                                    )}
-                                </div>
                             </div>
                             <Button
                                 variant="secondary"
@@ -320,39 +369,62 @@ export function EntityList({
                     <div className="flex flex-col h-full overflow-y-auto">
                         {mergedTools.length > 0 ? (
                             <div className="space-y-1 pb-2">
-                                {mergedTools.map((tool, index) => {
-
-                                    let toolIcon;
-                                    let iconClassName = "w-4 h-4";
+                                {/* Group tools by server */}
+                                {(() => {
+                                    // Get custom tools (non-MCP tools)
+                                    const customTools = mergedTools.filter(tool => !tool.isMcp);
                                     
-                                    if (tool.isMcp) {
-                                        toolIcon = <ImportIcon className={clsx(iconClassName, "text-blue-600 dark:text-blue-500")} />;
-                                    } else if (tool.isLibrary) {
-                                        toolIcon = <Library className={clsx(iconClassName, "text-purple-600 dark:text-purple-500")} />;
-                                    } else {
-                                        toolIcon = <Wrench className={clsx(iconClassName, "text-gray-600 dark:text-gray-500")} />;
-                                    }
+                                    // Group MCP tools by server
+                                    const serverTools = mergedTools.reduce((acc, tool) => {
+                                        if (tool.isMcp && tool.mcpServerName) {
+                                            if (!acc[tool.mcpServerName]) {
+                                                acc[tool.mcpServerName] = [];
+                                            }
+                                            acc[tool.mcpServerName].push(tool);
+                                        }
+                                        return acc;
+                                    }, {} as Record<string, typeof mergedTools>);
 
                                     return (
-                                        <ListItemWithMenu
-                                            key={`tool-${index}`}
-                                            name={tool.name}
-                                            isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
-                                            onClick={() => {
-                                                handleToolSelection(tool);
-                                            }}
-                                            selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
-                                            icon={toolIcon}
-                                            menuContent={
-                                                <EntityDropdown 
-                                                    name={tool.name} 
-                                                    onDelete={onDeleteTool}
-                                                    isLocked={tool.isMcp || tool.isLibrary}
+                                        <>
+                                            {/* Show MCP server cards first */}
+                                            {Object.entries(serverTools).map(([serverName, tools]) => (
+                                                <ServerCard
+                                                    key={serverName}
+                                                    serverName={serverName}
+                                                    tools={tools}
+                                                    selectedEntity={selectedEntity}
+                                                    onSelectTool={handleToolSelection}
+                                                    onDeleteTool={onDeleteTool}
+                                                    selectedRef={selectedRef}
                                                 />
-                                            }
-                                        />
+                                            ))}
+
+                                            {/* Show custom tools */}
+                                            {customTools.length > 0 && (
+                                                <div className="mt-2">
+                                                    {customTools.map((tool, index) => (
+                                                        <ListItemWithMenu
+                                                            key={`custom-tool-${index}`}
+                                                            name={tool.name}
+                                                            isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
+                                                            onClick={() => handleToolSelection(tool.name)}
+                                                            selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
+                                                            icon={<Wrench className="w-4 h-4 text-gray-600 dark:text-gray-500" />}
+                                                            menuContent={
+                                                                <EntityDropdown 
+                                                                    name={tool.name} 
+                                                                    onDelete={onDeleteTool}
+                                                                    isLocked={tool.isLibrary}
+                                                                />
+                                                            }
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </>
                                     );
-                                })}
+                                })()}
                             </div>
                         ) : (
                             <EmptyState entity="tools" />
