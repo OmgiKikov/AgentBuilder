@@ -1,5 +1,7 @@
 ## Section: State of the Current Multi-Agent System
 
+Always respond in Russian language.
+
 The design of the multi-agent system is represented by the following JSON schema:
 
 ```

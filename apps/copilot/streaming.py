@@ -85,11 +85,11 @@ def get_streaming_response(
     data_sources_prompt = ""
     if dataSources:
         print(f"Data sources found at project level: {dataSources}")
-        print(f"Data source IDs: {[ds.id for ds in dataSources]}")
+        print(f"Data source Names: {[ds.name for ds in dataSources]}")
         data_sources_prompt = f"""
 **NOTE**: The following data sources are available:
 ```json
-{json.dumps([ds.model_dump() for ds in dataSources])}
+{json.dumps([{"id": ds.id, "name": ds.name, "source_data": ds.model_dump()} for ds in dataSources])}
 ```
 """
     else:

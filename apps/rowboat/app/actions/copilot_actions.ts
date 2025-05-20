@@ -148,7 +148,24 @@ export async function getCopilotResponseStream(
         workflow_schema: JSON.stringify(zodToJsonSchema(CopilotWorkflow)),
         current_workflow_config: JSON.stringify(convertToCopilotWorkflow(mergedWorkflow)),
         context: context ? convertToCopilotApiChatContext(context) : null,
-        dataSources: dataSources ? dataSources.map(ds => CopilotDataSource.parse(ds)) : undefined,
+        dataSources: dataSources ? dataSources.map(ds => {
+            console.log('Stream - Original data source:', JSON.stringify(ds));
+            // First parse to validate, then ensure _id is included
+            CopilotDataSource.parse(ds); // validate but don't use the result
+            // Cast to any to handle the WithStringId type
+            const withId = ds as any;
+            const result = {
+                _id: withId._id,
+                name: withId.name,
+                description: withId.description,
+                active: withId.active,
+                status: withId.status,
+                error: withId.error,
+                data: withId.data
+            };
+            console.log('Stream - Processed data source:', JSON.stringify(result));
+            return result;
+        }) : undefined,
     };
 
     // serialize the request
