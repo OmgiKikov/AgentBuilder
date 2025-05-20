@@ -659,36 +659,32 @@ export async function enableServer(
             await new Promise(resolve => setTimeout(resolve, 5000));
             console.log(`[Klavis API] Warm-up period complete for ${serverName}`);
 
-            // Try to enrich tools if server is ready (no auth needed)
-            if (!rawServerData.authNeeded) {
-                try {
-                    console.log(`[Klavis API] Enriching tools for newly enabled server ${serverName}`);
-                    const enrichedTools = await enrichToolsWithParameters(
-                        projectId,
-                        serverName,
-                        basicTools,
-                        true // isNewlyEnabled = true
+            // Try to enrich tools regardless of auth status
+            try {
+                console.log(`[Klavis API] Enriching tools for newly enabled server ${serverName}`);
+                const enrichedTools = await enrichToolsWithParameters(
+                    projectId,
+                    serverName,
+                    basicTools,
+                    true // isNewlyEnabled = true
+                );
+
+                if (enrichedTools.length > 0) {
+                    // Update server with enriched tools
+                    await projectsCollection.updateOne(
+                        { _id: projectId, "mcpServers.name": serverName },
+                        { 
+                            $set: { 
+                                "mcpServers.$.availableTools": enrichedTools
+                            }
+                        }
                     );
 
-                    if (enrichedTools.length > 0) {
-                        // Update server with enriched tools
-                        await projectsCollection.updateOne(
-                            { _id: projectId, "mcpServers.name": serverName },
-                            { 
-                                $set: { 
-                                    "mcpServers.$.availableTools": enrichedTools
-                                }
-                            }
-                        );
-                    }
-
-                    // Batch add all tools
-                    await batchAddTools(projectId, serverName, enrichedTools.length > 0 ? enrichedTools : basicTools);
-                } catch (enrichError) {
-                    console.error(`[Klavis API] Tool enrichment failed for ${serverName}:`, enrichError);
+                    // For auth-needed servers, we'll still write the tools but they won't be usable until auth
+                    await batchAddTools(projectId, serverName, enrichedTools);
                 }
-            } else {
-                console.log(`[Klavis API] Server ${serverName} requires auth, skipping tool enrichment`);
+            } catch (enrichError) {
+                console.error(`[Klavis API] Tool enrichment failed for ${serverName}:`, enrichError);
             }
 
             return result;
