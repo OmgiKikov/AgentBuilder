@@ -38,13 +38,14 @@ export const MCPServer = z.object({
     description: z.string(),
     tools: z.array(McpTool),  // Selected tools from MongoDB
     availableTools: z.array(McpTool).optional(),  // Available tools from Klavis
-    instanceId: z.string(),
-    serverName: z.string(),
-    serverUrl: z.string().optional(),
     isActive: z.boolean().optional(),
-    authNeeded: z.boolean(),
-    isAuthenticated: z.boolean(),
-    requiresAuth: z.boolean().default(false),
+    isReady: z.boolean().optional(),
+    authNeeded: z.boolean().optional(),
+    isAuthenticated: z.boolean().optional(),
+    requiresAuth: z.boolean().optional(),
+    serverUrl: z.string().optional(),
+    instanceId: z.string().optional(),
+    serverName: z.string().optional(),
 });
 
 // Response types for Klavis API

@@ -72,7 +72,6 @@ const ListItemWithMenu = ({
     icon?: React.ReactNode;
     iconClassName?: string;
 }) => {
-    console.log('DEBUG: ListItemWithMenu render:', { name, isSelected });  // Debug render
     return (
         <div className={clsx(
             "group flex items-center gap-2 px-2 py-1.5 rounded-md",
@@ -91,7 +90,6 @@ const ListItemWithMenu = ({
                     }
                 )}
                 onClick={() => {
-                    console.log('DEBUG: ListItemWithMenu clicked:', name);  // Debug click
                     onClick?.();
                 }}
                 disabled={disabled}
@@ -167,29 +165,8 @@ export function EntityList({
     useEffect(() => {
         async function fetchAndMergeTools() {
             try {
-                console.log('[EntityList] Starting tool merge. Current workflow tools:', {
-                    toolCount: tools.length,
-                    tools: tools.map(t => ({
-                        name: t.name,
-                        isMcp: t.isMcp,
-                        hasParams: !!t.parameters,
-                        paramCount: t.parameters ? Object.keys(t.parameters.properties).length : 0,
-                        parameters: t.parameters
-                    }))
-                });
-
                 // Get MCP tools from server action
                 const mcpTools = await getMcpToolsFromProject(projectId);
-                console.log('[EntityList] Fetched MCP tools from project:', {
-                    mcpToolCount: mcpTools.length,
-                    mcpTools: mcpTools.map(t => ({
-                        name: t.name,
-                        isMcp: t.isMcp,
-                        hasParams: !!t.parameters,
-                        paramCount: t.parameters ? Object.keys(t.parameters.properties).length : 0,
-                        parameters: t.parameters
-                    }))
-                });
 
                 // Merge with existing workflow tools
                 // Replace any existing MCP tools with their latest versions
@@ -239,11 +216,6 @@ export function EntityList({
     };
 
     function handleToolSelection(tool: z.infer<typeof AgenticAPITool>) {
-        console.log('[EntityList] Tool selected:', {
-            name: tool.name,
-            fullTool: tool,
-            parameters: tool.parameters
-        });
         onSelectTool(tool.name);
     }
 
@@ -349,12 +321,6 @@ export function EntityList({
                         {mergedTools.length > 0 ? (
                             <div className="space-y-1 pb-2">
                                 {mergedTools.map((tool, index) => {
-                                    console.log('[EntityList] Processing tool for render:', {
-                                        name: tool.name,
-                                        isMcp: tool.isMcp,
-                                        fullTool: tool,
-                                        parameters: tool.parameters
-                                    });
 
                                     let toolIcon;
                                     let iconClassName = "w-4 h-4";
@@ -373,7 +339,6 @@ export function EntityList({
                                             name={tool.name}
                                             isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
                                             onClick={() => {
-                                                console.log('DEBUG: Tool clicked:', tool.name);  // Basic debug log
                                                 handleToolSelection(tool);
                                             }}
                                             selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
