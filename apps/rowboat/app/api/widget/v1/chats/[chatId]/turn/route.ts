@@ -90,7 +90,8 @@ export async function POST(
         }
 
         // get assistant response
-        const { agents, tools, prompts, startAgent } = convertWorkflowToAgenticAPI(workflow);
+        const workflowApi = await convertWorkflowToAgenticAPI(workflow);
+        const { agents, tools, prompts, startAgent } = workflowApi;
         const unsavedMessages: z.infer<typeof apiV1.ChatMessage>[] = [userMessage];
         let state: unknown = chat.agenticState ?? { last_agent_name: startAgent };
 

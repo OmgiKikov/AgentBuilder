@@ -125,7 +125,8 @@ export function Chat({
             setLastAgenticRequest(null);
             setLastAgenticResponse(null);
             
-            const { agents, tools, prompts, startAgent } = convertWorkflowToAgenticAPI(workflow);
+            const workflowApi = await convertWorkflowToAgenticAPI(workflow);
+            const { agents, tools, prompts, startAgent } = workflowApi;
             const request: z.infer<typeof AgenticAPIChatRequest> = {
                 projectId,
                 messages: convertToAgenticAPIChatMessages([{

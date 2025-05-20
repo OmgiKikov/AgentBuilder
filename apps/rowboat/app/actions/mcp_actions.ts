@@ -380,3 +380,40 @@ export async function getMcpToolsFromProject(projectId: string): Promise<z.infer
         return [];
     }
 }
+
+export async function mergeMcpTools(
+    workflowTools: z.infer<typeof WorkflowTool>[],
+    mcpTools: z.infer<typeof WorkflowTool>[]
+): Promise<z.infer<typeof WorkflowTool>[]> {
+    // Filter out any existing MCP tools from workflow tools
+    const nonMcpTools = workflowTools.filter(t => !t.isMcp);
+    
+    // Merge with MCP tools
+    const merged = [
+        ...nonMcpTools,
+        ...mcpTools.map(tool => ({
+            ...tool,
+            isMcp: true as const,  // Ensure isMcp is set
+            parameters: {
+                type: 'object' as const,
+                properties: tool.parameters?.properties || {},
+                required: tool.parameters?.required || []
+            }
+        }))
+    ];
+
+    console.log('[mergeMcpTools] Merged tools:', {
+        totalCount: merged.length,
+        nonMcpCount: nonMcpTools.length,
+        mcpCount: mcpTools.length,
+        tools: merged.map(t => ({
+            name: t.name,
+            isMcp: t.isMcp,
+            hasParams: !!t.parameters,
+            paramCount: t.parameters ? Object.keys(t.parameters.properties).length : 0,
+            parameters: t.parameters
+        }))
+    });
+
+    return merged;
+}

@@ -234,39 +234,7 @@ export function EntityList({
             try {
                 // Get MCP tools from server action
                 const mcpTools = await getMcpToolsFromProject(projectId);
-
-                // Merge with existing workflow tools
-                // Replace any existing MCP tools with their latest versions
-                const nonMcpTools = tools.filter(t => !t.isMcp);
-                
-                // Update workflow tools state
-                const merged = [
-                    ...nonMcpTools,
-                    ...mcpTools.map(tool => ({
-                        ...tool,
-                        isMcp: true as const,  // Ensure isMcp is set
-                        parameters: {
-                            type: 'object' as const,
-                            properties: tool.parameters?.properties || {},
-                            required: tool.parameters?.required || []
-                        }
-                    }))
-                ];
-
-                console.log('[EntityList] Final merged tools:', {
-                    totalCount: merged.length,
-                    nonMcpCount: nonMcpTools.length,
-                    mcpCount: mcpTools.length,
-                    tools: merged.map(t => ({
-                        name: t.name,
-                        isMcp: t.isMcp,
-                        hasParams: !!t.parameters,
-                        paramCount: t.parameters ? Object.keys(t.parameters.properties).length : 0,
-                        parameters: t.parameters
-                    }))
-                });
-
-                setMergedTools(merged);
+                setMergedTools([...tools, ...mcpTools]);
             } catch (error) {
                 console.error('[EntityList] Error merging MCP tools:', error);
             }
