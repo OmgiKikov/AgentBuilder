@@ -53,7 +53,7 @@ export function ToggleSource({
                     />
                 </button>
                 <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {isActive ? "Active" : "Inactive"}
+                    {isActive ? "Активный" : "Inactive"}
                 </span>
                 {loading && <Spinner size="sm" className="text-gray-400" />}
             </div>

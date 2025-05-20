@@ -32,7 +32,9 @@ def get_response(
         workflow_schema: str,
         current_workflow_config: str,
         context: AgentContext | PromptContext | ToolContext | ChatContext | None = None,
+
         dataSources: Optional[List[DataSource]] = None,
+
         copilot_instructions: str = copilot_instructions_edit_agent
     ) -> str:
     # if context is provided, create a prompt for the context
@@ -63,6 +65,7 @@ def get_response(
     else:
         context_prompt = ""
 
+
     # Add dataSources to the context if provided
     data_sources_prompt = ""
     if dataSources:
@@ -71,6 +74,7 @@ def get_response(
 ```json
 {json.dumps([ds.model_dump() for ds in dataSources])}
 ```
+
 """
 
     # add the workflow schema to the system prompt
@@ -86,7 +90,9 @@ The current workflow config is:
 ```
 
 {context_prompt}
+
 {data_sources_prompt}
+
 
 User: {last_message.content}
 """

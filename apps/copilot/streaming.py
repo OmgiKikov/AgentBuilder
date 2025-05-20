@@ -51,7 +51,9 @@ def get_streaming_response(
         workflow_schema: str,
         current_workflow_config: str,
         context: AgentContext | PromptContext | ToolContext | ChatContext | None = None,
+
         dataSources: Optional[List[DataSource]] = None,
+
 ) -> Any:
     # if context is provided, create a prompt for the context
     if context:
@@ -81,6 +83,7 @@ def get_streaming_response(
     else:
         context_prompt = ""
 
+
     # Add dataSources to the context if provided
     data_sources_prompt = ""
     if dataSources:
@@ -94,6 +97,7 @@ def get_streaming_response(
 """
     else:
         print("No data sources found at project level")
+
 
     # add the workflow schema to the system prompt
     sys_prompt = streaming_instructions.replace("{workflow_schema}", workflow_schema)
@@ -111,7 +115,9 @@ The current workflow config is:
 ```
 
 {context_prompt}
+
 {data_sources_prompt}
+
 
 User: {last_message.content}
 """
@@ -151,11 +157,13 @@ def create_app():
             workflow_schema = request_data.get('workflow_schema', '')
             current_workflow_config = request_data.get('current_workflow_config', '')
             context = None  # You can add context handling if needed
+
             dataSources = None
             if 'dataSources' in request_data and request_data['dataSources']:
                 print(f"Raw dataSources from request: {request_data['dataSources']}")
                 dataSources = [DataSource(**ds) for ds in request_data['dataSources']]
                 print(f"Parsed dataSources: {dataSources}")
+
 
             def generate():
                 stream = get_streaming_response(
@@ -163,7 +171,9 @@ def create_app():
                     workflow_schema=workflow_schema,
                     current_workflow_config=current_workflow_config,
                     context=context,
+
                     dataSources=dataSources
+
                 )
 
                 for chunk in stream:

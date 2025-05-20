@@ -3,7 +3,6 @@ import { z } from "zod";
 import { generateObject } from "ai";
 import { ApiMessage } from "./types/types";
 import { openai } from "@ai-sdk/openai";
-import { redisClient } from "./redis";
 
 export async function getAgenticApiResponse(
     request: z.infer<typeof AgenticAPIChatRequest>,
@@ -33,25 +32,6 @@ export async function getAgenticApiResponse(
         messages: result.messages,
         state: result.state,
         rawAPIResponse: result,
-    };
-}
-
-export async function getAgenticResponseStreamId(
-    request: z.infer<typeof AgenticAPIChatRequest>,
-): Promise<z.infer<typeof AgenticAPIInitStreamResponse>> {
-    // serialize the request
-    const payload = JSON.stringify(request);
-
-    // create a uuid for the stream
-    const streamId = crypto.randomUUID();
-
-    // store payload in redis
-    await redisClient.set(`chat-stream-${streamId}`, payload, {
-        EX: 60 * 10, // expire in 10 minutes
-    });
-
-    return {
-        streamId,
     };
 }
 
@@ -127,4 +107,8 @@ The current date is {{date}}.
     });
 
     return JSON.stringify(object);
+}
+
+export function cn(...classes: (string | undefined | false | null)[]) {
+    return classes.filter(Boolean).join(' ');
 }

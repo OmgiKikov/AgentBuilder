@@ -124,7 +124,7 @@ async def run_turn_streamed(
     try:
         # Handle greeting turn
         if is_greeting_turn:
-            greeting_prompt = get_prompt_by_type(prompt_configs, PromptType.GREETING) or "How can I help you today?"
+            greeting_prompt = get_prompt_by_type(prompt_configs, PromptType.GREETING) or "Как я могу помочь вам ?"
             message = {
                 'content': greeting_prompt,
                 'role': 'assistant',
