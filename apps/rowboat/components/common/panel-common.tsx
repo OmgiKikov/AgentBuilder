@@ -85,17 +85,23 @@ export function Panel({
         )}
         <div 
             className={clsx(
-                "shrink-0 border-b border-zinc-100 dark:border-zinc-800 relative h-[52px] flex items-center",
-                isEntityList ? "px-4" : variant === 'projects' ? "px-4" : "px-6"
+                "shrink-0 border-b border-zinc-100 dark:border-zinc-800 relative",
+                {
+                    "flex flex-col gap-3 px-4 py-3": variant === 'projects',
+                    "flex items-center justify-between px-4 py-3": isEntityList,
+                    "flex items-center justify-between px-6 py-3": !isEntityList && variant !== 'projects'
+                }
             )}
         >
-            {(variant === 'projects' || isEntityList) ? (
-                <div className="flex items-center justify-between w-full">
-                    {title}
+            {variant === 'projects' ? (
+                <>
+                    <div className="text-sm uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                        {title}
+                    </div>
                     {actions && <div className="flex items-center gap-2">
                         {actions}
                     </div>}
-                </div>
+                </>
             ) : variant === 'copilot' ? (
                 <>
                     <div className="flex items-center gap-2">
@@ -103,6 +109,13 @@ export function Panel({
                     </div>
                     {rightActions}
                 </>
+            ) : isEntityList ? (
+                <div className="flex items-center justify-between w-full">
+                    {title}
+                    {actions && <div className="flex items-center gap-2">
+                        {actions}
+                    </div>}
+                </div>
             ) : (
                 <>
                     {title}
