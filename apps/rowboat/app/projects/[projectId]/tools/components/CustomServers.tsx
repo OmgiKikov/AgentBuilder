@@ -66,7 +66,9 @@ export function CustomServers() {
   const handleToggleServer = async (server: McpServerType) => {
     try {
       const serverKey = server.name;
-      setTogglingServers(prev => new Set([...prev, serverKey]));
+      const newTogglingServers = new Set(togglingServers);
+      newTogglingServers.add(serverKey);
+      setTogglingServers(newTogglingServers);
       
       setServerOperations(prev => {
         const next = new Map(prev);
@@ -109,7 +111,10 @@ export function CustomServers() {
     if (!projectId || !server.isActive) return;
 
     try {
-      setSyncingServers(prev => new Set([...prev, server.name]));
+      const newSyncingServers = new Set(syncingServers);
+      newSyncingServers.add(server.name);
+      setSyncingServers(newSyncingServers);
+      
       const enrichedTools = await fetchMcpToolsForServer(projectId, server.name);
       
       const updatedAvailableTools = enrichedTools.map(tool => ({

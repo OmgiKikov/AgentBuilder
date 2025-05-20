@@ -14,6 +14,13 @@ const nextConfig = {
         }
         return config;
     },
+    // Добавляем настройки компилятора TypeScript для поддержки downlevelIteration
+    typescript: {
+        // Переопределяем настройки компилятора
+        compilerOptions: {
+            downlevelIteration: true
+        }
+    }
 };
 
 export default nextConfig;

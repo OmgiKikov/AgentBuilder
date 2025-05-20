@@ -269,7 +269,10 @@ export function HostedServers() {
   const handleToggleTool = async (server: McpServerType) => {
     try {
       const serverKey = server.name;
-      setTogglingServers(prev => new Set([...prev, serverKey]));
+      const newTogglingServers = new Set(togglingServers);
+      newTogglingServers.add(serverKey);
+      setTogglingServers(newTogglingServers);
+      
       setToggleError(null);
 
       const isCurrentlyEnabled = enabledServers.has(serverKey);
@@ -487,7 +490,10 @@ export function HostedServers() {
     if (!projectId || !isServerEligible(server)) return;
 
     try {
-      setSyncingServers(prev => new Set([...prev, server.name]));
+      const newSyncingServers = new Set(syncingServers);
+      newSyncingServers.add(server.name);
+      setSyncingServers(newSyncingServers);
+      
       const enrichedTools = await fetchMcpToolsForServer(projectId, server.name);
       
       setServers(prevServers => {

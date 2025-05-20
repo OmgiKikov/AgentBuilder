@@ -103,7 +103,24 @@ export function McpServersSection({ projectId }: { projectId: string }) {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await updateMcpServers(projectId, servers);
+            // Преобразуем серверы в формат, требуемый API
+            const formattedServers = servers.map(server => ({
+                id: server.name,
+                name: server.name,
+                description: server.url, // Используем URL как описание
+                tools: [], // Пустой массив инструментов
+                availableTools: [],
+                isActive: true,
+                isReady: true,
+                authNeeded: false,
+                isAuthenticated: true,
+                requiresAuth: false,
+                serverUrl: server.url,
+                instanceId: server.name, // Используем имя как instanceId
+                serverName: server.name
+            }));
+            
+            await updateMcpServers(projectId, formattedServers);
             setOriginalServers(JSON.parse(JSON.stringify(servers)));
             setMessage({ type: 'success', text: 'Servers updated successfully' });
             setTimeout(() => setMessage(null), 3000);
