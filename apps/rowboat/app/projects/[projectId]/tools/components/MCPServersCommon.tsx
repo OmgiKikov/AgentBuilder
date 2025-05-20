@@ -129,6 +129,7 @@ interface ServerCardProps {
   onManageTools: () => void;
   onSync?: () => void;
   onAuth?: () => void;
+  onRemove?: () => void;
   isToggling: boolean;
   isSyncing?: boolean;
   operation?: 'setup' | 'delete' | 'checking-auth';
@@ -142,6 +143,7 @@ export function ServerCard({
   onManageTools,
   onSync,
   onAuth,
+  onRemove,
   isToggling,
   isSyncing,
   operation,
@@ -185,16 +187,28 @@ export function ServerCard({
                   </span>
                 )}
               </div>
-              <Switch
-                checked={server.isActive}
-                onCheckedChange={onToggle}
-                disabled={isToggling}
-                className={clsx(
-                  "data-[state=checked]:bg-blue-500 dark:data-[state=checked]:bg-blue-600",
-                  "data-[state=unchecked]:bg-gray-200 dark:data-[state=unchecked]:bg-gray-700",
-                  isToggling && "opacity-50 cursor-not-allowed"
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={server.isActive}
+                  onCheckedChange={onToggle}
+                  disabled={isToggling}
+                  className={clsx(
+                    "data-[state=checked]:bg-blue-500 dark:data-[state=checked]:bg-blue-600",
+                    "data-[state=unchecked]:bg-gray-200 dark:data-[state=unchecked]:bg-gray-700",
+                    isToggling && "opacity-50 cursor-not-allowed"
+                  )}
+                />
+                {onRemove && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={onRemove}
+                    className="ml-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    Remove
+                  </Button>
                 )}
-              />
+              </div>
             </div>
             {error && (
               <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 
