@@ -53,6 +53,15 @@ services:
     volumes:
       - uploads:/app/uploads
 
+  hello-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    profiles: ["mcp_server"]
+
   rowboat_agents:
     build:
       context: ./apps/rowboat_agents
