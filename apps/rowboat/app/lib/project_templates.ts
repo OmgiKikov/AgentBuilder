@@ -31,6 +31,7 @@ export const templates: { [key: string]: z.infer<typeof WorkflowTemplate> } = {
                 "parameters": {
                     "type": "object",
                     "properties": {},
+                    "required": []
                 },
                 "isLibrary": true
             },
@@ -57,9 +58,9 @@ export const templates: { [key: string]: z.infer<typeof WorkflowTemplate> } = {
 }
 
 export const starting_copilot_prompts: { [key: string]: string } = {
-    "Credit Card Assistant": "Create a credit card assistant that helps users with credit card related queries like card recommendations, benefits, rewards, application process, and general credit card advice. Provide accurate and helpful information while maintaining a professional and friendly tone.",
+    "Ассистент по кредитным картам": "Создайте ассистента по кредитным картам, который помогает пользователям с вопросами, связанными с кредитными картами, такими как рекомендации по картам, преимущества, бонусы, процесс оформления и общие советы по кредитным картам. Предоставляйте точную и полезную информацию, сохраняя профессиональный и дружелюбный тон.",
 
-    "Scheduling Assistant": "Create an appointment scheduling assistant that helps users schedule, modify, and manage their appointments efficiently. Help with finding available time slots, sending reminders, rescheduling appointments, and answering questions about scheduling policies and procedures. Maintain a professional and organized approach.",
+    "Ассистент по планированию встреч": "Создайте ассистента по планированию встреч, который помогает пользователям планировать, изменять и управлять своими встречами эффективно. Помогайте находить доступные слоты времени, отправлять напоминания, перепланировывать встречи и отвечать на вопросы о политике и процедурах планирования. Сохраняйте профессиональный и организованный подход.",
 
-    "Blog Assistant": "Create a blog writer assistant with agents for researching, compiling, outlining and writing the blog. The research agent will research the topic and compile the information. The outline agent will write bullet points for the blog post. The writing agent will expand upon the outline and write the blog post. The blog post should be 1000 words or more.",
+    "Ассистент по написанию блогов": "Создайте ассистента по написанию блогов, который помогает пользователям исследовать, собирать, структурировать и писать блоги. Агент по исследованию будет исследовать тему и собирать информацию. Агент по структурированию будет писать пункты для блога. Агент по написанию будет развивать пункты и писать блог. Блог должен быть не менее 1000 слов.",
 }
