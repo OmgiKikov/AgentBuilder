@@ -273,9 +273,9 @@ export function EntityList({
                     title={
                         <button 
                             onClick={() => setExpandedSection('agents')}
-                            className={`${headerClasses} hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-colors`}
+                            className={`${headerClasses} hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-colors h-full`}
                         >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 h-full">
                                 {expandedSection === 'agents' ? (
                                     <ChevronDown className="w-4 h-4" />
                                 ) : (
@@ -341,9 +341,9 @@ export function EntityList({
                     title={
                         <button 
                             onClick={() => setExpandedSection('tools')}
-                            className={`${headerClasses} hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-colors`}
+                            className={`${headerClasses} hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-colors h-full`}
                         >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 h-full">
                                 {expandedSection === 'tools' ? (
                                     <ChevronDown className="w-4 h-4" />
                                 ) : (
@@ -493,9 +493,9 @@ export function EntityList({
                     title={
                         <button 
                             onClick={() => setExpandedSection('prompts')}
-                            className={`${headerClasses} hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-colors`}
+                            className={`${headerClasses} hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-colors h-full`}
                         >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 h-full">
                                 {expandedSection === 'prompts' ? (
                                     <ChevronDown className="w-4 h-4" />
                                 ) : (

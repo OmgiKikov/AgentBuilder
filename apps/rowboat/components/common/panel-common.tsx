@@ -88,7 +88,7 @@ export function Panel({
                 "shrink-0 border-b border-zinc-100 dark:border-zinc-800 relative",
                 {
                     "flex flex-col gap-3 px-4 py-3": variant === 'projects',
-                    "flex items-center justify-between px-4 py-3": isEntityList,
+                    "flex items-center justify-between h-[53px] p-3": isEntityList,
                     "flex items-center justify-between px-6 py-3": !isEntityList && variant !== 'projects'
                 }
             )}
