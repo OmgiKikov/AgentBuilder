@@ -645,7 +645,7 @@ export async function enableServer(
                 instanceId: result.instanceId,
                 serverName: serverName,
                 serverUrl: result.serverUrl,
-                tools: [], // Start with no selected tools
+                tools: basicTools, // Select all tools by default
                 availableTools: basicTools, // Use basic tools initially
                 isActive: true, // Keep isActive true to indicate server is enabled
                 isReady: !rawServerData.authNeeded, // Use isReady to indicate eligibility

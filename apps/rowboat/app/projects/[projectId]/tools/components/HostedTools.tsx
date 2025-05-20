@@ -315,11 +315,35 @@ export function HostedTools() {
           return next;
         });
 
-        // Update only the specific server in the servers state
-        setServers(prevServers => {
-          return prevServers.map(s => {
-            if (s.name === serverKey) {
-              if (!newState) {
+        if (newState) {
+          // Fetch updated server data to get the tools
+          const response = await listAvailableMcpServers(projectId || "");
+          if (response.data) {
+            const updatedServer = response.data.find(s => s.name === serverKey);
+            if (updatedServer) {
+              // Update server state with complete data including tools
+              setServers(prevServers => {
+                return prevServers.map(s => {
+                  if (s.name === serverKey) {
+                    return updatedServer;
+                  }
+                  return s;
+                });
+              });
+
+              // Update tool counts
+              setServerToolCounts(prev => {
+                const next = new Map(prev);
+                next.set(serverKey, updatedServer.tools.length);
+                return next;
+              });
+            }
+          }
+        } else {
+          // Handle disable case
+          setServers(prevServers => {
+            return prevServers.map(s => {
+              if (s.name === serverKey) {
                 return {
                   ...s,
                   isActive: false,
@@ -328,29 +352,18 @@ export function HostedTools() {
                   availableTools: s.availableTools,
                   isAuthenticated: false
                 };
-              } else if ('instanceId' in result) {
-                return {
-                  ...s,
-                  isActive: true,
-                  instanceId: result.instanceId,
-                  serverUrl: result.serverUrl,
-                  isAuthenticated: false
-                };
               }
-            }
-            return s;
+              return s;
+            });
           });
-        });
 
-        // Update tool counts
-        setServerToolCounts(prev => {
-          const next = new Map(prev);
-          if (!newState) {
+          // Update tool counts
+          setServerToolCounts(prev => {
+            const next = new Map(prev);
             next.set(serverKey, 0);
-          }
-          return next;
-        });
-
+            return next;
+          });
+        }
       } catch (err) {
         console.error('Toggle failed:', { server: serverKey, error: err });
         // Revert local state on error
@@ -529,7 +542,7 @@ export function HostedTools() {
         // Update each available tool's state based on our selection
         for (const tool of availableTools) {
             const isSelected = selectedTools.has(tool.id);
-            await toggleMcpTool(projectId, selectedServer.serverName, tool.id, isSelected);
+            await toggleMcpTool(projectId, selectedServer.name, tool.id, isSelected);
         }
         
         // Update only the specific server in the servers state
@@ -567,7 +580,7 @@ export function HostedTools() {
     } finally {
         setSavingTools(false);
     }
-};
+  };
 
   const handleSyncServer = async (server: McpServerType) => {
     if (!projectId || !isServerEligible(server)) return;
