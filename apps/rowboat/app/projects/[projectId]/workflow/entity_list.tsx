@@ -370,12 +370,9 @@ export function EntityList({
                                 onClick={() => onAddTool({})}
                                 className={`group ${buttonClasses}`}
                                 showHoverContent={true}
-                                hoverContent="Create Custom Tool"
+                                hoverContent="Add Tool"
                             >
-                                <div className="flex items-center gap-1.5">
-                                    <PlusIcon className="w-4 h-4" />
-                                    <span>Add Tool</span>
-                                </div>
+                                <PlusIcon className="w-4 h-4" />
                             </Button>
                         </div>
                     }
