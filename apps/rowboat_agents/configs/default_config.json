@@ -7,5 +7,23 @@
     "max_messages_per_turn": 20,
     "max_messages_per_error_escalation_turn": 15,
     "escalate_errors": true,
-    "max_overall_turns": 25
+    "max_overall_turns": 25,
+    "default_tools": [
+      {
+        "name": "getArticleInfo",
+        "type": "rag",
+        "description": "Get information from data sources by submitting a query",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The query to search for"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["query"]
+        }
+      }
+    ]
 }

@@ -3,9 +3,12 @@
 ########################
 RAG_INSTRUCTIONS = f"""
 # Instructions about using the article retrieval tool
-- Where relevant, use the articles tool: {{rag_tool_name}} to fetch articles with knowledge relevant to the query and use its contents to respond to the user. 
+- You MUST use the articles tool: {{rag_tool_name}} for EVERY user query to fetch articles with knowledge relevant to the query.
+- NEVER respond to user queries without first using {{rag_tool_name}} to search for relevant information.
+- ALWAYS use the information from {{rag_tool_name}} as your primary source of knowledge when responding to users.
 - Do not send a separate message first asking the user to wait while you look up information. Immediately fetch the articles and respond to the user with the answer to their query. 
 - Do not make up information. If the article's contents do not have the answer, give up control of the chat (or transfer to your parent agent, as per your transfer instructions). Do not say anything to the user.
+- For any follow-up question, ALWAYS use {{rag_tool_name}} again to get updated or additional information.
 """
 
 ########################

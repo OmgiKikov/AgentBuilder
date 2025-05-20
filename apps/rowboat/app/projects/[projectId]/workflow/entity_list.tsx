@@ -11,6 +11,13 @@ import { clsx } from "clsx";
 import { MCPServer } from "@/app/lib/types/types";
 import { getMcpToolsFromProject } from "@/app/actions/mcp_actions";
 
+
+const SECTION_HEIGHT_PERCENTAGES = {
+    AGENTS: 40,    // 40% of available height
+    TOOLS: 30,     // 30% of available height
+    PROMPTS: 30,   // 30% of available height
+} as const;
+
 const GAP_SIZE = 24; // 6 units * 4px (tailwind's default spacing unit)
 
 interface EntityListProps {
@@ -42,7 +49,12 @@ interface EmptyStateProps {
 
 const EmptyState: React.FC<EmptyStateProps> = ({ entity, hasFilteredItems }) => (
     <div className="flex items-center justify-center h-24 text-sm text-zinc-400 dark:text-zinc-500">
+
         {hasFilteredItems ? "No tools to show" : `No ${entity} created`}
+        {entity === "agents" && "Пока нет агентов"}
+        {entity === "tools" && "Пока нет инструментов"}
+        {entity === "prompts" && "Пока нет промтов"}
+
     </div>
 );
 
@@ -108,7 +120,7 @@ const ListItemWithMenu = ({
 
 const StartLabel = () => (
     <div className="text-xs text-indigo-500 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded">
-        Start
+        Старт
     </div>
 );
 
@@ -282,7 +294,7 @@ export function EntityList({
                                     <ChevronRight className="w-4 h-4" />
                                 )}
                                 <Brain className="w-4 h-4" />
-                                <span>Agents</span>
+                                <span>Агенты</span>
                             </div>
                             <Button
                                 variant="secondary"
@@ -294,7 +306,7 @@ export function EntityList({
                                 }}
                                 className={`group ${buttonClasses}`}
                                 showHoverContent={true}
-                                hoverContent="Add Agent"
+                                hoverContent="Добавить агента"
                             >
                                 <PlusIcon className="w-4 h-4" />
                             </Button>
@@ -350,23 +362,42 @@ export function EntityList({
                                     <ChevronRight className="w-4 h-4" />
                                 )}
                                 <Wrench className="w-4 h-4" />
-                                <span>Tools</span>
+
+
+                                <span>Инструменты</span>
+                                <div className="flex items-center gap-1 ml-2">
+                                    {mergedTools.some(t => t.isMcp) && (
+                                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20">
+                                            <ImportIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                            <span className="text-xs text-blue-600 dark:text-blue-400">MCP</span>
+                                        </div>
+                                    )}
+                                    {mergedTools.some(t => t.isLibrary) && (
+                                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/20">
+                                            <Library className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                                            <span className="text-xs text-purple-600 dark:text-purple-400">Library</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setExpandedSection('tools');
-                                    onAddTool({});
-                                }}
-                                className={`group ${buttonClasses}`}
-                                showHoverContent={true}
-                                hoverContent="Add Tool"
-                            >
-                                <PlusIcon className="w-4 h-4" />
-                            </Button>
-                        </button>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => onAddTool({})}
+                                    className={`group ${buttonClasses}`}
+                                    showHoverContent={true}
+                                    hoverContent="Добавить инструмент"
+                                >
+                                    <div className="flex items-center gap-1.5">
+                                        <PlusIcon className="w-4 h-4" />
+                                        <span>Добавить инструмент</span>
+                                    </div>
+                                </Button>
+                            </div>
+                        </div>
+
                     }
                     maxHeight={expandedSection === 'tools' ? calculateExpandedHeight() : `${PANEL_HEADER_HEIGHT}px`}
                     className="overflow-hidden transition-all duration-300 ease-in-out"
@@ -415,6 +446,7 @@ export function EntityList({
                                 </div>
                             </div>
 
+<!-- <<<<<<< hosted_tools
                             {/* Tools list - Scrollable content */}
                             <div className="flex-1 overflow-y-auto">
                                 {filteredTools.length > 0 ? (
@@ -434,6 +466,20 @@ export function EntityList({
                                                 }
                                                 return acc;
                                             }, {} as Record<string, typeof filteredTools>);
+// ======= -->
+                                    let toolIcon;
+                                    let iconClassName = "w-4 h-4";
+
+                                    
+
+                                    if (tool.isMcp) {
+                                        toolIcon = <ImportIcon className={clsx(iconClassName, "text-blue-600 dark:text-blue-500")} />;
+                                    } else if (tool.isLibrary) {
+                                        toolIcon = <Library className={clsx(iconClassName, "text-purple-600 dark:text-purple-500")} />;
+                                    } else {
+                                        toolIcon = <Wrench className={clsx(iconClassName, "text-gray-600 dark:text-gray-500")} />;
+                                    }
+// >>>>>>> new_main_branch
 
                                             return (
                                                 <>
@@ -502,7 +548,7 @@ export function EntityList({
                                     <ChevronRight className="w-4 h-4" />
                                 )}
                                 <PenLine className="w-4 h-4" />
-                                <span>Prompts</span>
+                                <span>Промты</span>
                             </div>
                             <Button
                                 variant="secondary"
@@ -514,7 +560,7 @@ export function EntityList({
                                 }}
                                 className={`group ${buttonClasses}`}
                                 showHoverContent={true}
-                                hoverContent="Add Prompt"
+                                hoverContent="Добавить промт"
                             >
                                 <PlusIcon className="w-4 h-4" />
                             </Button>
@@ -592,9 +638,9 @@ function AgentDropdown({
                     }
                 }}
             >
-                <DropdownItem key="set-main-agent">Set as start agent</DropdownItem>
-                <DropdownItem key="toggle">{agent.disabled ? 'Enable' : 'Disable'}</DropdownItem>
-                <DropdownItem key="delete" className="text-danger">Delete</DropdownItem>
+                <DropdownItem key="set-main-agent">Установить как стартовый агент</DropdownItem>
+                <DropdownItem key="toggle">{agent.disabled ? 'Включить' : 'Выключить'}</DropdownItem>
+                <DropdownItem key="delete" className="text-danger">Удалить</DropdownItem>
             </DropdownMenu>
         </Dropdown>
     );
@@ -622,7 +668,7 @@ function EntityDropdown({
                     }
                 }}
             >
-                <DropdownItem key="delete" className="text-danger">Delete</DropdownItem>
+                <DropdownItem key="delete" className="text-danger">Удалить</DropdownItem>
             </DropdownMenu>
         </Dropdown>
     );

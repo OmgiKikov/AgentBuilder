@@ -245,13 +245,13 @@ export function ProductTour({
                         onClick={handleSkip}
                         className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                     >
-                        Skip tour
+                        Пропустить тур
                     </button>
                     <button
                         onClick={handleNext}
                         className="px-4 py-1.5 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700"
                     >
-                        {currentStep === TOUR_STEPS.length - 1 ? 'Finish' : 'Next'}
+                        {currentStep === TOUR_STEPS.length - 1 ? 'Готово' : 'Дальше'}
                     </button>
                 </div>
                 <FloatingArrow

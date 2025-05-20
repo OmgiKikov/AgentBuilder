@@ -55,13 +55,13 @@ export default function App() {
     }, []);
 
     return (
-        <div className="flex gap-8 px-16 pt-8">
+        <div className="h-dvh w-full flex min-h-0">
             {USE_MULTIPLE_PROJECTS && isProjectPaneOpen && (
                 <div className="w-1/3 min-w-[300px] max-w-[400px]">
                     <SearchProjects
                         projects={projects}
                         isLoading={isLoading}
-                        heading="Select existing assistant"
+                        heading="Выберите ассистента"
                         className="h-full"
                         onClose={() => setIsProjectPaneOpen(false)}
                     />

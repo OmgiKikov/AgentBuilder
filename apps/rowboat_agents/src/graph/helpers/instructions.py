@@ -21,7 +21,7 @@ def add_transfer_instructions_to_child_agents(child, children_aware_of_parent):
 
 def add_rag_instructions_to_agent(agent_config, rag_tool_name):
     prompt = RAG_INSTRUCTIONS.format(rag_tool_name=rag_tool_name)
-    agent_config["instructions"] = agent_config["instructions"] + f'\n\n{'-'*100}\n\n' + prompt
+    agent_config["instructions"] = f"## IMPORTANT - ALWAYS USE RAG\n\n{prompt}\n\n{'-'*100}\n\n" + agent_config["instructions"]
     return agent_config
 
 def add_error_escalation_instructions(agent):
