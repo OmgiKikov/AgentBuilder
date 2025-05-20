@@ -99,7 +99,7 @@ export async function POST(
             testProfile: testProfile ?? undefined,
             mcpServers: (project.mcpServers ?? []).map(server => ({
                 name: server.name,
-                serverUrl: server.serverUrl,
+                serverUrl: server.serverUrl || '',
                 isReady: server.isReady
             })),
             toolWebhookUrl: project.webhookUrl ?? '',
