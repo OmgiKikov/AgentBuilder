@@ -173,6 +173,18 @@ async function enrichToolsWithParameters(
             enrichedTools.map(t => [t.name, t])
         );
 
+        // Find tools that couldn't be enriched
+        const unenrichedTools = basicTools
+            .filter(tool => !enrichedToolMap.has(tool.name))
+            .map(tool => tool.name);
+
+        if (unenrichedTools.length > 0) {
+            console.log('[Klavis API] Tools that could not be enriched:', {
+                serverName,
+                unenrichedTools
+            });
+        }
+
         console.log('[Klavis API] Tool enrichment results:', {
             serverName,
             totalEnrichedTools: enrichedTools.length,

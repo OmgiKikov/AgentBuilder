@@ -280,7 +280,7 @@ export function HostedTools() {
 
   // Helper function to check if a server is eligible (using Klavis status)
   const isServerEligible = (server: McpServerType) => {
-    return server.isActive && server.isReady;
+    return server.isActive && (!server.authNeeded || server.isAuthenticated);
   };
 
   const handleToggleTool = async (server: McpServerType) => {
@@ -570,7 +570,7 @@ export function HostedTools() {
 };
 
   const handleSyncServer = async (server: McpServerType) => {
-    if (!projectId || !server.isActive) return;
+    if (!projectId || !isServerEligible(server)) return;
 
     try {
       setSyncingServers(prev => new Set([...prev, server.name]));
