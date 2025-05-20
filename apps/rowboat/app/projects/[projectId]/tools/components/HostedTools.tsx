@@ -538,12 +538,27 @@ export function HostedTools() {
     try {
         // Get all available tools from Klavis and current selection state
         const availableTools = selectedServer.availableTools || [];
+        const previousTools = new Set(selectedServer.tools.map(t => t.id));
+        const updatedTools = new Set<string>();
         
         // Update each available tool's state based on our selection
         for (const tool of availableTools) {
             const isSelected = selectedTools.has(tool.id);
             await toggleMcpTool(projectId, selectedServer.name, tool.id, isSelected);
+            if (isSelected) {
+                updatedTools.add(tool.id);
+            }
         }
+        
+        // Log summary of changes
+        const addedTools = Array.from(updatedTools).filter(t => !previousTools.has(t));
+        const removedTools = Array.from(previousTools).filter(t => !updatedTools.has(t));
+        console.log('[Tools] Tool selection updated:', {
+            server: selectedServer.name,
+            totalTools: updatedTools.size,
+            added: addedTools.length > 0 ? addedTools : undefined,
+            removed: removedTools.length > 0 ? removedTools : undefined
+        });
         
         // Update only the specific server in the servers state
         setServers(prevServers => {
@@ -595,14 +610,19 @@ export function HostedTools() {
       setServers(prevServers => {
         return prevServers.map(s => {
           if (s.name === server.name) {
+            // Keep the original availableTools and just update their parameters
+            const updatedAvailableTools = (s.availableTools || []).map(originalTool => {
+              const enrichedTool = enrichedTools.find(t => t.name === originalTool.name);
+              return enrichedTool ? {
+                ...originalTool,
+                description: enrichedTool.description,
+                parameters: enrichedTool.parameters
+              } : originalTool;
+            });
+            
             return {
               ...s,
-              availableTools: enrichedTools.map(tool => ({
-                id: tool.name,
-                name: tool.name,
-                description: tool.description,
-                parameters: tool.parameters
-              }))
+              availableTools: updatedAvailableTools
             };
           }
           return s;
@@ -613,14 +633,18 @@ export function HostedTools() {
       if (selectedServer?.name === server.name) {
         setSelectedServer(prev => {
           if (!prev) return null;
+          const updatedAvailableTools = (prev.availableTools || []).map(originalTool => {
+            const enrichedTool = enrichedTools.find(t => t.name === originalTool.name);
+            return enrichedTool ? {
+              ...originalTool,
+              description: enrichedTool.description,
+              parameters: enrichedTool.parameters
+            } : originalTool;
+          });
+          
           return {
             ...prev,
-            availableTools: enrichedTools.map(tool => ({
-              id: tool.name,
-              name: tool.name,
-              description: tool.description,
-              parameters: tool.parameters
-            }))
+            availableTools: updatedAvailableTools
           };
         });
       }

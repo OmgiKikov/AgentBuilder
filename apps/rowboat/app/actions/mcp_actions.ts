@@ -131,7 +131,8 @@ export async function fetchMcpToolsForServer(projectId: string, serverName: stri
         // List tools
         const result = await client.listTools();
 
-        console.log('[Klavis API] Raw MCP server result:', JSON.stringify(result, null, 2));
+        // Get all available tools from the server
+        const availableToolNames = new Set(mcpServer.availableTools?.map(t => t.name) || []);
 
         // Validate and parse each tool
         const validTools = await Promise.all(
@@ -159,9 +160,23 @@ export async function fetchMcpToolsForServer(projectId: string, serverName: stri
 
         tools.push(...convertedTools);
 
+        // Find tools that weren't enriched
+        const enrichedToolNames = new Set(convertedTools.map(t => t.name));
+        const unenrichedTools = Array.from(availableToolNames).filter(name => !enrichedToolNames.has(name));
+
+        if (unenrichedTools.length > 0) {
+            console.log('[Klavis API] Tools that could not be enriched:', {
+                serverName,
+                unenrichedTools,
+                totalAvailable: availableToolNames.size,
+                totalEnriched: enrichedToolNames.size
+            });
+        }
+
         console.log('[Klavis API] Successfully fetched tools for server:', {
             serverName,
             toolCount: tools.length,
+            availableToolCount: availableToolNames.size,
             tools: tools.map(t => ({
                 name: t.name,
                 parameters: t.parameters
@@ -262,17 +277,6 @@ export async function toggleMcpTool(
     const project = await projectsCollection.findOne({ _id: projectId });
     if (!project) throw new Error("Project not found");
 
-    console.log('[MCP] Toggling tool:', {
-        projectId,
-        serverName,
-        toolId,
-        shouldAdd,
-        availableServers: project.mcpServers?.map(s => ({
-            name: s.name,
-            serverName: s.serverName
-        }))
-    });
-
     const mcpServers = project.mcpServers || [];
     const serverIndex = mcpServers.findIndex(s => s.serverName === serverName);
     if (serverIndex === -1) throw new Error("Server not found");
@@ -285,14 +289,6 @@ export async function toggleMcpTool(
         if (!toolExists) {
             // Find the tool in availableTools to get its parameters
             const availableTool = server.availableTools?.find(t => t.name === toolId);
-            console.log('[MCP] Found available tool:', {
-                serverName,
-                toolId,
-                availableTool: availableTool ? {
-                    name: availableTool.name,
-                    parameters: availableTool.parameters
-                } : null
-            });
             
             // Create a new tool with the parameters from availableTools
             const newTool = {
@@ -305,11 +301,6 @@ export async function toggleMcpTool(
                     required: []
                 }
             };
-            console.log('[MCP] Adding new tool:', {
-                serverName,
-                toolId,
-                parameters: newTool.parameters
-            });
             server.tools.push(newTool);
         }
     } else {
@@ -322,16 +313,6 @@ export async function toggleMcpTool(
         { _id: projectId },
         { $set: { mcpServers } }
     );
-
-    // Log the final state
-    console.log('[MCP] Updated server tools:', {
-        serverName,
-        toolCount: server.tools.length,
-        tools: server.tools.map(t => ({
-            name: t.name,
-            parameters: t.parameters
-        }))
-    });
 }
 
 export async function getSelectedMcpTools(projectId: string, serverName: string): Promise<string[]> {
