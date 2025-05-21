@@ -142,6 +142,9 @@ export type Action = {
 } | {
     type: "import_mcp_tools";
     tools: z.infer<typeof WorkflowTool>[];
+} | {
+    type: "remove_mcp_server_tools";
+    serverName: string;
 };
 
 function reducer(state: State, action: Action): State {
@@ -522,27 +525,73 @@ function reducer(state: State, action: Action): State {
                             draft.chatKey++;
                             break;
                         case "import_mcp_tools": {
-                            if (isLive) {
-                                break;
-                            }
+                            // Проверяем существующие тулы, чтобы избежать дублирования
+                            const existingTools = draft.workflow.tools.filter((t: z.infer<typeof WorkflowTool>) => t.isMcp);
+                            const existingToolNames = new Set(existingTools.map((t: z.infer<typeof WorkflowTool>) => t.name));
                             
-                            // Process each tool one by one
-                            action.tools.forEach(newTool => {
-                                const existingToolIndex = draft.workflow.tools.findIndex(
-                                    tool => tool.name === newTool.name
-                                );
-
-                                if (existingToolIndex !== -1) {
-                                    // Replace existing tool
-                                    draft.workflow.tools[existingToolIndex] = newTool;
-                                } else {
-                                    // Add new tool
-                                    draft.workflow.tools.push(newTool);
+                            // Проверка на дубликаты по имени и mcpServerName
+                            const newTools = action.tools.filter(tool => {
+                                // Проверяем, существует ли уже инструмент с таким именем
+                                if (!existingToolNames.has(tool.name)) {
+                                    return true; // Новый инструмент
                                 }
+                                
+                                // Ищем существующий инструмент с таким же именем и проверяем, от того же ли он сервера
+                                const existingTool = existingTools.find(t => 
+                                    t.name === tool.name && 
+                                    t.mcpServerName === tool.mcpServerName
+                                );
+                                
+                                // Если инструмент с таким именем уже есть, но от другого сервера - это дубликат
+                                return !existingTool;
                             });
-
-                            draft.pendingChanges = true;
-                            draft.chatKey++;
+                            
+                            console.log('[Reducer] Adding MCP tools:', {
+                                newToolsCount: newTools.length,
+                                newTools: newTools.map(t => `${t.name} (${t.mcpServerName})`)
+                            });
+                            
+                            if (newTools.length > 0) {
+                                draft.workflow.tools.push(...newTools);
+                                draft.pendingChanges = true;
+                            }
+                            break;
+                        }
+                        case "remove_mcp_server_tools": {
+                            const serverName = action.serverName;
+                            console.log(`[Reducer] Removing tools for server: ${serverName}`);
+                            
+                            // Находим инструменты, которые нужно удалить
+                            const toolsToRemove = draft.workflow.tools.filter((tool: z.infer<typeof WorkflowTool>) => 
+                                tool.isMcp && tool.mcpServerName === serverName
+                            );
+                            
+                            if (toolsToRemove.length > 0) {
+                                console.log(`[Reducer] Found ${toolsToRemove.length} tools to remove for server ${serverName}:`, 
+                                    toolsToRemove.map((t: z.infer<typeof WorkflowTool>) => t.name)
+                                );
+                                
+                                // Удаляем инструменты
+                                draft.workflow.tools = draft.workflow.tools.filter((tool: z.infer<typeof WorkflowTool>) => 
+                                    !(tool.isMcp && tool.mcpServerName === serverName)
+                                );
+                                
+                                draft.pendingChanges = true;
+                                
+                                // Если был выбран инструмент, который удаляется, сбрасываем выбор
+                                if (draft.selection?.type === 'tool') {
+                                    const selectedToolName = draft.selection.name;
+                                    const toolWasRemoved = toolsToRemove.some(
+                                        (t: z.infer<typeof WorkflowTool>) => t.name === selectedToolName
+                                    );
+                                    
+                                    if (toolWasRemoved) {
+                                        draft.selection = null;
+                                    }
+                                }
+                            } else {
+                                console.log(`[Reducer] No tools found to remove for server ${serverName}`);
+                            }
                             break;
                         }
                     }
@@ -650,22 +699,94 @@ export function WorkflowEditor({
         }
     }, [state.present.workflow, state.present.pendingChanges]);
 
-    // Import MCP tools on initial load
+    // Отслеживаем изменения в списке MCP серверов
+    const prevMcpServersRef = useRef<Array<z.infer<typeof MCPServer>>>([]);
+    const initialToolsImported = useRef<boolean>(false);
+
+    // Полностью перерабатываем логику импорта и управления MCP инструментами
     useEffect(() => {
-        async function importInitialMcpTools() {
+        async function syncMcpTools() {
             try {
-                const mcpTools: z.infer<typeof WorkflowTool>[] = await getMcpToolsFromProject(workflow.projectId);
+                // Получаем текущие активные серверы
+                const activeServers = mcpServerUrls.filter(s => s.isReady);
+                const activeServerNames = new Set(activeServers.map(s => s.name));
                 
-                if (mcpTools.length > 0) {
-                    dispatch({ type: "import_mcp_tools", tools: mcpTools });
+                // Получаем предыдущие активные серверы
+                const previousServers = prevMcpServersRef.current || [];
+                const previousActiveServers = previousServers.filter(s => s.isReady);
+                const previousActiveServerNames = new Set(previousActiveServers.map(s => s.name));
+                
+                console.log('[WorkflowEditor] Syncing MCP tools', {
+                    activeServerCount: activeServers.length,
+                    activeServers: Array.from(activeServerNames),
+                    previousActiveServerCount: previousActiveServers.length,
+                    previousActiveServers: Array.from(previousActiveServerNames)
+                });
+                
+                // 1. Удаляем инструменты отключенных серверов
+                for (const server of previousServers) {
+                    if (server.isReady && (!activeServerNames.has(server.name) || 
+                        mcpServerUrls.find(s => s.name === server.name && !s.isReady))) {
+                        console.log('[WorkflowEditor] Removing tools for server:', server.name);
+                        dispatch({ type: "remove_mcp_server_tools", serverName: server.name });
+                    }
                 }
+                
+                // Получаем актуальные инструменты с активных серверов
+                if (activeServers.length > 0) {
+                    const mcpTools = await getMcpToolsFromProject(workflow.projectId);
+                    
+                    // Проверяем наличие существующих MCP инструментов
+                    const currentMcpTools = state.present.workflow.tools.filter(t => t.isMcp);
+                    const currentToolNames = new Set(currentMcpTools.map(t => t.name));
+                    
+                    // Фильтруем новые инструменты
+                    const newTools = mcpTools.filter(tool => !currentToolNames.has(tool.name));
+                    
+                    if (newTools.length > 0) {
+                        console.log('[WorkflowEditor] Adding new MCP tools:', newTools.map(t => t.name));
+                        dispatch({ type: "import_mcp_tools", tools: newTools });
+                    }
+                }
+                
+                // Сохраняем текущее состояние серверов для следующего сравнения
+                prevMcpServersRef.current = mcpServerUrls;
+                initialToolsImported.current = true;
             } catch (error) {
-                console.error('[WorkflowEditor] Error importing initial MCP tools:', error);
+                console.error('[WorkflowEditor] Error syncing MCP tools:', error);
             }
         }
-
-        importInitialMcpTools();
-    }, [workflow.projectId]); // Only run on initial mount and projectId change
+        
+        syncMcpTools();
+    }, [mcpServerUrls, workflow.projectId, dispatch, state.present.workflow.tools]);
+    
+    // Дополнительно принудительно проверяем и удаляем неактивные инструменты при загрузке редактора
+    useEffect(() => {
+        if (!initialToolsImported.current) return;
+        
+        const mcpTools = state.present.workflow.tools.filter(t => t.isMcp);
+        if (mcpTools.length === 0) return;
+        
+        const activeServerNames = new Set(mcpServerUrls.filter(s => s.isReady).map(s => s.name));
+        
+        // Проверяем каждый инструмент
+        const staleTools = mcpTools.filter(tool => 
+            !activeServerNames.has(tool.mcpServerName as string)
+        );
+        
+        if (staleTools.length > 0) {
+            console.log('[WorkflowEditor] Found stale MCP tools to remove:', 
+                staleTools.map(t => `${t.name} (${t.mcpServerName})`));
+            
+            // Удаляем инструменты для каждого неактивного сервера
+            const inactiveServerNames = new Set(staleTools.map(t => t.mcpServerName));
+            inactiveServerNames.forEach(serverName => {
+                if (serverName) {
+                    dispatch({ type: "remove_mcp_server_tools", serverName });
+                }
+            });
+        }
+    }, [state.present.workflow.tools, mcpServerUrls, dispatch]);
 
     function handleSelectAgent(name: string) {
         dispatch({ type: "select_agent", name });

@@ -4,7 +4,7 @@ import { WorkflowPrompt } from "../../../lib/types/workflow_types";
 import { WorkflowAgent } from "../../../lib/types/workflow_types";
 import { Dropdown, DropdownItem, DropdownTrigger, DropdownMenu } from "@heroui/react";
 import { useRef, useEffect, useState } from "react";
-import { EllipsisVerticalIcon, ImportIcon, PlusIcon, Brain, Wrench, PenLine, Library, ChevronDown, ChevronRight, ServerIcon } from "lucide-react";
+import { EllipsisVerticalIcon, ImportIcon, PlusIcon, Brain, Wrench, PenLine, Library, ChevronDown, ChevronRight, ServerIcon, DownloadIcon, FolderDownIcon, LibraryIcon } from "lucide-react";
 import { Panel } from "@/components/common/panel-common";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
@@ -201,8 +201,11 @@ export function EntityList({
         library: true
     });
     const [expandedSection, setExpandedSection] = useState<'agents' | 'tools' | 'prompts'>('agents');
+    const [isLibraryExpanded, setIsLibraryExpanded] = useState(false);
+    const [isWebhookExpanded, setIsWebhookExpanded] = useState(false);
+    
     const selectedRef = useRef<HTMLButtonElement | null>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
     const [containerHeight, setContainerHeight] = useState<number>(0);
     const headerClasses = "font-semibold text-zinc-700 dark:text-zinc-300 flex items-center justify-between w-full";
     const buttonClasses = "text-sm px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:hover:bg-indigo-900 dark:text-indigo-400";
@@ -234,7 +237,35 @@ export function EntityList({
             try {
                 // Get MCP tools from server action
                 const mcpTools = await getMcpToolsFromProject(projectId);
-                setMergedTools([...tools, ...mcpTools]);
+                
+                console.log('[EntityList] Fetched MCP tools:', mcpTools.map(t => t.name));
+                console.log('[EntityList] Current tools:', tools.map(t => t.name));
+                
+                // Создаем набор имен текущих инструментов для проверки на дубликаты
+                const existingToolNames = new Set(tools.map(t => t.name));
+                
+                // Фильтруем MCP инструменты, чтобы избежать дублирования
+                const newMcpTools = mcpTools.filter(tool => !existingToolNames.has(tool.name));
+                
+                console.log('[EntityList] New unique MCP tools to add:', newMcpTools.map(t => t.name));
+                
+                // Создаем Map для устранения дубликатов среди всех инструментов
+                const uniqueToolsMap = new Map();
+                
+                // Добавляем сначала обычные инструменты
+                tools.forEach(tool => {
+                    uniqueToolsMap.set(tool.name, tool);
+                });
+                
+                // Затем добавляем инструменты MCP, предпочитая их, если есть конфликт имен
+                mcpTools.forEach(tool => {
+                    uniqueToolsMap.set(tool.name, tool);
+                });
+                
+                const mergedUniqueTools = Array.from(uniqueToolsMap.values());
+                console.log('[EntityList] Total unique tools after merge:', mergedUniqueTools.length);
+                
+                setMergedTools(mergedUniqueTools);
             } catch (error) {
                 console.error('[EntityList] Error merging MCP tools:', error);
             }
@@ -263,6 +294,171 @@ export function EntityList({
         }
         return filters.webhook;
     });
+
+    // *** Поиск и рендеринг инструментов ***
+    // Перед отрисовкой инструментов, создам уникальный список,
+    // чтобы избежать дублирования в UI
+    
+    // Для инструментов MCP сервера
+    const renderMcpTools = () => {
+        if (!filters.mcp) return null;
+        
+        // Создаем Map для отслеживания уникальных инструментов
+        const uniqueToolsMap = new Map();
+        
+        // Фильтруем только MCP инструменты и добавляем их в Map
+        filteredTools.filter(tool => tool.isMcp).forEach(tool => {
+            // Используем имя инструмента как ключ для уникальности
+            uniqueToolsMap.set(tool.name, tool);
+        });
+        
+        // Преобразуем Map обратно в массив
+        const uniqueMcpTools = Array.from(uniqueToolsMap.values());
+        
+        // Логируем для отладки
+        console.log('[EntityList] Уникальные MCP инструменты:', 
+            uniqueMcpTools.map(t => t.name));
+        
+        // Если нет MCP инструментов, отображаем соответствующее сообщение
+        if (uniqueMcpTools.length === 0) {
+            return (
+                <div className="px-3 py-4 text-gray-500 text-sm">
+                    Нет доступных MCP инструментов
+                </div>
+            );
+        }
+        
+        // Группируем инструменты по serverName
+        const toolsByServer: Record<string, Array<typeof uniqueMcpTools[0]>> = {};
+        
+        uniqueMcpTools.forEach(tool => {
+            const serverName = tool.mcpServerName || 'unknown';
+            if (!toolsByServer[serverName]) {
+                toolsByServer[serverName] = [];
+            }
+            toolsByServer[serverName].push(tool);
+        });
+        
+        // Отрисовываем группы инструментов по серверам,
+        // используя компонент ServerCard для каждого сервера
+        return Object.entries(toolsByServer).map(([serverName, serverTools]) => (
+            <ServerCard 
+                key={serverName}
+                serverName={serverName}
+                tools={serverTools}
+                selectedEntity={selectedEntity}
+                onSelectTool={handleToolSelection}
+                onDeleteTool={onDeleteTool}
+                selectedRef={selectedRef}
+            />
+        ));
+    };
+    
+    // Для библиотечных инструментов
+    const renderLibraryTools = () => {
+        if (!filters.library) return null;
+        
+        const libraryTools = filteredTools.filter(tool => tool.isLibrary);
+        
+        if (libraryTools.length === 0) {
+            return (
+                <div className="px-3 py-4 text-gray-500 text-sm">
+                    Нет доступных библиотечных инструментов
+                </div>
+            );
+        }
+        
+        return (
+            <div key="library-group" className="mb-2">
+                <button
+                    onClick={() => setIsLibraryExpanded(!isLibraryExpanded)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md text-sm text-left"
+                >
+                    {isLibraryExpanded ? (
+                        <ChevronDown className="w-4 h-4 text-gray-500" />
+                    ) : (
+                        <ChevronRight className="w-4 h-4 text-gray-500" />
+                    )}
+                    <div className="flex items-center gap-1">
+                        <Library className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                        <span>Библиотека</span>
+                    </div>
+                </button>
+                
+                {isLibraryExpanded && (
+                    <div className="ml-6 mt-1 space-y-1">
+                        {libraryTools.map((tool, index) => (
+                            <ListItemWithMenu
+                                key={`${tool.name}-library-${index}`}
+                                name={tool.name}
+                                isSelected={selectedEntity?.type === 'tool' && selectedEntity.name === tool.name}
+                                onClick={() => handleToolSelection(tool.name)}
+                                selectedRef={selectedEntity?.type === 'tool' && selectedEntity.name === tool.name ? selectedRef : undefined}
+                                icon={<Wrench className="w-4 h-4 text-gray-600 dark:text-gray-500" />}
+                                menuContent={
+                                    <EntityDropdown 
+                                        name={tool.name} 
+                                        onDelete={onDeleteTool}
+                                        isLocked={tool.isLibrary}
+                                    />
+                                }
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+    
+    // Для обычных инструментов (не MCP, не библиотечных)
+    const renderRegularTools = () => {
+        const regularTools = filteredTools.filter(tool => !tool.isMcp && !tool.isLibrary);
+        
+        if (regularTools.length === 0) {
+            return null;
+        }
+        
+        return (
+            <div key="webhook-tools" className="mb-2">
+                <button
+                    onClick={() => setIsWebhookExpanded(!isWebhookExpanded)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md text-sm text-left"
+                >
+                    {isWebhookExpanded ? (
+                        <ChevronDown className="w-4 h-4 text-gray-500" />
+                    ) : (
+                        <ChevronRight className="w-4 h-4 text-gray-500" />
+                    )}
+                    <div className="flex items-center gap-1">
+                        <Wrench className="w-4 h-4 text-gray-600" />
+                        <span>Webhook инструменты</span>
+                    </div>
+                </button>
+                
+                {isWebhookExpanded && (
+                    <div className="ml-6 mt-1 space-y-1">
+                        {regularTools.map((tool, index) => (
+                            <ListItemWithMenu
+                                key={`${tool.name}-regular-${index}`}
+                                name={tool.name}
+                                isSelected={selectedEntity?.type === 'tool' && selectedEntity.name === tool.name}
+                                onClick={() => handleToolSelection(tool.name)}
+                                selectedRef={selectedEntity?.type === 'tool' && selectedEntity.name === tool.name ? selectedRef : undefined}
+                                icon={<Wrench className="w-4 h-4 text-gray-600 dark:text-gray-500" />}
+                                menuContent={
+                                    <EntityDropdown 
+                                        name={tool.name} 
+                                        onDelete={onDeleteTool}
+                                        isLocked={tool.isLibrary}
+                                    />
+                                }
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     return (
         <div ref={containerRef} className="flex flex-col h-full">
@@ -417,71 +613,9 @@ export function EntityList({
 
                             {/* Tools list - Scrollable content */}
                             <div className="flex-1 overflow-y-auto">
-                                {filteredTools.length > 0 ? (
-                                    <div className="space-y-1 p-2">
-                                        {/* Group tools by server */}
-                                        {(() => {
-                                            // Get custom tools (non-MCP tools)
-                                            const customTools = filteredTools.filter(tool => !tool.isMcp);
-                                            
-                                            // Group MCP tools by server
-                                            const serverTools = filteredTools.reduce((acc, tool) => {
-                                                if (tool.isMcp && tool.mcpServerName) {
-                                                    if (!acc[tool.mcpServerName]) {
-                                                        acc[tool.mcpServerName] = [];
-                                                    }
-                                                    acc[tool.mcpServerName].push(tool);
-                                                }
-                                                return acc;
-                                            }, {} as Record<string, typeof filteredTools>);
-
-                                            return (
-                                                <>
-                                                    {/* Show MCP server cards first */}
-                                                    {Object.entries(serverTools).map(([serverName, tools]) => (
-                                                        <ServerCard
-                                                            key={serverName}
-                                                            serverName={serverName}
-                                                            tools={tools}
-                                                            selectedEntity={selectedEntity}
-                                                            onSelectTool={handleToolSelection}
-                                                            onDeleteTool={onDeleteTool}
-                                                            selectedRef={selectedRef}
-                                                        />
-                                                    ))}
-
-                                                    {/* Show custom tools */}
-                                                    {customTools.length > 0 && (
-                                                        <div className="mt-2">
-                                                            {customTools.map((tool, index) => (
-                                                                <ListItemWithMenu
-                                                                    key={`custom-tool-${index}`}
-                                                                    name={tool.name}
-                                                                    isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
-                                                                    onClick={() => handleToolSelection(tool.name)}
-                                                                    selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
-                                                                    icon={<Wrench className="w-4 h-4 text-gray-600 dark:text-gray-500" />}
-                                                                    menuContent={
-                                                                        <EntityDropdown 
-                                                                            name={tool.name} 
-                                                                            onDelete={onDeleteTool}
-                                                                            isLocked={tool.isLibrary}
-                                                                        />
-                                                                    }
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </>
-                                            );
-                                        })()}
-                                    </div>
-                                ) : (
-                                    <EmptyState 
-                                        entity="tools" 
-                                        hasFilteredItems={mergedTools.length > 0}
-                                    />
-                                )}
+                                {renderMcpTools()}
+                                {renderLibraryTools()}
+                                {renderRegularTools()}
                             </div>
                         </div>
                     )}
