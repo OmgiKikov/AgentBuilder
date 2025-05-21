@@ -8,6 +8,7 @@ import os
 from functools import wraps
 from copilot import copilot_instructions_edit_agent
 import json
+from audio_transcription import transcribe_audio
 
 class DataSource(BaseModel):
     id: str = Field(alias='_id')
@@ -148,6 +149,32 @@ def edit_agent_instructions():
             'error': 'Invalid request data',
             'details': str(ve)
         }), 400
+    except Exception as e:
+        print(e)
+        return jsonify({
+            'error': 'Internal server error',
+            'details': str(e)
+        }), 500
+
+@app.route('/transcribe_audio', methods=['POST'])
+def transcribe_audio_route():
+    try:
+        if 'audio' not in request.files:
+            return jsonify({'error': 'No audio file provided'}), 400
+        
+        audio_file = request.files['audio']
+        audio_data = audio_file.read()
+        
+        language = request.form.get('language', 'ru')
+        
+        # Транскрибируем аудио
+        transcription = transcribe_audio(audio_data, language)
+        
+        if not transcription:
+            return jsonify({'error': 'Failed to transcribe audio'}), 500
+        
+        return jsonify({'transcription': transcription})
+        
     except Exception as e:
         print(e)
         return jsonify({

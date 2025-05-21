@@ -1,8 +1,9 @@
 'use client';
 
-import { Button, Spinner } from "@heroui/react";
 import { useRef, useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { AudioInputButton } from "./audio-input-button";
 
 // Add a type to support both message formats
 type FlexibleMessage = {
@@ -74,6 +75,14 @@ export function ComposeBoxCopilot({
         onFocus?.();
     };
 
+    function handleAudioText(text: string) {
+        if (text.trim()) {
+            setInput(text);
+            // Если нужно автоматически отправлять распознанный текст, раскомментируйте следующую строку
+            // handleUserMessage(text);
+        }
+    }
+
     return (
         <div className="relative group">
             {/* Keyboard shortcut hint */}
@@ -85,6 +94,9 @@ export function ComposeBoxCopilot({
             {/* Outer container with padding */}
             <div className="rounded-2xl border-[1.5px] border-gray-200 dark:border-[#2a2d31] p-3 relative 
                           bg-white dark:bg-[#1e2023] flex items-end gap-2">
+                {/* Audio input button */}
+                <AudioInputButton onTextReceived={handleAudioText} disabled={loading} />
+                
                 {/* Textarea */}
                 <div className="flex-1">
                     <Textarea
@@ -116,10 +128,9 @@ export function ComposeBoxCopilot({
 
                 {/* Send button */}
                 <Button
-                    size="sm"
-                    isIconOnly
+                    size="icon"
                     disabled={!loading && !input.trim()}
-                    onPress={loading ? onCancel : handleInput}
+                    onClick={loading ? onCancel : handleInput}
                     className={`
                         transition-all duration-200
                         ${loading 
