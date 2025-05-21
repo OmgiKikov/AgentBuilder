@@ -2,25 +2,25 @@ import * as React from "react"
 import { Switch as HeroSwitch } from "@heroui/react"
 import { cn } from "@/lib/utils"
 
-export interface SwitchProps {
-  className?: string;
-  size?: "sm" | "md" | "lg";
-  color?: "default" | "primary" | "secondary" | "success" | "warning" | "danger";
-  isDisabled?: boolean;
-  isSelected?: boolean;
-  onValueChange?: (isSelected: boolean) => void;
-  children?: React.ReactNode;
+interface SwitchProps {
+  checked?: boolean
+  defaultChecked?: boolean
+  onCheckedChange?: (checked: boolean) => void
+  className?: string
+  disabled?: boolean
 }
 
 const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
-  ({ className, size = "md", color = "primary", ...props }, ref) => {
+  ({ checked, defaultChecked, onCheckedChange, disabled, className }, ref) => {
     return (
       <HeroSwitch
         ref={ref}
-        size={size}
-        color={color}
+        isSelected={checked}
+        defaultSelected={defaultChecked}
+        onValueChange={onCheckedChange}
+        isDisabled={disabled}
+        color="primary"
         className={className}
-        {...props}
       />
     );
   }
