@@ -15,6 +15,11 @@ type FlexibleMessage = {
     // Add any other optional fields that might be needed
 };
 
+interface IconProps {
+    size: number;
+    className?: string;
+}
+
 interface ComposeBoxCopilotProps {
     handleUserMessage: (message: string) => void;
     messages: any[];
@@ -143,6 +148,7 @@ export function ComposeBoxCopilot({
                         disabled:opacity-50 disabled:scale-95
                         hover:shadow-md dark:hover:shadow-indigo-950/10
                         mb-0.5
+                        w-9 h-9 p-1.5
                     `}
                 >
                     {loading ? (
@@ -160,7 +166,7 @@ export function ComposeBoxCopilot({
 }
 
 // Custom SendIcon component for better visual alignment
-function SendIcon({ size, className }: { size: number, className?: string }) {
+function SendIcon({ size, className }: IconProps) {
     return (
         <svg 
             width={size} 
@@ -180,7 +186,7 @@ function SendIcon({ size, className }: { size: number, className?: string }) {
 }
 
 // Custom StopIcon component for better visual alignment
-function StopIcon({ size, className }: { size: number, className?: string }) {
+function StopIcon({ size, className }: IconProps) {
     return (
         <svg 
             width={size} 

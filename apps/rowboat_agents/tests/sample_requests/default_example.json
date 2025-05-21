@@ -149,7 +149,7 @@
       },
       {
         "annotations": [],
-        "content": "Hi! How can I help you today? Are you having issues with your order items or delivery timing?",
+        "content": "Hi! Как я могу вам помочь? Are you having issues with your order items or delivery timing?",
         "created_at": "2025-03-19T12:29:06.547196",
         "current_turn": true,
         "response_type": "external",

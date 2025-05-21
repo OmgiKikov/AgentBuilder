@@ -319,15 +319,6 @@ export function EntityList({
         console.log('[EntityList] Уникальные MCP инструменты:', 
             uniqueMcpTools.map(t => t.name));
         
-        // Если нет MCP инструментов, отображаем соответствующее сообщение
-        if (uniqueMcpTools.length === 0) {
-            return (
-                <div className="px-3 py-4 text-gray-500 text-sm">
-                    Нет доступных MCP инструментов
-                </div>
-            );
-        }
-        
         // Группируем инструменты по serverName
         const toolsByServer: Record<string, Array<typeof uniqueMcpTools[0]>> = {};
         
@@ -431,7 +422,7 @@ export function EntityList({
                     )}
                     <div className="flex items-center gap-1">
                         <Wrench className="w-4 h-4 text-gray-600" />
-                        <span>Webhook инструменты</span>
+                        <span>Webhook</span>
                     </div>
                 </button>
                 
@@ -572,7 +563,6 @@ export function EntityList({
                             {/* Filter checkboxes - Made sticky */}
                             <div className="sticky top-0 z-10 bg-white dark:bg-zinc-900 border-b border-gray-100 dark:border-gray-800">
                                 <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-gray-500 dark:text-gray-400">
-                                    <span>Показать:</span>
                                     <div className="flex items-center gap-1.5">
                                         <label className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
                                             <input
@@ -583,7 +573,7 @@ export function EntityList({
                                             />
                                             <div className="flex items-center gap-1">
                                                 <ImportIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                                                <span>MCP инструменты</span>
+                                                <span>MCP</span>
                                             </div>
                                         </label>
                                         <label className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
@@ -605,7 +595,7 @@ export function EntityList({
                                                 onChange={(e) => setFilters(prev => ({ ...prev, webhook: e.target.checked }))}
                                                 className="h-3 w-3 rounded border-gray-300 text-indigo-600 focus:ring-0"
                                             />
-                                            <span>Webhook инструменты</span>
+                                            <span>Webhook</span>
                                         </label>
                                     </div>
                                 </div>
