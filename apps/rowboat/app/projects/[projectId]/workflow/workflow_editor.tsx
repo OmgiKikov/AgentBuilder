@@ -1,10 +1,7 @@
 "use client";
 import React, { useReducer, Reducer, useState, useCallback, useEffect, useRef, createContext, useContext } from "react";
 import { MCPServer, WithStringId } from "../../../lib/types/types";
-import { Workflow } from "../../../lib/types/workflow_types";
-import { WorkflowTool } from "../../../lib/types/workflow_types";
-import { WorkflowPrompt } from "../../../lib/types/workflow_types";
-import { WorkflowAgent } from "../../../lib/types/workflow_types";
+import { Workflow, WorkflowTool, WorkflowPrompt, WorkflowAgent } from "../../../lib/types/workflow_types";
 import { DataSource } from "../../../lib/types/datasource_types";
 import { produce, applyPatches, enablePatches, produceWithPatches, Patch } from 'immer';
 import { AgentConfig } from "../entities/agent_config";
@@ -30,7 +27,6 @@ import { BackIcon, HamburgerIcon, WorkflowIcon } from "../../../lib/components/i
 import { CopyIcon, ImportIcon, Layers2Icon, RadioIcon, RedoIcon, ServerIcon, Sparkles, UndoIcon, RocketIcon, PenLine, AlertTriangle } from "lucide-react";
 import { EntityList } from "./entity_list";
 import { ProductTour } from "@/components/common/product-tour";
-import { getMcpToolsFromProject } from "@/app/actions/mcp_actions";
 
 enablePatches();
 
@@ -139,12 +135,15 @@ export type Action = {
 } | {
     type: "restore_state";
     state: StateItem;
+<<<<<<< HEAD
 } | {
     type: "import_mcp_tools";
     tools: z.infer<typeof WorkflowTool>[];
 } | {
     type: "remove_mcp_server_tools";
     serverName: string;
+=======
+>>>>>>> 64af726 (Обновить документацию и улучшить интеграцию с MCP серверами. Удалены устаревшие ссылки на документацию API и SDK. Внесены изменения в функции обработки инструментов, добавлена возможность получения инструментов проекта. Обновлены компоненты для работы с новыми типами инструментов и улучшена обработка данных в редакторе рабочих процессов.)
 };
 
 function reducer(state: State, action: Action): State {
@@ -524,6 +523,7 @@ function reducer(state: State, action: Action): State {
                             draft.workflow.startAgent = action.name;
                             draft.chatKey++;
                             break;
+<<<<<<< HEAD
                         case "import_mcp_tools": {
                             // Проверяем существующие тулы, чтобы избежать дублирования
                             const existingTools = draft.workflow.tools.filter((t: z.infer<typeof WorkflowTool>) => t.isMcp);
@@ -594,6 +594,8 @@ function reducer(state: State, action: Action): State {
                             }
                             break;
                         }
+=======
+>>>>>>> 64af726 (Обновить документацию и улучшить интеграцию с MCP серверами. Удалены устаревшие ссылки на документацию API и SDK. Внесены изменения в функции обработки инструментов, добавлена возможность получения инструментов проекта. Обновлены компоненты для работы с новыми типами инструментов и улучшена обработка данных в редакторе рабочих процессов.)
                     }
                 }
             );
@@ -622,6 +624,7 @@ export function WorkflowEditor({
     mcpServerUrls,
     toolWebhookUrl,
     defaultModel,
+    projectTools,
 }: {
     dataSources: WithStringId<z.infer<typeof DataSource>>[];
     workflow: WithStringId<z.infer<typeof Workflow>>;
@@ -632,6 +635,7 @@ export function WorkflowEditor({
     mcpServerUrls: Array<z.infer<typeof MCPServer>>;
     toolWebhookUrl: string;
     defaultModel: string;
+    projectTools: z.infer<typeof WorkflowTool>[];
 }) {
 
     const [state, dispatch] = useReducer<Reducer<State, Action>>(reducer, {
@@ -699,6 +703,7 @@ export function WorkflowEditor({
         }
     }, [state.present.workflow, state.present.pendingChanges]);
 
+<<<<<<< HEAD
     // Отслеживаем изменения в списке MCP серверов
     const prevMcpServersRef = useRef<Array<z.infer<typeof MCPServer>>>([]);
     const initialToolsImported = useRef<boolean>(false);
@@ -788,6 +793,8 @@ export function WorkflowEditor({
         }
     }, [state.present.workflow.tools, mcpServerUrls, dispatch]);
 
+=======
+>>>>>>> 64af726 (Обновить документацию и улучшить интеграцию с MCP серверами. Удалены устаревшие ссылки на документацию API и SDK. Внесены изменения в функции обработки инструментов, добавлена возможность получения инструментов проекта. Обновлены компоненты для работы с новыми типами инструментов и улучшена обработка данных в редакторе рабочих процессов.)
     function handleSelectAgent(name: string) {
         dispatch({ type: "select_agent", name });
     }
@@ -1089,6 +1096,7 @@ export function WorkflowEditor({
                     <EntityList
                         agents={state.present.workflow.agents}
                         tools={state.present.workflow.tools}
+                        projectTools={projectTools}
                         prompts={state.present.workflow.prompts}
                         selectedEntity={state.present.selection}
                         startAgentName={state.present.workflow.startAgent}
@@ -1132,6 +1140,7 @@ export function WorkflowEditor({
                     usedAgentNames={new Set(state.present.workflow.agents.filter((agent) => agent.name !== state.present.selection!.name).map((agent) => agent.name))}
                     agents={state.present.workflow.agents}
                     tools={state.present.workflow.tools}
+                    projectTools={projectTools}
                     prompts={state.present.workflow.prompts}
                     dataSources={dataSources}
                     handleUpdate={handleUpdateAgent.bind(null, state.present.selection.name)}
@@ -1142,11 +1151,16 @@ export function WorkflowEditor({
                 {state.present.selection?.type === "tool" && (() => {
                     const selectedTool = state.present.workflow.tools.find(
                         (tool) => tool.name === state.present.selection!.name
+                    ) || projectTools.find(
+                        (tool) => tool.name === state.present.selection!.name
                     );
                     return <ToolConfig
                         key={state.present.selection.name}
                         tool={selectedTool!}
-                        usedToolNames={new Set(state.present.workflow.tools.filter((tool) => tool.name !== state.present.selection!.name).map((tool) => tool.name))}
+                        usedToolNames={new Set([
+                            ...state.present.workflow.tools.filter((tool) => tool.name !== state.present.selection!.name).map((tool) => tool.name),
+                            ...projectTools.filter((tool) => tool.name !== state.present.selection!.name).map((tool) => tool.name)
+                        ])}
                         handleUpdate={handleUpdateTool.bind(null, state.present.selection.name)}
                         handleClose={handleUnselectTool}
                     />;

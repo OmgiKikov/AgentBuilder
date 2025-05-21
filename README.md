@@ -46,7 +46,6 @@ There are 2 ways to integrate with the agents you create in Rowboat
 
 1. HTTP API
    - You can use the API directly at [http://localhost:3000/api/v1/](http://localhost:3000/api/v1/)
-   - See [API Docs](https://docs.rowboatlabs.com/using_the_api/) for details
    ```bash
    curl --location 'http://localhost:3000/api/v1/<PROJECT_ID>/chat' \
    --header 'Content-Type: application/json' \
@@ -68,11 +67,9 @@ There are 2 ways to integrate with the agents you create in Rowboat
    ```
    pip install rowboat
    ```
-
-   See [SDK Docs](https://docs.rowboatlabs.com/using_the_sdk/) for details. Here is a quick example:
    ```python
-   from rowboat import Client, StatefulChat
-   from rowboat.schema import UserMessage, SystemMessage
+   from openAgent import Client, StatefulChat
+   from openAgent.schema import UserMessage, SystemMessage
 
    # Initialize the client
    client = Client(
@@ -98,4 +95,4 @@ There are 2 ways to integrate with the agents you create in Rowboat
    ```
 
 
-Refer to [Docs](https://docs.rowboatlabs.com/) to learn how to start building agents with Rowboat.
+

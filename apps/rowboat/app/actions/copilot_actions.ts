@@ -35,16 +35,18 @@ export async function getCopilotResponse(
 
     // Get MCP tools from project and merge with workflow tools
     const mcpTools = await getMcpToolsFromProject(projectId);
-    const mergedWorkflow = {
+    
+    // Convert workflow to copilot format with both workflow and project tools
+    const copilotWorkflow = convertToCopilotWorkflow({
         ...current_workflow_config,
         tools: await mergeMcpTools(current_workflow_config.tools, mcpTools)
-    };
+    });
 
     // prepare request
     const request: z.infer<typeof CopilotAPIRequest> = {
         messages: messages.map(convertToCopilotApiMessage),
         workflow_schema: JSON.stringify(zodToJsonSchema(CopilotWorkflow)),
-        current_workflow_config: JSON.stringify(convertToCopilotWorkflow(mergedWorkflow)),
+        current_workflow_config: JSON.stringify(copilotWorkflow),
         context: context ? convertToCopilotApiChatContext(context) : null,
         dataSources: dataSources ? dataSources.map(ds => {
             console.log('Original data source:', JSON.stringify(ds));
@@ -137,35 +139,20 @@ export async function getCopilotResponseStream(
 
     // Get MCP tools from project and merge with workflow tools
     const mcpTools = await getMcpToolsFromProject(projectId);
-    const mergedWorkflow = {
+    
+    // Convert workflow to copilot format with both workflow and project tools
+    const copilotWorkflow = convertToCopilotWorkflow({
         ...current_workflow_config,
         tools: await mergeMcpTools(current_workflow_config.tools, mcpTools)
-    };
+    });
 
     // prepare request
     const request: z.infer<typeof CopilotAPIRequest> = {
         messages: messages.map(convertToCopilotApiMessage),
         workflow_schema: JSON.stringify(zodToJsonSchema(CopilotWorkflow)),
-        current_workflow_config: JSON.stringify(convertToCopilotWorkflow(mergedWorkflow)),
+        current_workflow_config: JSON.stringify(copilotWorkflow),
         context: context ? convertToCopilotApiChatContext(context) : null,
-        dataSources: dataSources ? dataSources.map(ds => {
-            console.log('Stream - Original data source:', JSON.stringify(ds));
-            // First parse to validate, then ensure _id is included
-            CopilotDataSource.parse(ds); // validate but don't use the result
-            // Cast to any to handle the WithStringId type
-            const withId = ds as any;
-            const result = {
-                _id: withId._id,
-                name: withId.name,
-                description: withId.description,
-                active: withId.active,
-                status: withId.status,
-                error: withId.error,
-                data: withId.data
-            };
-            console.log('Stream - Processed data source:', JSON.stringify(result));
-            return result;
-        }) : undefined,
+        dataSources: dataSources ? dataSources.map(ds => CopilotDataSource.parse(ds)) : undefined,
     };
 
     // serialize the request
@@ -197,16 +184,18 @@ export async function getCopilotAgentInstructions(
 
     // Get MCP tools from project and merge with workflow tools
     const mcpTools = await getMcpToolsFromProject(projectId);
-    const mergedWorkflow = {
+    
+    // Convert workflow to copilot format with both workflow and project tools
+    const copilotWorkflow = convertToCopilotWorkflow({
         ...current_workflow_config,
         tools: await mergeMcpTools(current_workflow_config.tools, mcpTools)
-    };
+    });
 
     // prepare request
     const request: z.infer<typeof CopilotAPIRequest> = {
         messages: messages.map(convertToCopilotApiMessage),
         workflow_schema: JSON.stringify(zodToJsonSchema(CopilotWorkflow)),
-        current_workflow_config: JSON.stringify(convertToCopilotWorkflow(mergedWorkflow)),
+        current_workflow_config: JSON.stringify(copilotWorkflow),
         context: {
             type: 'agent',
             agentName: agentName,

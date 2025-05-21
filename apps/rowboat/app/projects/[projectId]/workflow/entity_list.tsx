@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { AgenticAPITool } from "../../../lib/types/agents_api_types";
-import { WorkflowPrompt } from "../../../lib/types/workflow_types";
-import { WorkflowAgent } from "../../../lib/types/workflow_types";
+import { WorkflowPrompt, WorkflowAgent, WorkflowTool } from "../../../lib/types/workflow_types";
 import { Dropdown, DropdownItem, DropdownTrigger, DropdownMenu } from "@heroui/react";
 import { useRef, useEffect, useState } from "react";
 import { EllipsisVerticalIcon, ImportIcon, PlusIcon, Brain, Wrench, PenLine, Library, ChevronDown, ChevronRight, ServerIcon, DownloadIcon, FolderDownIcon, LibraryIcon } from "lucide-react";
@@ -15,7 +14,8 @@ const GAP_SIZE = 24; // 6 units * 4px (tailwind's default spacing unit)
 
 interface EntityListProps {
     agents: z.infer<typeof WorkflowAgent>[];
-    tools: z.infer<typeof AgenticAPITool>[];
+    tools: z.infer<typeof WorkflowTool>[];
+    projectTools: z.infer<typeof WorkflowTool>[];
     prompts: z.infer<typeof WorkflowPrompt>[];
     selectedEntity: {
         type: "agent" | "tool" | "prompt";
@@ -26,7 +26,7 @@ interface EntityListProps {
     onSelectTool: (name: string) => void;
     onSelectPrompt: (name: string) => void;
     onAddAgent: (agent: Partial<z.infer<typeof WorkflowAgent>>) => void;
-    onAddTool: (tool: Partial<z.infer<typeof AgenticAPITool>>) => void;
+    onAddTool: (tool: Partial<z.infer<typeof WorkflowTool>>) => void;
     onAddPrompt: (prompt: Partial<z.infer<typeof WorkflowPrompt>>) => void;
     onToggleAgent: (name: string) => void;
     onSetMainAgent: (name: string) => void;
@@ -114,7 +114,7 @@ const StartLabel = () => (
 
 interface ServerCardProps {
     serverName: string;
-    tools: z.infer<typeof AgenticAPITool>[];
+    tools: z.infer<typeof WorkflowTool>[];
     selectedEntity: {
         type: "agent" | "tool" | "prompt";
         name: string;
@@ -178,6 +178,7 @@ const ServerCard = ({
 export function EntityList({
     agents,
     tools,
+    projectTools,
     prompts,
     selectedEntity,
     startAgentName,
@@ -194,7 +195,8 @@ export function EntityList({
     onDeletePrompt,
     projectId
 }: EntityListProps & { projectId: string }) {
-    const [mergedTools, setMergedTools] = useState(tools);
+    // Merge workflow tools with project tools
+    const mergedTools = [...tools, ...projectTools];
     const [filters, setFilters] = useState({
         mcp: true,
         webhook: true,
@@ -231,6 +233,7 @@ export function EntityList({
         }
     }, [selectedEntity]);
 
+<<<<<<< HEAD
     // Fetch and merge MCP tools from project settings
     useEffect(() => {
         async function fetchAndMergeTools() {
@@ -274,6 +277,8 @@ export function EntityList({
         fetchAndMergeTools();
     }, [projectId, tools]);
 
+=======
+>>>>>>> 64af726 (Обновить документацию и улучшить интеграцию с MCP серверами. Удалены устаревшие ссылки на документацию API и SDK. Внесены изменения в функции обработки инструментов, добавлена возможность получения инструментов проекта. Обновлены компоненты для работы с новыми типами инструментов и улучшена обработка данных в редакторе рабочих процессов.)
     const calculateExpandedHeight = () => {
         if (!containerHeight) return '0px';
         const collapsedSectionsHeight = PANEL_HEADER_HEIGHT * 2; // Two sections will be collapsed

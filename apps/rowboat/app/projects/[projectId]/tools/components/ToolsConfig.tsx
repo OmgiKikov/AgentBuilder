@@ -1,40 +1,43 @@
 'use client';
 
 import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, Tab } from '@/components/ui/tabs';
 import { HostedServers } from './HostedServers';
 import { CustomServers } from './CustomServers';
 import { WebhookConfig } from './WebhookConfig';
+import type { Key } from 'react';
 
 export function ToolsConfig() {
   const [activeTab, setActiveTab] = useState('hosted');
 
+  const handleTabChange = (key: Key) => {
+    setActiveTab(key.toString());
+  };
+
   return (
     <div className="h-full flex flex-col">
       <Tabs 
-        value={activeTab} 
-        onValueChange={setActiveTab} 
-        className="flex-1 flex flex-col"
+        selectedKey={activeTab}
+        onSelectionChange={handleTabChange}
+        aria-label="Настройки инструментов"
+        className="w-full"
+        fullWidth
       >
-        <TabsList className="grid w-full grid-cols-3 mb-8">
-          <TabsTrigger value="hosted">Hosted MCP Servers</TabsTrigger>
-          <TabsTrigger value="custom">Custom MCP Servers</TabsTrigger>
-          <TabsTrigger value="webhook">Webhook</TabsTrigger>
-        </TabsList>
-
-        <div className="flex-1 p-6">
-          <TabsContent value="hosted" className="mt-0 h-full">
+        <Tab key="hosted" title="MCP серверы">
+          <div className="mt-4 p-6">
             <HostedServers />
-          </TabsContent>
-
-          <TabsContent value="custom" className="mt-0 h-full">
+          </div>
+        </Tab>
+        <Tab key="custom" title="Собственные MCP серверы">
+          <div className="mt-4 p-6">
             <CustomServers />
-          </TabsContent>
-
-          <TabsContent value="webhook" className="mt-0 h-full">
+          </div>
+        </Tab>
+        <Tab key="webhook" title="Webhook инструменты">
+          <div className="mt-4 p-6">
             <WebhookConfig />
-          </TabsContent>
-        </div>
+          </div>
+        </Tab>
       </Tabs>
     </div>
   );

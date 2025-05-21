@@ -86,6 +86,7 @@ export function sanitizeTextWithMentions(
         tools: z.infer<typeof WorkflowTool>[],
         prompts: z.infer<typeof WorkflowPrompt>[],
     },
+    projectTools: z.infer<typeof WorkflowTool>[] = []
 ): {
     sanitized: string;
     entities: z.infer<typeof ConnectedEntity>[];
@@ -115,7 +116,8 @@ export function sanitizeTextWithMentions(
             if (entity.type === 'agent') {
                 return workflow.agents.some(a => a.name === entity.name);
             } else if (entity.type === 'tool') {
-                return workflow.tools.some(t => t.name === entity.name);
+                return workflow.tools.some(t => t.name === entity.name) || 
+                       projectTools.some(t => t.name === entity.name);
             } else if (entity.type === 'prompt') {
                 return workflow.prompts.some(p => p.name === entity.name);
             }
