@@ -966,6 +966,7 @@ export function WorkflowEditor({
                     usedAgentNames={new Set(state.present.workflow.agents.filter((agent) => agent.name !== state.present.selection!.name).map((agent) => agent.name))}
                     agents={state.present.workflow.agents}
                     tools={state.present.workflow.tools}
+                    projectTools={projectTools}
                     prompts={state.present.workflow.prompts}
                     dataSources={dataSources}
                     handleUpdate={handleUpdateAgent.bind(null, state.present.selection.name)}
@@ -976,11 +977,16 @@ export function WorkflowEditor({
                 {state.present.selection?.type === "tool" && (() => {
                     const selectedTool = state.present.workflow.tools.find(
                         (tool) => tool.name === state.present.selection!.name
+                    ) || projectTools.find(
+                        (tool) => tool.name === state.present.selection!.name
                     );
                     return <ToolConfig
                         key={state.present.selection.name}
                         tool={selectedTool!}
-                        usedToolNames={new Set(state.present.workflow.tools.filter((tool) => tool.name !== state.present.selection!.name).map((tool) => tool.name))}
+                        usedToolNames={new Set([
+                            ...state.present.workflow.tools.filter((tool) => tool.name !== state.present.selection!.name).map((tool) => tool.name),
+                            ...projectTools.filter((tool) => tool.name !== state.present.selection!.name).map((tool) => tool.name)
+                        ])}
                         handleUpdate={handleUpdateTool.bind(null, state.present.selection.name)}
                         handleClose={handleUnselectTool}
                     />;
