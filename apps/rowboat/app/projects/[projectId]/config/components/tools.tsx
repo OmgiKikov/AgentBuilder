@@ -103,7 +103,24 @@ export function McpServersSection({ projectId }: { projectId: string }) {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await updateMcpServers(projectId, servers);
+            // Преобразуем серверы в формат, требуемый API
+            const formattedServers = servers.map(server => ({
+                id: server.name,
+                name: server.name,
+                description: server.url, // Используем URL как описание
+                tools: [], // Пустой массив инструментов
+                availableTools: [],
+                isActive: true,
+                isReady: true,
+                authNeeded: false,
+                isAuthenticated: true,
+                requiresAuth: false,
+                serverUrl: server.url,
+                instanceId: server.name, // Используем имя как instanceId
+                serverName: server.name
+            }));
+            
+            await updateMcpServers(projectId, formattedServers);
             setOriginalServers(JSON.parse(JSON.stringify(servers)));
             setMessage({ type: 'success', text: 'Servers updated successfully' });
             setTimeout(() => setMessage(null), 3000);
@@ -114,8 +131,8 @@ export function McpServersSection({ projectId }: { projectId: string }) {
     };
 
     return <Section 
-        title="MCP Servers"
-        description="MCP servers are used to execute MCP tools."
+        title="MCP серверы"
+        description="MCP серверы используются для выполнения MCP инструментов."
     >
         <div className="space-y-4">
             <div className="flex justify-start">
@@ -124,7 +141,7 @@ export function McpServersSection({ projectId }: { projectId: string }) {
                     variant="primary"
                     onClick={handleAddServer}
                 >
-                    + Add Server
+                    + Добавить сервер
                 </Button>
             </div>
 
@@ -144,13 +161,13 @@ export function McpServersSection({ projectId }: { projectId: string }) {
                                     variant="secondary"
                                     onClick={() => handleRemoveServer(index)}
                                 >
-                                    Remove
+                                    Удалить
                                 </Button>
                             </div>
                         ))}
                         {servers.length === 0 && (
                             <div className="text-center text-gray-500 dark:text-gray-400 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed border-gray-200 dark:border-gray-700">
-                                No servers configured
+                                Нет настроенных серверов
                             </div>
                         )}
                     </div>
@@ -163,7 +180,7 @@ export function McpServersSection({ projectId }: { projectId: string }) {
                                 onClick={handleSave}
                                 disabled={saving}
                             >
-                                Save Changes
+                                Сохранить изменения
                             </Button>
                         </div>
                     )}
@@ -183,13 +200,13 @@ export function McpServersSection({ projectId }: { projectId: string }) {
 
             <Modal isOpen={isOpen} onClose={onClose}>
                 <ModalContent>
-                    <ModalHeader>Add MCP Server</ModalHeader>
+                    <ModalHeader>Добавить MCP сервер</ModalHeader>
                     <ModalBody>
                         <div className="flex flex-col gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Server Name</label>
+                                <label className="text-sm font-medium">Имя сервера</label>
                                 <Input
-                                    placeholder="Enter server name"
+                                    placeholder="Введите имя сервера"
                                     value={newServer.name}
                                     onChange={(e) => {
                                         setNewServer({ ...newServer, name: e.target.value });
@@ -208,7 +225,7 @@ export function McpServersSection({ projectId }: { projectId: string }) {
                                 )}
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">SSE URL</label>
+                                <label className="text-sm font-medium">URL SSE</label>
                                 <Input
                                     placeholder="https://localhost:8000/sse"
                                     value={newServer.url}
@@ -232,14 +249,14 @@ export function McpServersSection({ projectId }: { projectId: string }) {
                     </ModalBody>
                     <ModalFooter>
                         <Button variant="secondary" onClick={onClose}>
-                            Cancel
+                            Отмена
                         </Button>
                         <Button
                             variant="primary"
                             onClick={handleCreateServer}
                             disabled={!newServer.name || !newServer.url}
                         >
-                            Add Server
+                            Добавить сервер
                         </Button>
                     </ModalFooter>
                 </ModalContent>
@@ -267,14 +284,14 @@ export function WebhookUrlSection({ projectId }: { projectId: string }) {
             setError(null);
             return { valid: true };
         } catch {
-            setError('Please enter a valid URL');
-            return { valid: false, errorMessage: 'Please enter a valid URL' };
+            setError('Пожалуйста, введите корректный URL');
+            return { valid: false, errorMessage: 'Пожалуйста, введите корректный URL' };
         }
     }
 
     return <Section 
         title="Webhook URL"
-        description="In workflow editor, tool calls will be posted to this URL, unless they are mocked."
+        description="В редакторе рабочих процессов, вызовы инструментов будут отправляться на этот URL, если они не мокаются."
     >
         <div className="space-y-2">
             <div className={clsx(
@@ -292,7 +309,7 @@ export function WebhookUrlSection({ projectId }: { projectId: string }) {
                         setWebhookUrl(value);
                         updateWebhookUrl(projectId, value);
                     }}
-                    placeholder="Enter webhook URL..."
+                    placeholder="Введите URL webhook..."
                     className="w-full text-sm bg-transparent focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 transition-colors px-4 py-3"
                     autoResize
                 />

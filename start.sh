@@ -10,11 +10,13 @@ export USE_RAG=true
 export USE_RAG_UPLOADS=true
 
 # Start with the base command and profile flags
-CMD="docker-compose"
+CMD="docker compose"
 CMD="$CMD --profile setup_qdrant"
 CMD="$CMD --profile qdrant"
+CMD="$CMD --profile mcp_server"
 CMD="$CMD --profile rag_text_worker"
 CMD="$CMD --profile rag_files_worker"
+CMD="$CMD --profile rag_urls_worker"
 
 # enable rag urls worker
 if [ "$USE_RAG_SCRAPING" = "true" ]; then
@@ -25,6 +27,11 @@ fi
 # if [ "$SOME_OTHER_ENV" = "true" ]; then
 #   CMD="$CMD --profile some_other_profile"
 # fi
+
+# Запуск сервиса MCP
+echo "Запускаем MCP сервер на порту 8080"
+echo "Для подключения используйте http://localhost:8080/sse"
+echo "Список инструментов доступен по адресу http://localhost:8080/tools"
 
 # Add the up and build flags at the end
 CMD="$CMD up --build"

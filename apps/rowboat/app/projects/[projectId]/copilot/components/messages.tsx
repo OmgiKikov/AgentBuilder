@@ -131,7 +131,7 @@ function InternalAssistantMessage({ content }: { content: string }) {
                     onClick={() => setExpanded(true)}>
                     <MessageSquareIcon size={16} />
                     <EllipsisIcon size={16} />
-                    <span className="text-xs">Show debug message</span>
+                    <span className="text-xs">Показать отладочное сообщение</span>
                 </button>
             ) : (
                 <div className="w-full">
@@ -222,9 +222,9 @@ function AssistantMessage({
 
 function AssistantMessageLoading({ currentStatus }: { currentStatus: 'thinking' | 'planning' | 'generating' }) {
     const statusText = {
-        thinking: "Thinking...",
-        planning: "Planning...",
-        generating: "Generating..."
+        thinking: "Размышляю...",
+        planning: "Планирую...",
+        generating: "Генерирую..."
     };
 
     return (

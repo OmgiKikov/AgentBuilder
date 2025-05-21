@@ -131,7 +131,9 @@ async def catch_all(ctx: RunContextWrapper[Any], args: str, tool_name: str, tool
                 response_content = await mock_tool(tool_name, args, tool_config.get("description", ""), tool_config.get("mockInstructions", ""))
             print(response_content)
         elif tool_config.get("isMcp", False):
+
             mcp_server_url = tool_config.get("mcpServerURL", "")
+
             response_content = await call_mcp(tool_name, args, mcp_server_url)
         else:
             collection = db["projects"]

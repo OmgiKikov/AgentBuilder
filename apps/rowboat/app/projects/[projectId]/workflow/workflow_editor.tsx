@@ -135,6 +135,14 @@ export type Action = {
 } | {
     type: "restore_state";
     state: StateItem;
+
+} | {
+    type: "import_mcp_tools";
+    tools: z.infer<typeof WorkflowTool>[];
+} | {
+    type: "remove_mcp_server_tools";
+    serverName: string;
+
 };
 
 function reducer(state: State, action: Action): State {
@@ -514,6 +522,77 @@ function reducer(state: State, action: Action): State {
                             draft.workflow.startAgent = action.name;
                             draft.chatKey++;
                             break;
+
+                        case "import_mcp_tools": {
+                            // Проверяем существующие тулы, чтобы избежать дублирования
+                            const existingTools = draft.workflow.tools.filter((t: z.infer<typeof WorkflowTool>) => t.isMcp);
+                            const existingToolNames = new Set(existingTools.map((t: z.infer<typeof WorkflowTool>) => t.name));
+                            
+                            // Проверка на дубликаты по имени и mcpServerName
+                            const newTools = action.tools.filter(tool => {
+                                // Проверяем, существует ли уже инструмент с таким именем
+                                if (!existingToolNames.has(tool.name)) {
+                                    return true; // Новый инструмент
+                                }
+                                
+                                // Ищем существующий инструмент с таким же именем и проверяем, от того же ли он сервера
+                                const existingTool = existingTools.find(t => 
+                                    t.name === tool.name && 
+                                    t.mcpServerName === tool.mcpServerName
+                                );
+                                
+                                // Если инструмент с таким именем уже есть, но от другого сервера - это дубликат
+                                return !existingTool;
+                            });
+                            
+                            console.log('[Reducer] Adding MCP tools:', {
+                                newToolsCount: newTools.length,
+                                newTools: newTools.map(t => `${t.name} (${t.mcpServerName})`)
+                            });
+                            
+                            if (newTools.length > 0) {
+                                draft.workflow.tools.push(...newTools);
+                                draft.pendingChanges = true;
+                            }
+                            break;
+                        }
+                        case "remove_mcp_server_tools": {
+                            const serverName = action.serverName;
+                            console.log(`[Reducer] Removing tools for server: ${serverName}`);
+                            
+                            // Находим инструменты, которые нужно удалить
+                            const toolsToRemove = draft.workflow.tools.filter((tool: z.infer<typeof WorkflowTool>) => 
+                                tool.isMcp && tool.mcpServerName === serverName
+                            );
+                            
+                            if (toolsToRemove.length > 0) {
+                                console.log(`[Reducer] Found ${toolsToRemove.length} tools to remove for server ${serverName}:`, 
+                                    toolsToRemove.map((t: z.infer<typeof WorkflowTool>) => t.name)
+                                );
+                                
+                                // Удаляем инструменты
+                                draft.workflow.tools = draft.workflow.tools.filter((tool: z.infer<typeof WorkflowTool>) => 
+                                    !(tool.isMcp && tool.mcpServerName === serverName)
+                                );
+                                
+                                draft.pendingChanges = true;
+                                
+                                // Если был выбран инструмент, который удаляется, сбрасываем выбор
+                                if (draft.selection?.type === 'tool') {
+                                    const selectedToolName = draft.selection.name;
+                                    const toolWasRemoved = toolsToRemove.some(
+                                        (t: z.infer<typeof WorkflowTool>) => t.name === selectedToolName
+                                    );
+                                    
+                                    if (toolWasRemoved) {
+                                        draft.selection = null;
+                                    }
+                                }
+                            } else {
+                                console.log(`[Reducer] No tools found to remove for server ${serverName}`);
+                            }
+                            break;
+                        }
                     }
                 }
             );
@@ -621,6 +700,96 @@ export function WorkflowEditor({
         }
     }, [state.present.workflow, state.present.pendingChanges]);
 
+
+    // Отслеживаем изменения в списке MCP серверов
+    const prevMcpServersRef = useRef<Array<z.infer<typeof MCPServer>>>([]);
+    const initialToolsImported = useRef<boolean>(false);
+
+    // Полностью перерабатываем логику импорта и управления MCP инструментами
+    useEffect(() => {
+        async function syncMcpTools() {
+            try {
+                // Получаем текущие активные серверы
+                const activeServers = mcpServerUrls.filter(s => s.isReady);
+                const activeServerNames = new Set(activeServers.map(s => s.name));
+                
+                // Получаем предыдущие активные серверы
+                const previousServers = prevMcpServersRef.current || [];
+                const previousActiveServers = previousServers.filter(s => s.isReady);
+                const previousActiveServerNames = new Set(previousActiveServers.map(s => s.name));
+                
+                console.log('[WorkflowEditor] Syncing MCP tools', {
+                    activeServerCount: activeServers.length,
+                    activeServers: Array.from(activeServerNames),
+                    previousActiveServerCount: previousActiveServers.length,
+                    previousActiveServers: Array.from(previousActiveServerNames)
+                });
+                
+                // 1. Удаляем инструменты отключенных серверов
+                for (const server of previousServers) {
+                    if (server.isReady && (!activeServerNames.has(server.name) || 
+                        mcpServerUrls.find(s => s.name === server.name && !s.isReady))) {
+                        console.log('[WorkflowEditor] Removing tools for server:', server.name);
+                        dispatch({ type: "remove_mcp_server_tools", serverName: server.name });
+                    }
+                }
+                
+                // Получаем актуальные инструменты с активных серверов
+                if (activeServers.length > 0) {
+                    const mcpTools = await getMcpToolsFromProject(workflow.projectId);
+                    
+                    // Проверяем наличие существующих MCP инструментов
+                    const currentMcpTools = state.present.workflow.tools.filter(t => t.isMcp);
+                    const currentToolNames = new Set(currentMcpTools.map(t => t.name));
+                    
+                    // Фильтруем новые инструменты
+                    const newTools = mcpTools.filter(tool => !currentToolNames.has(tool.name));
+                    
+                    if (newTools.length > 0) {
+                        console.log('[WorkflowEditor] Adding new MCP tools:', newTools.map(t => t.name));
+                        dispatch({ type: "import_mcp_tools", tools: newTools });
+                    }
+                }
+                
+                // Сохраняем текущее состояние серверов для следующего сравнения
+                prevMcpServersRef.current = mcpServerUrls;
+                initialToolsImported.current = true;
+            } catch (error) {
+                console.error('[WorkflowEditor] Error syncing MCP tools:', error);
+            }
+        }
+        
+        syncMcpTools();
+    }, [mcpServerUrls, workflow.projectId, dispatch, state.present.workflow.tools]);
+    
+    // Дополнительно принудительно проверяем и удаляем неактивные инструменты при загрузке редактора
+    useEffect(() => {
+        if (!initialToolsImported.current) return;
+        
+        const mcpTools = state.present.workflow.tools.filter(t => t.isMcp);
+        if (mcpTools.length === 0) return;
+        
+        const activeServerNames = new Set(mcpServerUrls.filter(s => s.isReady).map(s => s.name));
+        
+        // Проверяем каждый инструмент
+        const staleTools = mcpTools.filter(tool => 
+            !activeServerNames.has(tool.mcpServerName as string)
+        );
+        
+        if (staleTools.length > 0) {
+            console.log('[WorkflowEditor] Found stale MCP tools to remove:', 
+                staleTools.map(t => `${t.name} (${t.mcpServerName})`));
+            
+            // Удаляем инструменты для каждого неактивного сервера
+            const inactiveServerNames = new Set(staleTools.map(t => t.mcpServerName));
+            inactiveServerNames.forEach(serverName => {
+                if (serverName) {
+                    dispatch({ type: "remove_mcp_server_tools", serverName });
+                }
+            });
+        }
+    }, [state.present.workflow.tools, mcpServerUrls, dispatch]);
+
     function handleSelectAgent(name: string) {
         dispatch({ type: "select_agent", name });
     }
@@ -666,7 +835,7 @@ export function WorkflowEditor({
     }
 
     function handleDeleteAgent(name: string) {
-        if (window.confirm(`Are you sure you want to delete the agent "${name}"?`)) {
+        if (window.confirm(`Вы уверены, что хотите удалить агента "${name}"?`)) {
             dispatch({ type: "delete_agent", name });
         }
     }
@@ -676,7 +845,7 @@ export function WorkflowEditor({
     }
 
     function handleDeleteTool(name: string) {
-        if (window.confirm(`Are you sure you want to delete the tool "${name}"?`)) {
+        if (window.confirm(`Вы уверены, что хотите удалить инструмент "${name}"?`)) {
             dispatch({ type: "delete_tool", name });
         }
     }
@@ -686,7 +855,7 @@ export function WorkflowEditor({
     }
 
     function handleDeletePrompt(name: string) {
-        if (window.confirm(`Are you sure you want to delete the prompt "${name}"?`)) {
+        if (window.confirm(`Вы уверены, что хотите удалить промпт "${name}"?`)) {
             dispatch({ type: "delete_prompt", name });
         }
     }
@@ -764,13 +933,13 @@ export function WorkflowEditor({
         <div className="shrink-0 flex justify-between items-center pb-6">
             <div className="workflow-version-selector flex items-center gap-4 px-2 text-gray-800 dark:text-gray-100">
                 <WorkflowIcon size={16} />
-                <Tooltip content="Click to edit">
+                <Tooltip content="Нажмите для редактирования">
                     <div>
                         <EditableField
                             key={state.present.workflow._id}
                             value={state.present.workflow?.name || ''}
                             onChange={handleRenameWorkflow}
-                            placeholder="Name this version"
+                            placeholder="Назовите эту версию"
                             className="text-sm font-semibold"
                             inline={true}
                         />
@@ -790,7 +959,7 @@ export function WorkflowEditor({
                 <Dropdown>
                     <DropdownTrigger>
                         <div>
-                            <Tooltip content="Version Menu">
+                            <Tooltip content="Меню версий">
                                 <button className="p-1.5 text-gray-500 hover:text-gray-800 transition-colors">
                                     <HamburgerIcon size={20} />
                                 </button>
@@ -819,7 +988,7 @@ export function WorkflowEditor({
                             startContent={<div className="text-gray-500"><BackIcon size={16} /></div>}
                             className="gap-x-2"
                         >
-                            View versions
+                            Просмотр версий
                         </DropdownItem>
 
                         <DropdownItem
@@ -827,7 +996,7 @@ export function WorkflowEditor({
                             startContent={<div className="text-gray-500"><Layers2Icon size={16} /></div>}
                             className="gap-x-2"
                         >
-                            Clone this version
+                            Клонировать эту версию
                         </DropdownItem>
 
                         <DropdownItem
@@ -835,19 +1004,19 @@ export function WorkflowEditor({
                             startContent={<div className="text-gray-500"><CopyIcon size={16} /></div>}
                             className="gap-x-2"
                         >
-                            Export as JSON
+                            Экспорт в JSON
                         </DropdownItem>
                     </DropdownMenu>
                 </Dropdown>
             </div>
             {showCopySuccess && <div className="flex items-center gap-2">
-                <div className="text-green-500">Copied to clipboard</div>
+                <div className="text-green-500">Скопировано в буфер обмена</div>
             </div>}
             <div className="flex items-center gap-2">
                 {isLive && <div className="flex items-center gap-2">
                     <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2">
                         <AlertTriangle size={16} />
-                        This version is locked. You cannot make changes. Changes applied through copilot will<b>not</b>be reflected.
+                        Эта версия заблокирована. Вы не можете вносить изменения. Изменения, примененные через Copilot, <b>не</b> будут отражены.
                     </div>
                     <Button
                         variant="solid"
@@ -856,7 +1025,7 @@ export function WorkflowEditor({
                         className="gap-2 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm"
                         startContent={<Layers2Icon size={16} />}
                     >
-                        Clone this version
+                        Клонировать эту версию
                     </Button>
                     <Button
                         variant="solid"
@@ -865,22 +1034,22 @@ export function WorkflowEditor({
                         className="gap-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
                         startContent={showCopilot ? null : <Sparkles size={16} />}
                     >
-                        {showCopilot ? "Hide Copilot" : "Copilot"}
+                        {showCopilot ? "Скрыть Copilot" : "Copilot"}
                     </Button>
                 </div>}
                 {!isLive && <div className="text-xs text-gray-400">
                     {state.present.saving && <div className="flex items-center gap-1">
                         <Spinner size="sm" />
-                        <div>Saving...</div>
+                        <div>Сохранение...</div>
                     </div>}
                     {!state.present.saving && state.present.workflow && <div>
-                        Updated <RelativeTime date={new Date(state.present.lastUpdatedAt)} />
+                        Обновлено <RelativeTime date={new Date(state.present.lastUpdatedAt)} />
                     </div>}
                 </div>}
                 {!isLive && <>
                     <button
                         className="p-1 text-gray-400 hover:text-black hover:cursor-pointer"
-                        title="Undo"
+                        title="Отменить"
                         disabled={state.currentIndex <= 0}
                         onClick={() => dispatch({ type: "undo" })}
                     >
@@ -888,7 +1057,7 @@ export function WorkflowEditor({
                     </button>
                     <button
                         className="p-1 text-gray-400 hover:text-black hover:cursor-pointer"
-                        title="Redo"
+                        title="Повторить"
                         disabled={state.currentIndex >= state.patches.length}
                         onClick={() => dispatch({ type: "redo" })}
                     >
@@ -902,7 +1071,7 @@ export function WorkflowEditor({
                         startContent={<RocketIcon size={16} />}
                         data-tour-target="deploy"
                     >
-                        Deploy
+                        Развернуть
                     </Button>
                     <Button
                         variant="solid"
@@ -911,7 +1080,7 @@ export function WorkflowEditor({
                         className="gap-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
                         startContent={showCopilot ? null : <Sparkles size={16} />}
                     >
-                        {showCopilot ? "Hide Copilot" : "Copilot"}
+                        {showCopilot ? "Скрыть Copilot" : "Copilot"}
                     </Button>
                 </>}
             </div>

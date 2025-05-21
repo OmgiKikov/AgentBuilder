@@ -203,7 +203,24 @@ function McpServersSection({
     const handleSave = async () => {
         setSaving(true);
         try {
-            await updateMcpServers(projectId, servers);
+            // Преобразуем серверы в формат, требуемый API
+            const formattedServers = servers.map(server => ({
+                id: server.name,
+                name: server.name,
+                description: server.url, // Используем URL как описание
+                tools: [], // Пустой массив инструментов
+                availableTools: [],
+                isActive: true,
+                isReady: true,
+                authNeeded: false,
+                isAuthenticated: true,
+                requiresAuth: false,
+                serverUrl: server.url,
+                instanceId: server.name, // Используем имя как instanceId
+                serverName: server.name
+            }));
+            
+            await updateMcpServers(projectId, formattedServers);
             setOriginalServers(JSON.parse(JSON.stringify(servers))); // Update original servers after successful save
             setMessage({ type: 'success', text: 'Servers updated successfully' });
             setTimeout(() => setMessage(null), 3000);
@@ -217,7 +234,7 @@ function McpServersSection({
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <p className="text-sm text-muted-foreground">
-                    MCP servers are used to execute MCP tools.
+                    MCP серверы используются для выполнения MCP инструментов.
                 </p>
                 <Button
                     size="sm"
@@ -225,7 +242,7 @@ function McpServersSection({
                     startContent={<PlusIcon className="w-4 h-4" />}
                     onPress={handleAddServer}
                 >
-                    Add Server
+                    Добавить сервер
                 </Button>
             </div>
 
@@ -246,13 +263,13 @@ function McpServersSection({
                                     variant="light"
                                     onPress={() => handleRemoveServer(index)}
                                 >
-                                    Remove
+                                    Удалить
                                 </Button>
                             </div>
                         ))}
                         {servers.length === 0 && (
                             <div className="text-center text-muted-foreground p-4">
-                                No servers configured
+                                Нет настроенных серверов
                             </div>
                         )}
                     </div>
@@ -265,7 +282,7 @@ function McpServersSection({
                                 onPress={handleSave}
                                 isLoading={saving}
                             >
-                                Save Changes
+                                Сохранить изменения
                             </Button>
                         </div>
                     )}
@@ -282,12 +299,12 @@ function McpServersSection({
 
             <Modal isOpen={isOpen} onClose={onClose}>
                 <ModalContent>
-                    <ModalHeader>Add MCP Server</ModalHeader>
+                    <ModalHeader>Добавить MCP сервер</ModalHeader>
                     <ModalBody>
                         <div className="flex flex-col gap-4">
                             <Input
-                                label="Server Name"
-                                placeholder="Enter server name"
+                                label="Имя сервера"
+                                placeholder="Введите имя сервера"
                                 value={newServer.name}
                                 onChange={(e) => {
                                     setNewServer({ ...newServer, name: e.target.value });
@@ -304,7 +321,7 @@ function McpServersSection({
                                 isRequired
                             />
                             <Input
-                                label="SSE URL"
+                                label="URL SSE"
                                 placeholder="https://localhost:8000/sse"
                                 value={newServer.url}
                                 onChange={(e) => {
@@ -325,14 +342,14 @@ function McpServersSection({
                     </ModalBody>
                     <ModalFooter>
                         <Button variant="light" onPress={onClose}>
-                            Cancel
+                            Отмена
                         </Button>
                         <Button
                             color="primary"
                             onPress={handleCreateServer}
                             isDisabled={!newServer.name || !newServer.url}
                         >
-                            Add Server
+                            Добавить сервер
                         </Button>
                     </ModalFooter>
                 </ModalContent>
@@ -364,8 +381,8 @@ function ApiKeyDisplay({ apiKey }: { apiKey: string }) {
                     onCopy={() => {
                         navigator.clipboard.writeText(apiKey);
                     }}
-                    label="Copy"
-                    successLabel="Copied"
+                    label="Копировать"
+                    successLabel="Скопировано"
                 />
             </div>
         </div>
@@ -401,7 +418,7 @@ export function ApiKeysSection({
             setLoading(false);
             setMessage({
                 type: 'success',
-                text: 'API key created successfully',
+                text: 'API ключ успешно создан',
             });
             setKeys([...keys, key]);
 
@@ -412,13 +429,13 @@ export function ApiKeysSection({
             setLoading(false);
             setMessage({
                 type: 'error',
-                text: error instanceof Error ? error.message : "Failed to create API key",
+                text: error instanceof Error ? error.message : "Не удалось создать API ключ",
             });
         }
     };
 
     const handleDeleteKey = async (id: string) => {
-        if (!window.confirm("Are you sure you want to delete this API key? This action cannot be undone.")) {
+        if (!window.confirm("Вы уверены, что хотите удалить этот API ключ? Это действие не может быть отменено.")) {
             return;
         }
 
@@ -430,7 +447,7 @@ export function ApiKeysSection({
             setLoading(false);
             setMessage({
                 type: 'info',
-                text: 'API key deleted successfully',
+                text: 'API ключ успешно удален',
             });
             setTimeout(() => {
                 setMessage(null);
@@ -439,7 +456,7 @@ export function ApiKeysSection({
             setLoading(false);
             setMessage({
                 type: 'error',
-                text: error instanceof Error ? error.message : "Failed to delete API key",
+                text: error instanceof Error ? error.message : "Не удалось удалить API ключ",
             });
         }
     };
@@ -448,7 +465,7 @@ export function ApiKeysSection({
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <p className="text-sm text-muted-foreground">
-                    API keys are used to authenticate requests to the Rowboat API.
+                    API ключи используются для аутентификации запросов к API AgentBuilder.
                 </p>
                 <Button
                     onPress={handleCreateKey}
@@ -457,7 +474,7 @@ export function ApiKeysSection({
                     variant="flat"
                     isDisabled={loading}
                 >
-                    Create API key
+                    Создать API ключ
                 </Button>
             </div>
 
@@ -465,9 +482,9 @@ export function ApiKeysSection({
             {loading && <Spinner size="sm" />}
             {!loading && <div className="border border-border rounded-lg text-sm">
                 <div className="flex items-center border-b border-border p-4">
-                    <div className="flex-[3] font-normal">API Key</div>
-                    <div className="flex-1 font-normal">Created</div>
-                    <div className="flex-1 font-normal">Last Used</div>
+                    <div className="flex-[3] font-normal">API ключ</div>
+                    <div className="flex-1 font-normal">Создан</div>
+                    <div className="flex-1 font-normal">Последнее использование</div>
                     <div className="w-10"></div>
                 </div>
                 {message?.type === 'success' && <div className="flex flex-col p-2">
@@ -504,7 +521,7 @@ export function ApiKeysSection({
                                             className="text-destructive"
                                             onPress={() => handleDeleteKey(key._id)}
                                         >
-                                            Delete
+                                            Удалить
                                         </DropdownItem>
                                     </DropdownMenu>
                                 </Dropdown>
@@ -513,7 +530,7 @@ export function ApiKeysSection({
                     ))}
                     {keys.length === 0 && (
                         <div className="p-4 text-center text-muted-foreground">
-                            No API keys created yet
+                            Нет созданных API ключей
                         </div>
                     )}
                 </div>
@@ -542,7 +559,7 @@ export function SecretSection({
     }, [projectId]);
 
     const handleRotateSecret = async () => {
-        if (!confirm("Are you sure you want to rotate the secret? All existing signatures will become invalid.")) {
+        if (!confirm("Вы уверены, что хотите обновить secret key? Все существующие подписи станут недействительными.")) {
             return;
         }
         setLoading(true);
@@ -558,11 +575,11 @@ export function SecretSection({
 
     return <Section title="Secret">
         <p className="text-sm">
-            The project secret is used for signing tool-call requests sent to your webhook
+            Secret ключ проекта используется для подписи запросов инструментов, отправляемых в ваш webhook
         </p>
         <Divider />
         <SectionRow>
-            <LeftLabel label="Project secret" />
+            <LeftLabel label="Secret ключ проекта" />
             <RightContent>
                 <div className="flex flex-row gap-2 items-center">
                     {loading && <Spinner size="sm" />}
@@ -580,8 +597,8 @@ export function SecretSection({
                             onCopy={() => {
                                 navigator.clipboard.writeText(secret);
                             }}
-                            label="Copy"
-                            successLabel="Copied"
+                            label="Копировать"
+                            successLabel="Скопировано"
                         />
                         <Button
                             size="sm"
@@ -590,7 +607,7 @@ export function SecretSection({
                             onPress={handleRotateSecret}
                             isDisabled={loading}
                         >
-                            Rotate
+                            Обновить
                         </Button>
                     </div>}
                 </div>
@@ -627,13 +644,13 @@ export function WebhookUrlSection({
             new URL(url);
             return { valid: true };
         } catch {
-            return { valid: false, errorMessage: 'Please enter a valid URL' };
+            return { valid: false, errorMessage: 'Пожалуйста, введите корректный URL' };
         }
     }
 
     return <Section title="Webhook URL">
         <p className="text-sm">
-            In workflow editor, tool calls will be posted to this URL, unless they are mocked.
+            В редакторе рабочих процессов, вызовы инструментов будут отправляться на этот URL, если они не мокаются.
         </p>
         <Divider />
         <FormSection label="Webhook URL">
@@ -668,7 +685,7 @@ export function ChatWidgetSection({
 
     const code = `<!-- RowBoat Chat Widget -->
 <script>
-    window.ROWBOAT_CONFIG = {
+    window.AgentBuilder_CONFIG = {
         clientId: '${chatClientId}'
     };
     (function(d) {
@@ -681,7 +698,7 @@ export function ChatWidgetSection({
 
     return <Section title="Chat widget">
         <p className="text-sm">
-            To use the chat widget, copy and paste this code snippet just before the closing &lt;/body&gt; tag of your website:
+            Чтобы использовать чат виджет, скопируйте и вставьте этот код сниппет прямо перед закрывающим тегом &lt;/body&gt; вашего сайта:
         </p>
         {loading && <Spinner size="sm" />}
         {!loading && <Textarea
@@ -694,8 +711,8 @@ export function ChatWidgetSection({
                 onCopy={() => {
                     navigator.clipboard.writeText(code);
                 }}
-                label="Copy"
-                successLabel="Copied"
+                label="Копировать"
+                successLabel="Скопировано"
             />}
         />}
     </Section>;
@@ -734,8 +751,8 @@ export function DeleteProjectSection({
             {loading && <Spinner size="sm" />}
             {!loading && <div className="flex flex-col gap-4">
                 <p className="text-sm">
-                    Deleting a project will permanently remove all associated data, including workflows, sources, and API keys.
-                    This action cannot be undone.
+                    Удаление проекта приведет к постоянному удалению всех связанных данных, включая рабочие процессы, источники и API ключи.
+                    Это действие не может быть отменено.
                 </p>
                 <div>
                     <Button 
@@ -745,17 +762,17 @@ export function DeleteProjectSection({
                         isDisabled={loading}
                         isLoading={loading}
                     >
-                        Delete project
+                        Удалить проект
                     </Button>
                 </div>
 
                 <Modal isOpen={isOpen} onClose={onClose}>
                     <ModalContent>
-                        <ModalHeader>Delete Project</ModalHeader>
+                        <ModalHeader>Удалить проект</ModalHeader>
                         <ModalBody>
                             <div className="flex flex-col gap-4">
                                 <p>
-                                    This action cannot be undone. Please type in the following to confirm:
+                                    Это действие не может быть отменено. Пожалуйста, введите следующее для подтверждения:
                                 </p>
                                 <Input
                                     label="Project name"
@@ -764,7 +781,7 @@ export function DeleteProjectSection({
                                     onChange={(e) => setProjectNameInput(e.target.value)}
                                 />
                                 <Input
-                                    label='Type "delete project" to confirm'
+                                    label='Введите "delete project" для подтверждения'
                                     placeholder="delete project"
                                     value={confirmationInput}
                                     onChange={(e) => setConfirmationInput(e.target.value)}
@@ -773,14 +790,14 @@ export function DeleteProjectSection({
                         </ModalBody>
                         <ModalFooter>
                             <Button variant="light" onPress={onClose}>
-                                Cancel
+                                Отмена
                             </Button>
                             <Button 
                                 color="danger" 
                                 onPress={handleDelete}
                                 isDisabled={!isValid}
                             >
-                                Delete Project
+                                Удалить проект
                             </Button>
                         </ModalFooter>
                     </ModalContent>
@@ -809,7 +826,7 @@ function NavigationMenu({
             title={
                 <div className="font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
                     <Settings className="w-4 h-4" />
-                    <span>Settings</span>
+                    <span>Настройки</span>
                 </div>
             }
         >
@@ -861,7 +878,7 @@ export function ConfigApp({
                             title={
                                 <div className="font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
                                     <Settings className="w-4 h-4" />
-                                    <span>Project Settings</span>
+                                    <span>Настройки проекта</span>
                                 </div>
                             }
                         >
@@ -883,7 +900,7 @@ export function ConfigApp({
                             title={
                                 <div className="font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
                                     <Wrench className="w-4 h-4" />
-                                    <span>Tools Configuration</span>
+                                    <span>Настройки инструментов</span>
                                 </div>
                             }
                         >
@@ -901,7 +918,7 @@ export function ConfigApp({
                             title={
                                 <div className="font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
                                     <Phone className="w-4 h-4" />
-                                    <span>Voice Configuration</span>
+                                    <span>Настройки голоса</span>
                                 </div>
                             }
                         >

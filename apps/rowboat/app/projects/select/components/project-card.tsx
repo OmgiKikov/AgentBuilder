@@ -5,6 +5,7 @@ import { z } from "zod";
 import clsx from 'clsx';
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
+import { ru } from 'date-fns/locale';
 import { tokens } from "@/app/styles/design-tokens";
 
 interface ProjectCardProps {
@@ -40,7 +41,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                         tokens.colors.light.text.muted,
                         tokens.colors.dark.text.muted
                     )}>
-                        Created {formatDistanceToNow(new Date(project.createdAt))} ago
+                        Создан {formatDistanceToNow(new Date(project.createdAt), { locale: ru })} назад
                     </p>
                 </div>
                 <ChevronRightIcon 
