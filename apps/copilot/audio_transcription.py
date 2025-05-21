@@ -1,11 +1,11 @@
-import speech_recognition as sr
-import tempfile
 import os
+import tempfile
 import subprocess
 import logging
-from typing import Optional
 import uuid
 import sys
+from typing import Optional
+from openai import OpenAI
 
 # Настройка логирования
 logging.basicConfig(
@@ -19,7 +19,7 @@ logger = logging.getLogger('audio_transcription')
 
 def transcribe_audio(audio_data: bytes, language: str = 'ru') -> Optional[str]:
     """
-    Преобразует аудиоданные в текст с использованием Google Speech Recognition.
+    Преобразует аудиоданные в текст с использованием OpenAI API.
     
     Args:
         audio_data: Бинарные данные аудиофайла
@@ -79,39 +79,34 @@ def transcribe_audio(audio_data: bytes, language: str = 'ru') -> Optional[str]:
             logger.error("Сконвертированный WAV файл имеет нулевой размер")
             return None
         
-        # Инициализируем распознаватель
-        logger.debug("Инициализация распознавателя речи...")
-        recognizer = sr.Recognizer()
+        # Используем OpenAI API для транскрипции
+        logger.debug("Начало транскрипции через OpenAI API...")
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         
-        # Распознаем аудио
-        logger.debug(f"Открытие аудиофайла для распознавания: {output_filename}")
-        with sr.AudioFile(output_filename) as source:
-            logger.debug("Запись аудиоданных из файла...")
-            audio_data = recognizer.record(source)
-            logger.debug("Начало распознавания с помощью Google Speech Recognition...")
-            
-            # Добавляем больше информации о параметрах распознавания
-            logger.debug(f"Используемый язык: {language}")
-            logger.debug(f"Тип аудиоданных: {type(audio_data)}")
-            
-            try:
-                text = recognizer.recognize_google(audio_data, language=language)
+        try:
+            with open(output_filename, "rb") as audio_file:
+                logger.debug(f"Отправка запроса в OpenAI API с языком {language}...")
+                model = "gpt-4o-mini-transcribe"
+                logger.debug(f"Используемая модель: {model}")
+                
+                transcript = client.audio.transcriptions.create(
+                    file=audio_file,
+                    language=language,
+                    model=model
+                )
+                
+                text = transcript.text
                 logger.info(f"Успешное распознавание текста: '{text}'")
-            except sr.UnknownValueError:
-                logger.error("Google Speech Recognition не распознал речь")
-                return None
-            except sr.RequestError as e:
-                logger.error(f"Ошибка запроса к сервису Google Speech Recognition: {e}")
-                return None
+                return text
+                
+        except Exception as api_error:
+            logger.error(f"Ошибка при запросе к OpenAI API: {api_error}")
+            return None
             
-        # Удаляем временные файлы
-        logger.debug(f"Удаление временных файлов: {input_filename}, {output_filename}")
-        os.remove(input_filename)
-        os.remove(output_filename)
-        
-        return text
     except Exception as e:
         logger.error(f"Неожиданная ошибка при распознавании речи: {e}", exc_info=True)
+        return None
+    finally:
         # Убеждаемся, что временные файлы удалены
         for filename in [input_filename, output_filename]:
             if filename and os.path.exists(filename):
@@ -119,5 +114,4 @@ def transcribe_audio(audio_data: bytes, language: str = 'ru') -> Optional[str]:
                     os.remove(filename)
                     logger.debug(f"Удален временный файл: {filename}")
                 except Exception as cleanup_error:
-                    logger.error(f"Ошибка при удалении временного файла {filename}: {cleanup_error}")
-        return None 
+                    logger.error(f"Ошибка при удалении временного файла {filename}: {cleanup_error}") 
