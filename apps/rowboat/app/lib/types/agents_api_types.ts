@@ -87,7 +87,7 @@ export async function convertWorkflowToAgenticAPI(workflow: z.infer<typeof Workf
             .map(agent => {
                 const compiledInstructions = agent.instructions +
                     (agent.examples ? '\n\n# Examples\n' + agent.examples : '');
-                const { sanitized, entities } = sanitizeTextWithMentions(compiledInstructions, workflow);
+                const { sanitized, entities } = sanitizeTextWithMentions(compiledInstructions, workflow, mcpTools);
 
                 const agenticAgent: z.infer<typeof AgenticAPIAgent> = {
                     name: agent.name,
@@ -110,7 +110,7 @@ export async function convertWorkflowToAgenticAPI(workflow: z.infer<typeof Workf
         tools: mergedTools,
         prompts: workflow.prompts
             .map(p => {
-                const { sanitized } = sanitizeTextWithMentions(p.prompt, workflow);
+                const { sanitized } = sanitizeTextWithMentions(p.prompt, workflow, mcpTools);
                 return {
                     ...p,
                     prompt: sanitized,
