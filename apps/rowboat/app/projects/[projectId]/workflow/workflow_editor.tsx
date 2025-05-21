@@ -135,15 +135,14 @@ export type Action = {
 } | {
     type: "restore_state";
     state: StateItem;
-<<<<<<< HEAD
+
 } | {
     type: "import_mcp_tools";
     tools: z.infer<typeof WorkflowTool>[];
 } | {
     type: "remove_mcp_server_tools";
     serverName: string;
-=======
->>>>>>> 64af726 (Обновить документацию и улучшить интеграцию с MCP серверами. Удалены устаревшие ссылки на документацию API и SDK. Внесены изменения в функции обработки инструментов, добавлена возможность получения инструментов проекта. Обновлены компоненты для работы с новыми типами инструментов и улучшена обработка данных в редакторе рабочих процессов.)
+
 };
 
 function reducer(state: State, action: Action): State {
@@ -523,7 +522,7 @@ function reducer(state: State, action: Action): State {
                             draft.workflow.startAgent = action.name;
                             draft.chatKey++;
                             break;
-<<<<<<< HEAD
+
                         case "import_mcp_tools": {
                             // Проверяем существующие тулы, чтобы избежать дублирования
                             const existingTools = draft.workflow.tools.filter((t: z.infer<typeof WorkflowTool>) => t.isMcp);
@@ -594,8 +593,6 @@ function reducer(state: State, action: Action): State {
                             }
                             break;
                         }
-=======
->>>>>>> 64af726 (Обновить документацию и улучшить интеграцию с MCP серверами. Удалены устаревшие ссылки на документацию API и SDK. Внесены изменения в функции обработки инструментов, добавлена возможность получения инструментов проекта. Обновлены компоненты для работы с новыми типами инструментов и улучшена обработка данных в редакторе рабочих процессов.)
                     }
                 }
             );
@@ -703,7 +700,7 @@ export function WorkflowEditor({
         }
     }, [state.present.workflow, state.present.pendingChanges]);
 
-<<<<<<< HEAD
+
     // Отслеживаем изменения в списке MCP серверов
     const prevMcpServersRef = useRef<Array<z.infer<typeof MCPServer>>>([]);
     const initialToolsImported = useRef<boolean>(false);
@@ -793,8 +790,6 @@ export function WorkflowEditor({
         }
     }, [state.present.workflow.tools, mcpServerUrls, dispatch]);
 
-=======
->>>>>>> 64af726 (Обновить документацию и улучшить интеграцию с MCP серверами. Удалены устаревшие ссылки на документацию API и SDK. Внесены изменения в функции обработки инструментов, добавлена возможность получения инструментов проекта. Обновлены компоненты для работы с новыми типами инструментов и улучшена обработка данных в редакторе рабочих процессов.)
     function handleSelectAgent(name: string) {
         dispatch({ type: "select_agent", name });
     }

@@ -233,7 +233,7 @@ export function EntityList({
         }
     }, [selectedEntity]);
 
-<<<<<<< HEAD
+
     // Fetch and merge MCP tools from project settings
     useEffect(() => {
         async function fetchAndMergeTools() {
@@ -277,8 +277,6 @@ export function EntityList({
         fetchAndMergeTools();
     }, [projectId, tools]);
 
-=======
->>>>>>> 64af726 (Обновить документацию и улучшить интеграцию с MCP серверами. Удалены устаревшие ссылки на документацию API и SDK. Внесены изменения в функции обработки инструментов, добавлена возможность получения инструментов проекта. Обновлены компоненты для работы с новыми типами инструментов и улучшена обработка данных в редакторе рабочих процессов.)
     const calculateExpandedHeight = () => {
         if (!containerHeight) return '0px';
         const collapsedSectionsHeight = PANEL_HEADER_HEIGHT * 2; // Two sections will be collapsed
