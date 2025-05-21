@@ -1,10 +1,7 @@
 "use client";
 import React, { useReducer, Reducer, useState, useCallback, useEffect, useRef, createContext, useContext } from "react";
 import { MCPServer, WithStringId } from "../../../lib/types/types";
-import { Workflow } from "../../../lib/types/workflow_types";
-import { WorkflowTool } from "../../../lib/types/workflow_types";
-import { WorkflowPrompt } from "../../../lib/types/workflow_types";
-import { WorkflowAgent } from "../../../lib/types/workflow_types";
+import { Workflow, WorkflowTool, WorkflowPrompt, WorkflowAgent } from "../../../lib/types/workflow_types";
 import { DataSource } from "../../../lib/types/datasource_types";
 import { produce, applyPatches, enablePatches, produceWithPatches, Patch } from 'immer';
 import { AgentConfig } from "../entities/agent_config";
@@ -30,7 +27,6 @@ import { BackIcon, HamburgerIcon, WorkflowIcon } from "../../../lib/components/i
 import { CopyIcon, ImportIcon, Layers2Icon, RadioIcon, RedoIcon, ServerIcon, Sparkles, UndoIcon, RocketIcon, PenLine, AlertTriangle } from "lucide-react";
 import { EntityList } from "./entity_list";
 import { ProductTour } from "@/components/common/product-tour";
-import { getMcpToolsFromProject } from "@/app/actions/mcp_actions";
 
 enablePatches();
 
@@ -139,9 +135,6 @@ export type Action = {
 } | {
     type: "restore_state";
     state: StateItem;
-} | {
-    type: "import_mcp_tools";
-    tools: z.infer<typeof WorkflowTool>[];
 };
 
 function reducer(state: State, action: Action): State {
@@ -521,30 +514,6 @@ function reducer(state: State, action: Action): State {
                             draft.workflow.startAgent = action.name;
                             draft.chatKey++;
                             break;
-                        case "import_mcp_tools": {
-                            if (isLive) {
-                                break;
-                            }
-                            
-                            // Process each tool one by one
-                            action.tools.forEach(newTool => {
-                                const existingToolIndex = draft.workflow.tools.findIndex(
-                                    tool => tool.name === newTool.name
-                                );
-
-                                if (existingToolIndex !== -1) {
-                                    // Replace existing tool
-                                    draft.workflow.tools[existingToolIndex] = newTool;
-                                } else {
-                                    // Add new tool
-                                    draft.workflow.tools.push(newTool);
-                                }
-                            });
-
-                            draft.pendingChanges = true;
-                            draft.chatKey++;
-                            break;
-                        }
                     }
                 }
             );
@@ -573,6 +542,7 @@ export function WorkflowEditor({
     mcpServerUrls,
     toolWebhookUrl,
     defaultModel,
+    projectTools,
 }: {
     dataSources: WithStringId<z.infer<typeof DataSource>>[];
     workflow: WithStringId<z.infer<typeof Workflow>>;
@@ -583,6 +553,7 @@ export function WorkflowEditor({
     mcpServerUrls: Array<z.infer<typeof MCPServer>>;
     toolWebhookUrl: string;
     defaultModel: string;
+    projectTools: z.infer<typeof WorkflowTool>[];
 }) {
 
     const [state, dispatch] = useReducer<Reducer<State, Action>>(reducer, {
@@ -649,23 +620,6 @@ export function WorkflowEditor({
             setIsInitialState(false);
         }
     }, [state.present.workflow, state.present.pendingChanges]);
-
-    // Import MCP tools on initial load
-    useEffect(() => {
-        async function importInitialMcpTools() {
-            try {
-                const mcpTools: z.infer<typeof WorkflowTool>[] = await getMcpToolsFromProject(workflow.projectId);
-                
-                if (mcpTools.length > 0) {
-                    dispatch({ type: "import_mcp_tools", tools: mcpTools });
-                }
-            } catch (error) {
-                console.error('[WorkflowEditor] Error importing initial MCP tools:', error);
-            }
-        }
-
-        importInitialMcpTools();
-    }, [workflow.projectId]); // Only run on initial mount and projectId change
 
     function handleSelectAgent(name: string) {
         dispatch({ type: "select_agent", name });
@@ -968,6 +922,7 @@ export function WorkflowEditor({
                     <EntityList
                         agents={state.present.workflow.agents}
                         tools={state.present.workflow.tools}
+                        projectTools={projectTools}
                         prompts={state.present.workflow.prompts}
                         selectedEntity={state.present.selection}
                         startAgentName={state.present.workflow.startAgent}
