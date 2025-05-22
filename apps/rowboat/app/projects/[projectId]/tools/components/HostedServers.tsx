@@ -44,9 +44,10 @@ const fadeInAnimation = {
 interface ServerLogoProps {
   serverName: string;
   className?: string;
+  fallback?: React.ReactNode;
 }
 
-export function ServerLogo({ serverName, className = "" }: ServerLogoProps) {
+export function ServerLogo({ serverName, className = "", fallback }: ServerLogoProps) {
   const logoMap: Record<string, string> = {
     'GitHub': '/mcp-server-images/github.svg',
     'Google Drive': '/mcp-server-images/gdrive.svg',
@@ -64,17 +65,18 @@ export function ServerLogo({ serverName, className = "" }: ServerLogoProps) {
     'YouTube': '/mcp-server-images/youtube.svg',
   };
 
-  const logoPath = logoMap[serverName] || '';
+  const logoPath = logoMap[serverName];
   
-  if (!logoPath) return null;
+  if (!logoPath) return fallback || null;
 
   return (
-    <div className={`relative w-6 h-6 ${className}`}>
+    <div className={`relative inline-flex ${className}`} style={{ minWidth: '16px', minHeight: '16px' }}>
       <Image
         src={logoPath}
         alt={`${serverName} logo`}
         fill
         className="object-contain"
+        sizes="16px"
       />
     </div>
   );

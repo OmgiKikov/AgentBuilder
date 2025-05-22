@@ -3,13 +3,14 @@ import { AgenticAPITool } from "../../../lib/types/agents_api_types";
 import { WorkflowPrompt, WorkflowAgent, WorkflowTool } from "../../../lib/types/workflow_types";
 import { Dropdown, DropdownItem, DropdownTrigger, DropdownMenu } from "@heroui/react";
 import { useRef, useEffect, useState } from "react";
-import { EllipsisVerticalIcon, ImportIcon, PlusIcon, Brain, Wrench, PenLine, Library, ChevronDown, ChevronRight, ServerIcon } from "lucide-react";
+import { EllipsisVerticalIcon, ImportIcon, PlusIcon, Brain, Boxes, Wrench, PenLine, Library, ChevronDown, ChevronRight, ServerIcon, Component, ScrollText } from "lucide-react";
 import { Panel } from "@/components/common/panel-common";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
 import { MCPServer } from "@/app/lib/types/types";
 import { getMcpToolsFromProject } from "@/app/actions/mcp_actions";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { ServerLogo } from '../tools/components/HostedServers';
 
 // Reduced gap size to match Cursor's UI
 const GAP_SIZE = 4; // 1 unit * 4px (tailwind's default spacing unit)
@@ -71,6 +72,7 @@ const ListItemWithMenu = ({
     statusLabel,
     icon,
     iconClassName,
+    mcpServerName,
 }: {
     name: string;
     isSelected?: boolean;
@@ -81,6 +83,7 @@ const ListItemWithMenu = ({
     statusLabel?: React.ReactNode;
     icon?: React.ReactNode;
     iconClassName?: string;
+    mcpServerName?: string;
 }) => {
     return (
         <div className={clsx(
@@ -104,11 +107,15 @@ const ListItemWithMenu = ({
                 }}
                 disabled={disabled}
             >
-                {icon && (
-                    <div className={clsx("flex-shrink-0", iconClassName)}>
-                        {icon}
-                    </div>
-                )}
+                <div className={clsx("flex-shrink-0 flex items-center justify-center w-4 h-4", iconClassName)}>
+                    {mcpServerName ? (
+                        <ServerLogo 
+                            serverName={mcpServerName} 
+                            className="h-4 w-4" 
+                            fallback={<ImportIcon className="w-4 h-4 text-blue-600 dark:text-blue-500" />} 
+                        />
+                    ) : icon}
+                </div>
                 {name}
             </button>
             <div className="flex items-center gap-2">
@@ -161,7 +168,11 @@ const ServerCard = ({
                     <ChevronRight className="w-4 h-4 text-gray-500" />
                 )}
                 <div className="flex items-center gap-1">
-                    <ImportIcon className="w-4 h-4 text-blue-600 dark:text-blue-500" />
+                    <ServerLogo 
+                        serverName={serverName} 
+                        className="h-4 w-4" 
+                        fallback={<ImportIcon className="w-4 h-4 text-blue-600 dark:text-blue-500" />}
+                    />
                     <span>{serverName}</span>
                 </div>
             </button>
@@ -174,7 +185,7 @@ const ServerCard = ({
                             isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
                             onClick={() => onSelectTool(tool.name)}
                             selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
-                            icon={<Wrench className="w-4 h-4 text-gray-600 dark:text-gray-500" />}
+                            mcpServerName={serverName}
                             menuContent={
                                 <EntityDropdown 
                                     name={tool.name} 
@@ -343,6 +354,7 @@ export function EntityList({
                                                     disabled={agent.disabled}
                                                     selectedRef={selectedEntity?.type === "agent" && selectedEntity.name === agent.name ? selectedRef : undefined}
                                                     statusLabel={startAgentName === agent.name ? <StartLabel /> : null}
+                                                    icon={<Component className="w-4 h-4 text-blue-600 dark:text-blue-500" />}
                                                     menuContent={
                                                         <AgentDropdown
                                                             agent={agent}
@@ -456,7 +468,7 @@ export function EntityList({
                                                                         isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
                                                                         onClick={() => handleToolSelection(tool.name)}
                                                                         selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
-                                                                        icon={<Wrench className="w-4 h-4 text-gray-600 dark:text-gray-500" />}
+                                                                        icon={<Boxes className="w-4 h-4 text-blue-600 dark:text-blue-500" />}
                                                                         menuContent={
                                                                             <EntityDropdown 
                                                                                 name={tool.name} 
@@ -542,6 +554,7 @@ export function EntityList({
                                                     isSelected={selectedEntity?.type === "prompt" && selectedEntity.name === prompt.name}
                                                     onClick={() => onSelectPrompt(prompt.name)}
                                                     selectedRef={selectedEntity?.type === "prompt" && selectedEntity.name === prompt.name ? selectedRef : undefined}
+                                                    icon={<ScrollText className="w-4 h-4 text-blue-600 dark:text-blue-500" />}
                                                     menuContent={
                                                         <EntityDropdown 
                                                             name={prompt.name} 
