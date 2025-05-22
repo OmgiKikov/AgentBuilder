@@ -132,6 +132,12 @@ async def catch_all(ctx: RunContextWrapper[Any], args: str, tool_name: str, tool
             print(response_content)
         elif tool_config.get("isMcp", False):
             mcp_server_url = tool_config.get("mcpServerURL", "")
+            if not mcp_server_url:
+                # Backwards compatibility for old projects
+                mcp_server_name = tool_config.get("mcpServerName", "")
+                mcp_servers = complete_request.get("mcpServers", {})
+                mcp_server_url = next((server.get("url", "") for server in mcp_servers if server.get("name") == mcp_server_name), "")
+            
             response_content = await call_mcp(tool_name, args, mcp_server_url)
         else:
             collection = db["projects"]
