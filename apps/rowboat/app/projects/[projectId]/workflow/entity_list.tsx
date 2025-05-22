@@ -9,8 +9,23 @@ import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
 import { MCPServer } from "@/app/lib/types/types";
 import { getMcpToolsFromProject } from "@/app/actions/mcp_actions";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
-const GAP_SIZE = 24; // 6 units * 4px (tailwind's default spacing unit)
+// Reduced gap size to match Cursor's UI
+const GAP_SIZE = 4; // 1 unit * 4px (tailwind's default spacing unit)
+
+// Panel height ratios
+const PANEL_RATIOS = {
+    expanded: {
+        agents: 50,
+        tools: 50,
+        prompts: 20
+    }
+} as const;
+
+// Common classes
+const headerClasses = "font-semibold text-zinc-700 dark:text-zinc-300 flex items-center justify-between w-full";
+const buttonClasses = "text-sm px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:hover:bg-indigo-900 dark:text-indigo-400";
 
 interface EntityListProps {
     agents: z.infer<typeof WorkflowAgent>[];
@@ -202,15 +217,49 @@ export function EntityList({
         webhook: true,
         library: true
     });
-    const [expandedSection, setExpandedSection] = useState<'agents' | 'tools' | 'prompts'>('agents');
     const selectedRef = useRef<HTMLButtonElement | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerHeight, setContainerHeight] = useState<number>(0);
-    const headerClasses = "font-semibold text-zinc-700 dark:text-zinc-300 flex items-center justify-between w-full";
-    const buttonClasses = "text-sm px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:hover:bg-indigo-900 dark:text-indigo-400";
 
-    // Single source of truth for panel dimensions
-    const PANEL_HEADER_HEIGHT = 53;
+    // Panel expansion states
+    const [expandedPanels, setExpandedPanels] = useState({
+        agents: true,
+        tools: true,
+        prompts: false
+    });
+
+    // Default sizes when panels are expanded
+    const DEFAULT_SIZES = {
+        agents: 40,
+        tools: 40,
+        prompts: 20
+    };
+
+    // Calculate panel sizes based on expanded state
+    const getPanelSize = (panelName: 'agents' | 'tools' | 'prompts') => {
+        if (!expandedPanels[panelName]) {
+            return 8; // Collapsed height (53px equivalent)
+        }
+
+        // Base size when expanded
+        let size = DEFAULT_SIZES[panelName];
+
+        // Redistribute space from collapsed panels to the panel above
+        if (panelName === 'agents') {
+            if (!expandedPanels.tools) {
+                size += DEFAULT_SIZES.tools;
+            }
+            if (!expandedPanels.prompts) {
+                size += DEFAULT_SIZES.prompts;
+            }
+        } else if (panelName === 'tools') {
+            if (!expandedPanels.prompts && expandedPanels.agents) {
+                size += DEFAULT_SIZES.prompts;
+            }
+        }
+
+        return size;
+    };
 
     useEffect(() => {
         const updateHeight = () => {
@@ -230,13 +279,6 @@ export function EntityList({
         }
     }, [selectedEntity]);
 
-    const calculateExpandedHeight = () => {
-        if (!containerHeight) return '0px';
-        const collapsedSectionsHeight = PANEL_HEADER_HEIGHT * 2; // Two sections will be collapsed
-        const gapHeight = GAP_SIZE * 2; // Total gap height
-        return `${containerHeight - collapsedSectionsHeight - gapHeight}px`;
-    };
-
     function handleToolSelection(name: string) {
         onSelectTool(name);
     }
@@ -253,290 +295,331 @@ export function EntityList({
 
     return (
         <div ref={containerRef} className="flex flex-col h-full">
-            <div className="flex flex-col gap-6 h-full flex-1">
+            <ResizablePanelGroup 
+                direction="vertical" 
+                className="h-full"
+                style={{ gap: `${GAP_SIZE}px` }}
+            >
                 {/* Agents Panel */}
-                <Panel variant="entity-list"
-                    tourTarget="entity-agents"
-                    title={
-                        <button 
-                            onClick={() => setExpandedSection('agents')}
-                            className={`${headerClasses} hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-colors h-full`}
-                        >
-                            <div className="flex items-center gap-2 h-full">
-                                {expandedSection === 'agents' ? (
-                                    <ChevronDown className="w-4 h-4" />
-                                ) : (
-                                    <ChevronRight className="w-4 h-4" />
-                                )}
-                                <Brain className="w-4 h-4" />
-                                <span>Agents</span>
-                            </div>
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setExpandedSection('agents');
-                                    onAddAgent({});
-                                }}
-                                className={`group ${buttonClasses}`}
-                                showHoverContent={true}
-                                hoverContent="Add Agent"
-                            >
-                                <PlusIcon className="w-4 h-4" />
-                            </Button>
-                        </button>
-                    }
-                    maxHeight={expandedSection === 'agents' ? calculateExpandedHeight() : `${PANEL_HEADER_HEIGHT}px`}
-                    className="overflow-hidden transition-all duration-300 ease-in-out"
+                <ResizablePanel 
+                    defaultSize={getPanelSize('agents')}
+                    minSize={expandedPanels.agents ? 20 : 8}
+                    maxSize={100}
                 >
-                    {expandedSection === 'agents' && (
-                        <div className="flex flex-col h-full overflow-y-auto py-2">
-                            {agents.length > 0 ? (
-                                <div className="space-y-1">
-                                    {agents.map((agent, index) => (
-                                        <ListItemWithMenu
-                                            key={`agent-${index}`}
-                                            name={agent.name}
-                                            isSelected={selectedEntity?.type === "agent" && selectedEntity.name === agent.name}
-                                            onClick={() => onSelectAgent(agent.name)}
-                                            disabled={agent.disabled}
-                                            selectedRef={selectedEntity?.type === "agent" && selectedEntity.name === agent.name ? selectedRef : undefined}
-                                            statusLabel={startAgentName === agent.name ? <StartLabel /> : null}
-                                            menuContent={
-                                                <AgentDropdown
-                                                    agent={agent}
-                                                    isStartAgent={startAgentName === agent.name}
-                                                    onToggle={onToggleAgent}
-                                                    onSetMainAgent={onSetMainAgent}
-                                                    onDelete={onDeleteAgent}
-                                                />
-                                            }
-                                        />
-                                    ))}
+                    <Panel 
+                        variant="entity-list"
+                        tourTarget="entity-agents"
+                        className={clsx(
+                            "h-full overflow-hidden",
+                            !expandedPanels.agents && "!h-[53px]"
+                        )}
+                        title={
+                            <button 
+                                onClick={() => setExpandedPanels(prev => ({ ...prev, agents: !prev.agents }))}
+                                className={`${headerClasses} hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-colors h-full`}
+                            >
+                                <div className="flex items-center gap-2 h-full">
+                                    {expandedPanels.agents ? (
+                                        <ChevronDown className="w-4 h-4" />
+                                    ) : (
+                                        <ChevronRight className="w-4 h-4" />
+                                    )}
+                                    <Brain className="w-4 h-4" />
+                                    <span>Agents</span>
                                 </div>
-                            ) : (
-                                <EmptyState entity="agents" hasFilteredItems={false} />
-                            )}
-                        </div>
-                    )}
-                </Panel>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setExpandedPanels(prev => ({ ...prev, agents: true }));
+                                        onAddAgent({});
+                                    }}
+                                    className={`group ${buttonClasses}`}
+                                    showHoverContent={true}
+                                    hoverContent="Add Agent"
+                                >
+                                    <PlusIcon className="w-4 h-4" />
+                                </Button>
+                            </button>
+                        }
+                    >
+                        {expandedPanels.agents && (
+                            <div className="h-[calc(100%-53px)] overflow-y-auto">
+                                <div className="p-2">
+                                    {agents.length > 0 ? (
+                                        <div className="space-y-1">
+                                            {agents.map((agent, index) => (
+                                                <ListItemWithMenu
+                                                    key={`agent-${index}`}
+                                                    name={agent.name}
+                                                    isSelected={selectedEntity?.type === "agent" && selectedEntity.name === agent.name}
+                                                    onClick={() => onSelectAgent(agent.name)}
+                                                    disabled={agent.disabled}
+                                                    selectedRef={selectedEntity?.type === "agent" && selectedEntity.name === agent.name ? selectedRef : undefined}
+                                                    statusLabel={startAgentName === agent.name ? <StartLabel /> : null}
+                                                    menuContent={
+                                                        <AgentDropdown
+                                                            agent={agent}
+                                                            isStartAgent={startAgentName === agent.name}
+                                                            onToggle={onToggleAgent}
+                                                            onSetMainAgent={onSetMainAgent}
+                                                            onDelete={onDeleteAgent}
+                                                        />
+                                                    }
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <EmptyState entity="agents" hasFilteredItems={false} />
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </Panel>
+                </ResizablePanel>
+
+                <ResizableHandle withHandle />
 
                 {/* Tools Panel */}
-                <Panel variant="entity-list"
-                    tourTarget="entity-tools"
-                    title={
-                        <button 
-                            onClick={() => setExpandedSection('tools')}
-                            className={`${headerClasses} hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-colors h-full`}
-                        >
-                            <div className="flex items-center gap-2 h-full">
-                                {expandedSection === 'tools' ? (
-                                    <ChevronDown className="w-4 h-4" />
-                                ) : (
-                                    <ChevronRight className="w-4 h-4" />
-                                )}
-                                <Wrench className="w-4 h-4" />
-                                <span>Tools</span>
-                            </div>
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setExpandedSection('tools');
-                                    onAddTool({});
-                                }}
-                                className={`group ${buttonClasses}`}
-                                showHoverContent={true}
-                                hoverContent="Add Tool"
-                            >
-                                <PlusIcon className="w-4 h-4" />
-                            </Button>
-                        </button>
-                    }
-                    maxHeight={expandedSection === 'tools' ? calculateExpandedHeight() : `${PANEL_HEADER_HEIGHT}px`}
-                    className="overflow-hidden transition-all duration-300 ease-in-out"
+                <ResizablePanel 
+                    defaultSize={getPanelSize('tools')}
+                    minSize={expandedPanels.tools ? 20 : 8}
+                    maxSize={100}
                 >
-                    {expandedSection === 'tools' && (
-                        <div className="flex flex-col h-full">
-                            {/* Filter checkboxes - Made sticky */}
-                            <div className="sticky top-0 z-10 bg-white dark:bg-zinc-900 border-b border-gray-100 dark:border-gray-800">
-                                <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-gray-500 dark:text-gray-400">
-                                    <span>Show:</span>
-                                    <div className="flex items-center gap-1.5">
-                                        <label className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
-                                            <input
-                                                type="checkbox"
-                                                checked={filters.mcp}
-                                                onChange={(e) => setFilters(prev => ({ ...prev, mcp: e.target.checked }))}
-                                                className="h-3 w-3 rounded border-gray-300 text-indigo-600 focus:ring-0"
-                                            />
-                                            <div className="flex items-center gap-1">
-                                                <ImportIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                                                <span>MCP</span>
-                                            </div>
-                                        </label>
-                                        <label className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
-                                            <input
-                                                type="checkbox"
-                                                checked={filters.library}
-                                                onChange={(e) => setFilters(prev => ({ ...prev, library: e.target.checked }))}
-                                                className="h-3 w-3 rounded border-gray-300 text-indigo-600 focus:ring-0"
-                                            />
-                                            <div className="flex items-center gap-1">
-                                                <Library className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                                                <span>Library</span>
-                                            </div>
-                                        </label>
-                                        <label className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
-                                            <input
-                                                type="checkbox"
-                                                checked={filters.webhook}
-                                                onChange={(e) => setFilters(prev => ({ ...prev, webhook: e.target.checked }))}
-                                                className="h-3 w-3 rounded border-gray-300 text-indigo-600 focus:ring-0"
-                                            />
-                                            <span>Webhook</span>
-                                        </label>
+                    <Panel 
+                        variant="entity-list"
+                        tourTarget="entity-tools"
+                        className={clsx(
+                            "h-full overflow-hidden",
+                            !expandedPanels.tools && "!h-[53px]"
+                        )}
+                        title={
+                            <button 
+                                onClick={() => setExpandedPanels(prev => ({ ...prev, tools: !prev.tools }))}
+                                className={`${headerClasses} hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-colors h-full`}
+                            >
+                                <div className="flex items-center gap-2 h-full">
+                                    {expandedPanels.tools ? (
+                                        <ChevronDown className="w-4 h-4" />
+                                    ) : (
+                                        <ChevronRight className="w-4 h-4" />
+                                    )}
+                                    <Wrench className="w-4 h-4" />
+                                    <span>Tools</span>
+                                </div>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setExpandedPanels(prev => ({ ...prev, tools: true }));
+                                        onAddTool({});
+                                    }}
+                                    className={`group ${buttonClasses}`}
+                                    showHoverContent={true}
+                                    hoverContent="Add Tool"
+                                >
+                                    <PlusIcon className="w-4 h-4" />
+                                </Button>
+                            </button>
+                        }
+                    >
+                        {expandedPanels.tools && (
+                            <div className="h-[calc(100%-53px)]">
+                                {/* Filter checkboxes */}
+                                <div className="bg-white dark:bg-zinc-900 border-b border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                        <span>Show:</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <label className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={filters.mcp}
+                                                    onChange={(e) => setFilters(prev => ({ ...prev, mcp: e.target.checked }))}
+                                                    className="h-3 w-3 rounded border-gray-300 text-indigo-600 focus:ring-0"
+                                                />
+                                                <div className="flex items-center gap-1">
+                                                    <ImportIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                                    <span>MCP</span>
+                                                </div>
+                                            </label>
+                                            <label className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={filters.library}
+                                                    onChange={(e) => setFilters(prev => ({ ...prev, library: e.target.checked }))}
+                                                    className="h-3 w-3 rounded border-gray-300 text-indigo-600 focus:ring-0"
+                                                />
+                                                <div className="flex items-center gap-1">
+                                                    <Library className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                                                    <span>Library</span>
+                                                </div>
+                                            </label>
+                                            <label className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={filters.webhook}
+                                                    onChange={(e) => setFilters(prev => ({ ...prev, webhook: e.target.checked }))}
+                                                    className="h-3 w-3 rounded border-gray-300 text-indigo-600 focus:ring-0"
+                                                />
+                                                <span>Webhook</span>
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Tools list - Scrollable content */}
-                            <div className="flex-1 overflow-y-auto">
-                                {filteredTools.length > 0 ? (
-                                    <div className="space-y-1 p-2">
-                                        {/* Group tools by server */}
-                                        {(() => {
-                                            // Get custom tools (non-MCP tools)
-                                            const customTools = filteredTools.filter(tool => !tool.isMcp);
-                                            
-                                            // Group MCP tools by server
-                                            const serverTools = filteredTools.reduce((acc, tool) => {
-                                                if (tool.isMcp && tool.mcpServerName) {
-                                                    if (!acc[tool.mcpServerName]) {
-                                                        acc[tool.mcpServerName] = [];
-                                                    }
-                                                    acc[tool.mcpServerName].push(tool);
-                                                }
-                                                return acc;
-                                            }, {} as Record<string, typeof filteredTools>);
+                                {/* Tools list - Scrollable content */}
+                                <div className="h-[calc(100%-34px)] overflow-y-auto">
+                                    <div className="p-2">
+                                        {filteredTools.length > 0 ? (
+                                            <div className="space-y-1">
+                                                {/* Group tools by server */}
+                                                {(() => {
+                                                    // Get custom tools (non-MCP tools)
+                                                    const customTools = filteredTools.filter(tool => !tool.isMcp);
+                                                    
+                                                    // Group MCP tools by server
+                                                    const serverTools = filteredTools.reduce((acc, tool) => {
+                                                        if (tool.isMcp && tool.mcpServerName) {
+                                                            if (!acc[tool.mcpServerName]) {
+                                                                acc[tool.mcpServerName] = [];
+                                                            }
+                                                            acc[tool.mcpServerName].push(tool);
+                                                        }
+                                                        return acc;
+                                                    }, {} as Record<string, typeof filteredTools>);
 
-                                            return (
-                                                <>
-                                                    {/* Show MCP server cards first */}
-                                                    {Object.entries(serverTools).map(([serverName, tools]) => (
-                                                        <ServerCard
-                                                            key={serverName}
-                                                            serverName={serverName}
-                                                            tools={tools}
-                                                            selectedEntity={selectedEntity}
-                                                            onSelectTool={handleToolSelection}
-                                                            onDeleteTool={onDeleteTool}
-                                                            selectedRef={selectedRef}
-                                                        />
-                                                    ))}
-
-                                                    {/* Show custom tools */}
-                                                    {customTools.length > 0 && (
-                                                        <div className="mt-2">
-                                                            {customTools.map((tool, index) => (
-                                                                <ListItemWithMenu
-                                                                    key={`custom-tool-${index}`}
-                                                                    name={tool.name}
-                                                                    isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
-                                                                    onClick={() => handleToolSelection(tool.name)}
-                                                                    selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
-                                                                    icon={<Wrench className="w-4 h-4 text-gray-600 dark:text-gray-500" />}
-                                                                    menuContent={
-                                                                        <EntityDropdown 
-                                                                            name={tool.name} 
-                                                                            onDelete={onDeleteTool}
-                                                                            isLocked={tool.isLibrary}
-                                                                        />
-                                                                    }
+                                                    return (
+                                                        <>
+                                                            {/* Show MCP server cards first */}
+                                                            {Object.entries(serverTools).map(([serverName, tools]) => (
+                                                                <ServerCard
+                                                                    key={serverName}
+                                                                    serverName={serverName}
+                                                                    tools={tools}
+                                                                    selectedEntity={selectedEntity}
+                                                                    onSelectTool={handleToolSelection}
+                                                                    onDeleteTool={onDeleteTool}
+                                                                    selectedRef={selectedRef}
                                                                 />
                                                             ))}
-                                                        </div>
-                                                    )}
-                                                </>
-                                            );
-                                        })()}
+
+                                                            {/* Show custom tools */}
+                                                            {customTools.length > 0 && (
+                                                                <div className="mt-2">
+                                                                    {customTools.map((tool, index) => (
+                                                                        <ListItemWithMenu
+                                                                            key={`custom-tool-${index}`}
+                                                                            name={tool.name}
+                                                                            isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
+                                                                            onClick={() => handleToolSelection(tool.name)}
+                                                                            selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
+                                                                            icon={<Wrench className="w-4 h-4 text-gray-600 dark:text-gray-500" />}
+                                                                            menuContent={
+                                                                                <EntityDropdown 
+                                                                                    name={tool.name} 
+                                                                                    onDelete={onDeleteTool}
+                                                                                    isLocked={tool.isLibrary}
+                                                                                />
+                                                                            }
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                        ) : (
+                                            <EmptyState 
+                                                entity="tools" 
+                                                hasFilteredItems={mergedTools.length > 0}
+                                            />
+                                        )}
                                     </div>
-                                ) : (
-                                    <EmptyState 
-                                        entity="tools" 
-                                        hasFilteredItems={mergedTools.length > 0}
-                                    />
-                                )}
+                                </div>
                             </div>
-                        </div>
-                    )}
-                </Panel>
+                        )}
+                    </Panel>
+                </ResizablePanel>
+
+                <ResizableHandle withHandle />
 
                 {/* Prompts Panel */}
-                <Panel variant="entity-list"
-                    tourTarget="entity-prompts"
-                    title={
-                        <button 
-                            onClick={() => setExpandedSection('prompts')}
-                            className={`${headerClasses} hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-colors h-full`}
-                        >
-                            <div className="flex items-center gap-2 h-full">
-                                {expandedSection === 'prompts' ? (
-                                    <ChevronDown className="w-4 h-4" />
-                                ) : (
-                                    <ChevronRight className="w-4 h-4" />
-                                )}
-                                <PenLine className="w-4 h-4" />
-                                <span>Prompts</span>
-                            </div>
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setExpandedSection('prompts');
-                                    onAddPrompt({});
-                                }}
-                                className={`group ${buttonClasses}`}
-                                showHoverContent={true}
-                                hoverContent="Add Prompt"
-                            >
-                                <PlusIcon className="w-4 h-4" />
-                            </Button>
-                        </button>
-                    }
-                    maxHeight={expandedSection === 'prompts' ? calculateExpandedHeight() : `${PANEL_HEADER_HEIGHT}px`}
-                    className="overflow-hidden transition-all duration-300 ease-in-out"
+                <ResizablePanel 
+                    defaultSize={getPanelSize('prompts')}
+                    minSize={expandedPanels.prompts ? 20 : 8}
+                    maxSize={100}
                 >
-                    {expandedSection === 'prompts' && (
-                        <div className="flex flex-col h-full overflow-y-auto py-2">
-                            {prompts.length > 0 ? (
-                                <div className="space-y-1">
-                                    {prompts.map((prompt, index) => (
-                                        <ListItemWithMenu
-                                            key={`prompt-${index}`}
-                                            name={prompt.name}
-                                            isSelected={selectedEntity?.type === "prompt" && selectedEntity.name === prompt.name}
-                                            onClick={() => onSelectPrompt(prompt.name)}
-                                            selectedRef={selectedEntity?.type === "prompt" && selectedEntity.name === prompt.name ? selectedRef : undefined}
-                                            menuContent={
-                                                <EntityDropdown 
-                                                    name={prompt.name} 
-                                                    onDelete={onDeletePrompt} 
-                                                />
-                                            }
-                                        />
-                                    ))}
+                    <Panel 
+                        variant="entity-list"
+                        tourTarget="entity-prompts"
+                        className={clsx(
+                            "h-full overflow-hidden",
+                            !expandedPanels.prompts && "!h-[53px]"
+                        )}
+                        title={
+                            <button 
+                                onClick={() => setExpandedPanels(prev => ({ ...prev, prompts: !prev.prompts }))}
+                                className={`${headerClasses} hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-colors h-full`}
+                            >
+                                <div className="flex items-center gap-2 h-full">
+                                    {expandedPanels.prompts ? (
+                                        <ChevronDown className="w-4 h-4" />
+                                    ) : (
+                                        <ChevronRight className="w-4 h-4" />
+                                    )}
+                                    <PenLine className="w-4 h-4" />
+                                    <span>Prompts</span>
                                 </div>
-                            ) : (
-                                <EmptyState entity="prompts" hasFilteredItems={false} />
-                            )}
-                        </div>
-                    )}
-                </Panel>
-            </div>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setExpandedPanels(prev => ({ ...prev, prompts: true }));
+                                        onAddPrompt({});
+                                    }}
+                                    className={`group ${buttonClasses}`}
+                                    showHoverContent={true}
+                                    hoverContent="Add Prompt"
+                                >
+                                    <PlusIcon className="w-4 h-4" />
+                                </Button>
+                            </button>
+                        }
+                    >
+                        {expandedPanels.prompts && (
+                            <div className="h-[calc(100%-53px)] overflow-y-auto">
+                                <div className="p-2">
+                                    {prompts.length > 0 ? (
+                                        <div className="space-y-1">
+                                            {prompts.map((prompt, index) => (
+                                                <ListItemWithMenu
+                                                    key={`prompt-${index}`}
+                                                    name={prompt.name}
+                                                    isSelected={selectedEntity?.type === "prompt" && selectedEntity.name === prompt.name}
+                                                    onClick={() => onSelectPrompt(prompt.name)}
+                                                    selectedRef={selectedEntity?.type === "prompt" && selectedEntity.name === prompt.name ? selectedRef : undefined}
+                                                    menuContent={
+                                                        <EntityDropdown 
+                                                            name={prompt.name} 
+                                                            onDelete={onDeletePrompt} 
+                                                        />
+                                                    }
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <EmptyState entity="prompts" hasFilteredItems={false} />
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </Panel>
+                </ResizablePanel>
+            </ResizablePanelGroup>
         </div>
     );
 }
