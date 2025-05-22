@@ -19,15 +19,15 @@ async def list_tools() -> list[types.Tool]:
     """Возвращает список доступных инструментов."""
     return [
         types.Tool(
-            name="hello",
-            description="Функция, которая по запросу возвращает строку \"Привет!\".",
+            name="calculator",
+            description="Функция, получаем строку чисел и арифметическиз операций и вызывае eval для ответа",
             inputSchema={
                 "type": "object",
                 "required": ["question"],
                 "properties": {
                     "question": {
                         "type": "string",
-                        "description": "Любой вопрос пользователя, на который функция ответит 'Привет!'"
+                        "description": "Строка чисел и арифметическиз операций которые нужно посчитать"
                     }
                 }
             }
@@ -39,12 +39,15 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent | type
     """Обрабатывает вызов инструмента."""
     print(f"DEBUG: Вызов инструмента {name} с аргументами: {json.dumps(arguments, ensure_ascii=False)}")
     
-    if name == "hello":
+    if name == "calculator":
         question = arguments.get("question", "")
         print(f"DEBUG: Получен вопрос: {question}")
         
         # Возвращаем фиксированный ответ
-        response = "Привет!"
+        try:
+            response = str(eval(question))
+        except:
+            response = "Произошла ошибка"
         print(f"DEBUG: Отправляем ответ: {response}")
         
         return [
