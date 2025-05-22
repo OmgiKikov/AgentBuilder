@@ -124,16 +124,14 @@ export function AudioInputButton({ onTextReceived, disabled = false }: AudioInpu
     }
   };
   
-  // Обработка нажатия на кнопку (нажатие и удерживание)
-  const handleButtonMouseDown = () => {
-    if (!disabled && !isProcessing) {
-      startRecording();
-    }
-  };
-  
-  const handleButtonMouseUp = () => {
+  // Обработка нажатия на кнопку (переключение режима записи)
+  const handleButtonClick = () => {
+    if (disabled || isProcessing) return;
+    
     if (isRecording) {
       stopRecording();
+    } else {
+      startRecording();
     }
   };
   
@@ -166,11 +164,7 @@ export function AudioInputButton({ onTextReceived, disabled = false }: AudioInpu
         mb-0.5
       `}
       disabled={disabled || isProcessing}
-      onMouseDown={handleButtonMouseDown}
-      onMouseUp={handleButtonMouseUp}
-      onMouseLeave={isRecording ? handleButtonMouseUp : undefined}
-      onTouchStart={handleButtonMouseDown}
-      onTouchEnd={handleButtonMouseUp}
+      onClick={handleButtonClick}
     >
       {isProcessing ? (
         <LoadingSpinner size={16} className="animate-spin" />
