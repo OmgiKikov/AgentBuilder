@@ -212,11 +212,6 @@ export function EntityList({
 }: EntityListProps & { projectId: string }) {
     // Merge workflow tools with project tools
     const mergedTools = [...tools, ...projectTools];
-    const [filters, setFilters] = useState({
-        mcp: true,
-        webhook: true,
-        library: true
-    });
     const selectedRef = useRef<HTMLButtonElement | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerHeight, setContainerHeight] = useState<number>(0);
@@ -282,16 +277,6 @@ export function EntityList({
     function handleToolSelection(name: string) {
         onSelectTool(name);
     }
-
-    const filteredTools = mergedTools.filter(tool => {
-        if (tool.isMcp) {
-            return filters.mcp;
-        }
-        if (tool.isLibrary) {
-            return filters.library;
-        }
-        return filters.webhook;
-    });
 
     return (
         <div ref={containerRef} className="flex flex-col h-full">
@@ -426,118 +411,73 @@ export function EntityList({
                         }
                     >
                         {expandedPanels.tools && (
-                            <div className="h-[calc(100%-53px)]">
-                                {/* Filter checkboxes */}
-                                <div className="bg-white dark:bg-zinc-900 border-b border-gray-100 dark:border-gray-800">
-                                    <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-gray-500 dark:text-gray-400">
-                                        <span>Show:</span>
-                                        <div className="flex items-center gap-1.5">
-                                            <label className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={filters.mcp}
-                                                    onChange={(e) => setFilters(prev => ({ ...prev, mcp: e.target.checked }))}
-                                                    className="h-3 w-3 rounded border-gray-300 text-indigo-600 focus:ring-0"
-                                                />
-                                                <div className="flex items-center gap-1">
-                                                    <ImportIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                                                    <span>MCP</span>
-                                                </div>
-                                            </label>
-                                            <label className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={filters.library}
-                                                    onChange={(e) => setFilters(prev => ({ ...prev, library: e.target.checked }))}
-                                                    className="h-3 w-3 rounded border-gray-300 text-indigo-600 focus:ring-0"
-                                                />
-                                                <div className="flex items-center gap-1">
-                                                    <Library className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                                                    <span>Library</span>
-                                                </div>
-                                            </label>
-                                            <label className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={filters.webhook}
-                                                    onChange={(e) => setFilters(prev => ({ ...prev, webhook: e.target.checked }))}
-                                                    className="h-3 w-3 rounded border-gray-300 text-indigo-600 focus:ring-0"
-                                                />
-                                                <span>Webhook</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Tools list - Scrollable content */}
-                                <div className="h-[calc(100%-34px)] overflow-y-auto">
-                                    <div className="p-2">
-                                        {filteredTools.length > 0 ? (
-                                            <div className="space-y-1">
-                                                {/* Group tools by server */}
-                                                {(() => {
-                                                    // Get custom tools (non-MCP tools)
-                                                    const customTools = filteredTools.filter(tool => !tool.isMcp);
-                                                    
-                                                    // Group MCP tools by server
-                                                    const serverTools = filteredTools.reduce((acc, tool) => {
-                                                        if (tool.isMcp && tool.mcpServerName) {
-                                                            if (!acc[tool.mcpServerName]) {
-                                                                acc[tool.mcpServerName] = [];
-                                                            }
-                                                            acc[tool.mcpServerName].push(tool);
+                            <div className="h-full overflow-y-auto">
+                                <div className="p-2">
+                                    {mergedTools.length > 0 ? (
+                                        <div className="space-y-1">
+                                            {/* Group tools by server */}
+                                            {(() => {
+                                                // Get custom tools (non-MCP tools)
+                                                const customTools = mergedTools.filter(tool => !tool.isMcp);
+                                                
+                                                // Group MCP tools by server
+                                                const serverTools = mergedTools.reduce((acc, tool) => {
+                                                    if (tool.isMcp && tool.mcpServerName) {
+                                                        if (!acc[tool.mcpServerName]) {
+                                                            acc[tool.mcpServerName] = [];
                                                         }
-                                                        return acc;
-                                                    }, {} as Record<string, typeof filteredTools>);
+                                                        acc[tool.mcpServerName].push(tool);
+                                                    }
+                                                    return acc;
+                                                }, {} as Record<string, typeof mergedTools>);
 
-                                                    return (
-                                                        <>
-                                                            {/* Show MCP server cards first */}
-                                                            {Object.entries(serverTools).map(([serverName, tools]) => (
-                                                                <ServerCard
-                                                                    key={serverName}
-                                                                    serverName={serverName}
-                                                                    tools={tools}
-                                                                    selectedEntity={selectedEntity}
-                                                                    onSelectTool={handleToolSelection}
-                                                                    onDeleteTool={onDeleteTool}
-                                                                    selectedRef={selectedRef}
-                                                                />
-                                                            ))}
+                                                return (
+                                                    <>
+                                                        {/* Show MCP server cards first */}
+                                                        {Object.entries(serverTools).map(([serverName, tools]) => (
+                                                            <ServerCard
+                                                                key={serverName}
+                                                                serverName={serverName}
+                                                                tools={tools}
+                                                                selectedEntity={selectedEntity}
+                                                                onSelectTool={handleToolSelection}
+                                                                onDeleteTool={onDeleteTool}
+                                                                selectedRef={selectedRef}
+                                                            />
+                                                        ))}
 
-                                                            {/* Show custom tools */}
-                                                            {customTools.length > 0 && (
-                                                                <div className="mt-2">
-                                                                    {customTools.map((tool, index) => (
-                                                                        <ListItemWithMenu
-                                                                            key={`custom-tool-${index}`}
-                                                                            name={tool.name}
-                                                                            isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
-                                                                            onClick={() => handleToolSelection(tool.name)}
-                                                                            selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
-                                                                            icon={<Wrench className="w-4 h-4 text-gray-600 dark:text-gray-500" />}
-                                                                            menuContent={
-                                                                                <EntityDropdown 
-                                                                                    name={tool.name} 
-                                                                                    onDelete={onDeleteTool}
-                                                                                    isLocked={tool.isLibrary}
-                                                                                />
-                                                                            }
-                                                                        />
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </>
-                                                    );
-                                                })()}
-                                            </div>
-                                        ) : (
-                                            <EmptyState 
-                                                entity="tools" 
-                                                hasFilteredItems={mergedTools.length > 0}
-                                            />
-                                        )}
-                                    </div>
+                                                        {/* Show custom tools */}
+                                                        {customTools.length > 0 && (
+                                                            <div className="mt-2">
+                                                                {customTools.map((tool, index) => (
+                                                                    <ListItemWithMenu
+                                                                        key={`custom-tool-${index}`}
+                                                                        name={tool.name}
+                                                                        isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
+                                                                        onClick={() => handleToolSelection(tool.name)}
+                                                                        selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
+                                                                        icon={<Wrench className="w-4 h-4 text-gray-600 dark:text-gray-500" />}
+                                                                        menuContent={
+                                                                            <EntityDropdown 
+                                                                                name={tool.name} 
+                                                                                onDelete={onDeleteTool}
+                                                                                isLocked={tool.isLibrary}
+                                                                            />
+                                                                        }
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
+                                    ) : (
+                                        <EmptyState 
+                                            entity="tools" 
+                                            hasFilteredItems={false}
+                                        />
+                                    )}
                                 </div>
                             </div>
                         )}
