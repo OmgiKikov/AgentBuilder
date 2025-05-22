@@ -941,7 +941,7 @@ export function WorkflowEditor({
                     />
                 </div>
             </ResizablePanel>
-            <ResizableHandle className="w-[3px] bg-transparent" />
+            <ResizableHandle withHandle className="w-[3px] bg-transparent" />
             <ResizablePanel
                 minSize={20}
                 defaultSize={showCopilot ? PANEL_RATIOS.chatApp : PANEL_RATIOS.chatApp + PANEL_RATIOS.copilot}
@@ -1004,7 +1004,7 @@ export function WorkflowEditor({
             </ResizablePanel>
             {showCopilot && (
                 <>
-                    <ResizableHandle className="w-[3px] bg-transparent" />
+                    <ResizableHandle withHandle className="w-[3px] bg-transparent" />
                     <ResizablePanel
                         minSize={10}
                         defaultSize={PANEL_RATIOS.copilot}

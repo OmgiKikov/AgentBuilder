@@ -379,7 +379,7 @@ export function EntityList({
                     </Panel>
                 </ResizablePanel>
 
-                <ResizableHandle withHandle />
+                <ResizableHandle withHandle className="w-[3px] bg-transparent" />
 
                 {/* Tools Panel */}
                 <ResizablePanel 
@@ -544,7 +544,7 @@ export function EntityList({
                     </Panel>
                 </ResizablePanel>
 
-                <ResizableHandle withHandle />
+                <ResizableHandle withHandle className="w-[3px] bg-transparent" />
 
                 {/* Prompts Panel */}
                 <ResizablePanel 
