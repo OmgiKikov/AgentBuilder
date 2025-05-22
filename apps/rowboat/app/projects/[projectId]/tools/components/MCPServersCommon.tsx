@@ -168,24 +168,12 @@ export function ServerCard({
         )}
         <div className="flex justify-between items-center mb-6">
           <div className="flex-1">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ServerLogo serverName={server.name} className="mr-2" />
                 <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">
                   {server.name}
                 </h3>
-                {server.availableTools && server.availableTools.length > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
-                    bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
-                    {server.availableTools.length} tools available
-                  </span>
-                )}
-                {isEligible && server.tools.length > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
-                    bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300">
-                    {server.tools.length} tools selected
-                  </span>
-                )}
               </div>
               <div className="flex items-center gap-2">
                 <Switch
@@ -209,6 +197,20 @@ export function ServerCard({
                   </Button>
                 )}
               </div>
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              {server.availableTools && server.availableTools.length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
+                  bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
+                  {server.availableTools.length} tools available
+                </span>
+              )}
+              {isEligible && server.tools.length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
+                  bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300">
+                  {server.tools.length} tools selected
+                </span>
+              )}
             </div>
             {error && (
               <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 
