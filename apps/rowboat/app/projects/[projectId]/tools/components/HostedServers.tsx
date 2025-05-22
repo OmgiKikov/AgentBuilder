@@ -26,56 +26,9 @@ import {
 
 type McpServerType = z.infer<typeof MCPServer>;
 type McpToolType = z.infer<typeof MCPServer>['tools'][number];
-type FilterType = 'all' | 'available' | 'coming-soon' | 'popular';
 
-const SERVER_PRIORITY: Record<string, number> = {
-  'GitHub': 1,
-  'Slack': 2,
-  'Google Drive': 3,
-  'Google Docs': 4,
-  'Jira': 5,
-  'Discord': 6,
-  'YouTube': 7,
-  'Firecrawl Web Search': 8,
-  'Firecrawl Deep Research': 9,
-  'Notion': 10
-};
-
-function sortServers(servers: McpServerType[], filterType: FilterType = 'all'): McpServerType[] {
-  return [...servers].sort((a, b) => {
-    // For popular view, only sort priority servers
-    if (filterType === 'popular') {
-      const priorityA = SERVER_PRIORITY[a.name] || 999;
-      const priorityB = SERVER_PRIORITY[b.name] || 999;
-      if (priorityA === 999 && priorityB === 999) return 0;
-      return priorityA - priorityB;
-    }
-
-    // For all view, sort by priority first, then available/coming soon
-    if (filterType === 'all') {
-      const priorityA = SERVER_PRIORITY[a.name] || 999;
-      const priorityB = SERVER_PRIORITY[b.name] || 999;
-      const hasToolsA = (a.tools || []).length > 0;
-      const hasToolsB = (b.tools || []).length > 0;
-
-      // If both are priority servers, sort by priority
-      if (priorityA !== 999 && priorityB !== 999) {
-        return priorityA - priorityB;
-      }
-      // If one is priority server, it comes first
-      if (priorityA !== 999) return -1;
-      if (priorityB !== 999) return 1;
-      // If neither is priority, available servers come before coming soon
-      if (hasToolsA !== hasToolsB) {
-        return hasToolsA ? -1 : 1;
-      }
-      // If both are same type (available or coming soon), sort alphabetically
-      return a.name.localeCompare(b.name);
-    }
-
-    // For other views, sort alphabetically
-    return a.name.localeCompare(b.name);
-  });
+function sortServers(servers: McpServerType[]): McpServerType[] {
+  return [...servers].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 const fadeInAnimation = {
@@ -183,7 +136,6 @@ export function HostedServers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [toggleError, setToggleError] = useState<{serverId: string; message: string} | null>(null);
   const [enabledServers, setEnabledServers] = useState<Set<string>>(new Set());
   const [togglingServers, setTogglingServers] = useState<Set<string>>(new Set());
@@ -541,7 +493,7 @@ export function HostedServers() {
   const filteredServers = sortServers(servers.filter(server => {
     const searchLower = searchQuery.toLowerCase();
     const serverTools = server.tools || [];
-    const matchesSearch = (
+    return (
       server.name.toLowerCase().includes(searchLower) ||
       server.description.toLowerCase().includes(searchLower) ||
       serverTools.some(tool => 
@@ -549,21 +501,7 @@ export function HostedServers() {
         tool.description.toLowerCase().includes(searchLower)
       )
     );
-
-    const hasTools = (serverTools.length > 0);
-    const isPriority = SERVER_PRIORITY[server.name] !== undefined;
-    
-    switch (activeFilter) {
-      case 'available':
-        return matchesSearch && hasTools && !isPriority;
-      case 'coming-soon':
-        return matchesSearch && !hasTools;
-      case 'popular':
-        return matchesSearch && isPriority;
-      default:
-        return matchesSearch;
-    }
-  }), activeFilter);
+  }));
 
   return (
     <div className="space-y-6">
@@ -579,32 +517,6 @@ export function HostedServers() {
       </div>
 
       <div className="flex flex-col gap-6">
-        <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
-          {[
-            { id: 'all', label: 'All' },
-            { id: 'popular', label: 'Popular' },
-            { id: 'available', label: 'More' },
-            { id: 'coming-soon', label: 'Coming Soon' }
-          ].map((filter) => (
-            <button
-              key={filter.id}
-              onClick={() => setActiveFilter(filter.id as FilterType)}
-              className={clsx(
-                'px-4 py-2 text-sm font-medium transition-colors relative',
-                activeFilter === filter.id
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400 rounded'
-              )}
-            >
-              {filter.label}
-              {activeFilter === filter.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
-              )}
-            </button>
-          ))}
-        </div>
-
         <div className="flex items-center justify-between gap-4">
           <div className="relative flex-1">
             <div className="absolute inset-y-0 left-2 flex items-center pointer-events-none">
