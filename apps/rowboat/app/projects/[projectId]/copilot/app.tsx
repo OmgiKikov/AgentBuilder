@@ -79,6 +79,28 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
         onMessagesChange?.(messages);
     }, [messages, onMessagesChange]);
 
+    // Загрузка истории сообщений при инициализации
+    useEffect(() => {
+        const messagesKey = `copilot_messages_${projectId}`;
+        const savedMessages = localStorage.getItem(messagesKey);
+        if (savedMessages && messages.length === 0) {
+            try {
+                const parsedMessages = JSON.parse(savedMessages);
+                setMessages(parsedMessages);
+            } catch (error) {
+                console.error('Ошибка при загрузке истории сообщений copilot:', error);
+            }
+        }
+    }, [projectId, messages.length]);
+    
+    // Сохранение сообщений при их изменении
+    useEffect(() => {
+        const messagesKey = `copilot_messages_${projectId}`;
+        if (messages.length > 0) {
+            localStorage.setItem(messagesKey, JSON.stringify(messages));
+        }
+    }, [messages, projectId]);
+
     // Check for initial prompt in local storage and send it
     useEffect(() => {
         const prompt = localStorage.getItem(`project_prompt_${projectId}`);
@@ -220,6 +242,10 @@ export const Copilot = forwardRef<{ handleUserMessage: (message: string) => void
     function handleNewChat() {
         setCopilotKey(prev => prev + 1);
         setMessages([]);
+        
+        // Очистка сохраненной истории сообщений
+        const messagesKey = `copilot_messages_${projectId}`;
+        localStorage.removeItem(messagesKey);
     }
 
     function handleCopyJson(data: { messages: any[] }) {
