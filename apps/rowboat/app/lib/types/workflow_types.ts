@@ -1,6 +1,7 @@
 import { z } from "zod";
 export const WorkflowAgent = z.object({
     name: z.string(),
+    order: z.number().int().optional(),
     type: z.union([
         z.literal('conversation'),
         z.literal('post_process'),

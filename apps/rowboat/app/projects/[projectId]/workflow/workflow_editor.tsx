@@ -135,6 +135,9 @@ export type Action = {
 } | {
     type: "restore_state";
     state: StateItem;
+} | {
+    type: "reorder_agents";
+    agents: z.infer<typeof WorkflowAgent>[];
 };
 
 function reducer(state: State, action: Action): State {
@@ -211,6 +214,23 @@ function reducer(state: State, action: Action): State {
                 draft.present.lastUpdatedAt = !action.saving ? new Date().toISOString() : state.present.workflow.lastUpdatedAt;
             });
             break;
+        }
+        case "reorder_agents": {
+            const newState = produce(state.present, draft => {
+                draft.workflow.agents = action.agents;
+                draft.lastUpdatedAt = new Date().toISOString();
+            });
+            const [nextState, patches, inversePatches] = produceWithPatches(state.present, draft => {
+                draft.workflow.agents = action.agents;
+                draft.lastUpdatedAt = new Date().toISOString();
+            });
+            return {
+                ...state,
+                present: nextState,
+                patches: [...state.patches.slice(0, state.currentIndex), patches],
+                inversePatches: [...state.inversePatches.slice(0, state.currentIndex), inversePatches],
+                currentIndex: state.currentIndex + 1,
+            };
         }
         default: {
             const [nextState, patches, inversePatches] = produceWithPatches(
@@ -587,6 +607,26 @@ export function WorkflowEditor({
     const [showTour, setShowTour] = useState(true);
     const copilotRef = useRef<{ handleUserMessage: (message: string) => void }>(null);
 
+    // Load agent order from localStorage on mount
+    useEffect(() => {
+        const storedOrder = localStorage.getItem(`workflow_${workflow._id}_agent_order`);
+        if (storedOrder) {
+            try {
+                const orderMap = JSON.parse(storedOrder);
+                const orderedAgents = [...workflow.agents].sort((a, b) => {
+                    const orderA = orderMap[a.name] ?? Number.MAX_SAFE_INTEGER;
+                    const orderB = orderMap[b.name] ?? Number.MAX_SAFE_INTEGER;
+                    return orderA - orderB;
+                });
+                if (JSON.stringify(orderedAgents) !== JSON.stringify(workflow.agents)) {
+                    dispatch({ type: "reorder_agents", agents: orderedAgents });
+                }
+            } catch (e) {
+                console.error("Error loading agent order:", e);
+            }
+        }
+    }, [workflow._id]);
+
     // Function to trigger copilot chat
     const triggerCopilotChat = useCallback((message: string) => {
         setShowCopilot(true);
@@ -697,6 +737,17 @@ export function WorkflowEditor({
 
     function handleSetMainAgent(name: string) {
         dispatch({ type: "set_main_agent", name });
+    }
+
+    function handleReorderAgents(agents: z.infer<typeof WorkflowAgent>[]) {
+        // Save order to localStorage
+        const orderMap = agents.reduce((acc, agent, index) => {
+            acc[agent.name] = index;
+            return acc;
+        }, {} as Record<string, number>);
+        localStorage.setItem(`workflow_${workflow._id}_agent_order`, JSON.stringify(orderMap));
+        
+        dispatch({ type: "reorder_agents", agents });
     }
 
     async function handleRenameWorkflow(name: string) {
@@ -938,6 +989,7 @@ export function WorkflowEditor({
                         onDeleteTool={handleDeleteTool}
                         onDeletePrompt={handleDeletePrompt}
                         projectId={state.present.workflow.projectId}
+                        onReorderAgents={handleReorderAgents}
                     />
                 </div>
             </ResizablePanel>

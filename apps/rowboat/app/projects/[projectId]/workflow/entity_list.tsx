@@ -3,7 +3,10 @@ import { AgenticAPITool } from "../../../lib/types/agents_api_types";
 import { WorkflowPrompt, WorkflowAgent, WorkflowTool } from "../../../lib/types/workflow_types";
 import { Dropdown, DropdownItem, DropdownTrigger, DropdownMenu } from "@heroui/react";
 import { useRef, useEffect, useState } from "react";
-import { EllipsisVerticalIcon, ImportIcon, PlusIcon, Brain, Boxes, Wrench, PenLine, Library, ChevronDown, ChevronRight, ServerIcon, Component, ScrollText } from "lucide-react";
+import { EllipsisVerticalIcon, ImportIcon, PlusIcon, Brain, Boxes, Wrench, PenLine, Library, ChevronDown, ChevronRight, ServerIcon, Component, ScrollText, GripVertical } from "lucide-react";
+import { DndContext, DragEndEvent, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Panel } from "@/components/common/panel-common";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
@@ -73,6 +76,7 @@ const ListItemWithMenu = ({
     icon,
     iconClassName,
     mcpServerName,
+    dragHandle,
 }: {
     name: string;
     isSelected?: boolean;
@@ -84,6 +88,7 @@ const ListItemWithMenu = ({
     icon?: React.ReactNode;
     iconClassName?: string;
     mcpServerName?: string;
+    dragHandle?: React.ReactNode;
 }) => {
     return (
         <div className={clsx(
@@ -93,6 +98,7 @@ const ListItemWithMenu = ({
                 "hover:bg-zinc-50 dark:hover:bg-zinc-800": !isSelected
             }
         )}>
+            {dragHandle}
             <button
                 ref={selectedRef}
                 className={clsx(
@@ -219,8 +225,12 @@ export function EntityList({
     onDeleteAgent,
     onDeleteTool,
     onDeletePrompt,
-    projectId
-}: EntityListProps & { projectId: string }) {
+    projectId,
+    onReorderAgents,
+}: EntityListProps & { 
+    projectId: string,
+    onReorderAgents: (agents: z.infer<typeof WorkflowAgent>[]) => void 
+}) {
     // Merge workflow tools with project tools
     const mergedTools = [...tools, ...projectTools];
     const selectedRef = useRef<HTMLButtonElement | null>(null);
@@ -289,6 +299,34 @@ export function EntityList({
         onSelectTool(name);
     }
 
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        
+        if (over && active.id !== over.id) {
+            const oldIndex = agents.findIndex(agent => agent.name === active.id);
+            const newIndex = agents.findIndex(agent => agent.name === over.id);
+            
+            const newAgents = [...agents];
+            const [movedAgent] = newAgents.splice(oldIndex, 1);
+            newAgents.splice(newIndex, 0, movedAgent);
+            
+            // Update order numbers
+            const updatedAgents = newAgents.map((agent, index) => ({
+                ...agent,
+                order: index * 100
+            }));
+            
+            onReorderAgents(updatedAgents);
+        }
+    };
+
     return (
         <div ref={containerRef} className="flex flex-col h-full">
             <ResizablePanelGroup 
@@ -344,29 +382,33 @@ export function EntityList({
                             <div className="h-[calc(100%-53px)] overflow-y-auto">
                                 <div className="p-2">
                                     {agents.length > 0 ? (
-                                        <div className="space-y-1">
-                                            {agents.map((agent, index) => (
-                                                <ListItemWithMenu
-                                                    key={`agent-${index}`}
-                                                    name={agent.name}
-                                                    isSelected={selectedEntity?.type === "agent" && selectedEntity.name === agent.name}
-                                                    onClick={() => onSelectAgent(agent.name)}
-                                                    disabled={agent.disabled}
-                                                    selectedRef={selectedEntity?.type === "agent" && selectedEntity.name === agent.name ? selectedRef : undefined}
-                                                    statusLabel={startAgentName === agent.name ? <StartLabel /> : null}
-                                                    icon={<Component className="w-4 h-4 text-blue-600 dark:text-blue-500" />}
-                                                    menuContent={
-                                                        <AgentDropdown
+                                        <DndContext
+                                            sensors={sensors}
+                                            collisionDetection={closestCenter}
+                                            onDragEnd={handleDragEnd}
+                                        >
+                                            <SortableContext
+                                                items={agents.map(a => a.name)}
+                                                strategy={verticalListSortingStrategy}
+                                            >
+                                                <div className="space-y-1">
+                                                    {agents.map((agent) => (
+                                                        <SortableAgentItem
+                                                            key={agent.name}
                                                             agent={agent}
-                                                            isStartAgent={startAgentName === agent.name}
+                                                            isSelected={selectedEntity?.type === "agent" && selectedEntity.name === agent.name}
+                                                            onClick={() => onSelectAgent(agent.name)}
+                                                            selectedRef={selectedEntity?.type === "agent" && selectedEntity.name === agent.name ? selectedRef : undefined}
+                                                            statusLabel={startAgentName === agent.name ? <StartLabel /> : null}
                                                             onToggle={onToggleAgent}
                                                             onSetMainAgent={onSetMainAgent}
                                                             onDelete={onDeleteAgent}
+                                                            isStartAgent={startAgentName === agent.name}
                                                         />
-                                                    }
-                                                />
-                                            ))}
-                                        </div>
+                                                    ))}
+                                                </div>
+                                            </SortableContext>
+                                        </DndContext>
                                     ) : (
                                         <EmptyState entity="agents" hasFilteredItems={false} />
                                     )}
@@ -649,4 +691,60 @@ function EntityDropdown({
             </DropdownMenu>
         </Dropdown>
     );
-} 
+}
+
+// Add SortableItem component for agents
+const SortableAgentItem = ({ agent, isSelected, onClick, selectedRef, statusLabel, onToggle, onSetMainAgent, onDelete, isStartAgent }: {
+    agent: z.infer<typeof WorkflowAgent>;
+    isSelected?: boolean;
+    onClick?: () => void;
+    selectedRef?: React.RefObject<HTMLButtonElement>;
+    statusLabel?: React.ReactNode;
+    onToggle: (name: string) => void;
+    onSetMainAgent: (name: string) => void;
+    onDelete: (name: string) => void;
+    isStartAgent: boolean;
+}) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: agent.name });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} {...attributes}>
+            <ListItemWithMenu
+                name={agent.name}
+                isSelected={isSelected}
+                onClick={onClick}
+                disabled={agent.disabled}
+                selectedRef={selectedRef}
+                statusLabel={statusLabel}
+                icon={<Component className="w-4 h-4 text-blue-600 dark:text-blue-500" />}
+                dragHandle={
+                    <button className="cursor-grab" {...listeners}>
+                        <GripVertical className="w-4 h-4 text-gray-400" />
+                    </button>
+                }
+                menuContent={
+                    <AgentDropdown
+                        agent={agent}
+                        isStartAgent={isStartAgent}
+                        onToggle={onToggle}
+                        onSetMainAgent={onSetMainAgent}
+                        onDelete={onDelete}
+                    />
+                }
+            />
+        </div>
+    );
+}; 
