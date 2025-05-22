@@ -867,6 +867,9 @@ export function WorkflowEditor({
 
     function handleSetMainAgent(name: string) {
         dispatch({ type: "set_main_agent", name });
+        // Принудительное сохранение сразу после установки стартового агента
+        dispatch({ type: "set_saving", saving: true });
+        processQueue(state, dispatch);
     }
 
     async function handleRenameWorkflow(name: string) {
