@@ -27,6 +27,7 @@ import { BackIcon, HamburgerIcon, WorkflowIcon } from "../../../lib/components/i
 import { CopyIcon, ImportIcon, Layers2Icon, RadioIcon, RedoIcon, ServerIcon, Sparkles, UndoIcon, RocketIcon, PenLine, AlertTriangle } from "lucide-react";
 import { EntityList } from "./entity_list";
 import { ProductTour } from "@/components/common/product-tour";
+import { getMcpToolsFromProject } from "@/app/actions/mcp_actions";
 
 enablePatches();
 

@@ -196,7 +196,8 @@ export function EntityList({
     projectId
 }: EntityListProps & { projectId: string }) {
     // Merge workflow tools with project tools
-    const mergedTools = [...tools, ...projectTools];
+    const initialMergedTools = [...tools, ...projectTools];
+    const [mergedTools, setMergedTools] = useState(initialMergedTools);
     const [filters, setFilters] = useState({
         mcp: true,
         webhook: true,
