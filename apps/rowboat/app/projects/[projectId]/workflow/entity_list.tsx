@@ -510,7 +510,7 @@ export function EntityList({
                                                                         isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
                                                                         onClick={() => handleToolSelection(tool.name)}
                                                                         selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
-                                                                        icon={<Boxes className="w-4 h-4 text-blue-600 dark:text-blue-500" />}
+                                                                        icon={<Boxes className="w-4 h-4 text-blue-600/70 dark:text-blue-500/70" />}
                                                                         menuContent={
                                                                             <EntityDropdown 
                                                                                 name={tool.name} 
@@ -596,7 +596,7 @@ export function EntityList({
                                                     isSelected={selectedEntity?.type === "prompt" && selectedEntity.name === prompt.name}
                                                     onClick={() => onSelectPrompt(prompt.name)}
                                                     selectedRef={selectedEntity?.type === "prompt" && selectedEntity.name === prompt.name ? selectedRef : undefined}
-                                                    icon={<ScrollText className="w-4 h-4 text-blue-600 dark:text-blue-500" />}
+                                                    icon={<ScrollText className="w-4 h-4 text-blue-600/70 dark:text-blue-500/70" />}
                                                     menuContent={
                                                         <EntityDropdown 
                                                             name={prompt.name} 
@@ -729,7 +729,7 @@ const SortableAgentItem = ({ agent, isSelected, onClick, selectedRef, statusLabe
                 disabled={agent.disabled}
                 selectedRef={selectedRef}
                 statusLabel={statusLabel}
-                icon={<Component className="w-4 h-4 text-blue-600 dark:text-blue-500" />}
+                icon={<Component className="w-4 h-4 text-blue-600/70 dark:text-blue-500/70" />}
                 dragHandle={
                     <button className="cursor-grab" {...listeners}>
                         <GripVertical className="w-4 h-4 text-gray-400" />
