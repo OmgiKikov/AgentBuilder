@@ -231,7 +231,7 @@ export function ServerCard({
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"></span>
-              {server.serverType === 'hosted' ? 'Klavis AI' : 'Custom Server'}
+              {server.serverType === 'hosted' ? 'Облачный сервер' : 'Custom Server'}
             </span>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 line-clamp-2">
