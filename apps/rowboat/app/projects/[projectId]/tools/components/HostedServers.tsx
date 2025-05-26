@@ -3,24 +3,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { SlidePanel } from '@/components/ui/slide-panel';
-import { Info, Lock, Power, RefreshCw, Search, RefreshCcw } from 'lucide-react';
+import { Info, RefreshCw, Search, AlertTriangle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { 
   listAvailableMcpServers,
   enableServer,
   updateProjectServers
 } from '@/app/actions/klavis_actions';
-import { toggleMcpTool, getSelectedMcpTools, fetchMcpToolsForServer } from '@/app/actions/mcp_actions';
+import { toggleMcpTool, fetchMcpToolsForServer } from '@/app/actions/mcp_actions';
 import { z } from 'zod';
 import { MCPServer } from '@/app/lib/types/types';
 import { Checkbox } from '@heroui/react';
-import { projectsCollection } from '@/app/lib/mongodb';
 import { 
   ServerCard, 
   ToolManagementPanel,
-  ServerOperationBanner 
 } from './MCPServersCommon';
 
 type McpServerType = z.infer<typeof MCPServer>;
@@ -86,6 +82,28 @@ const ToolCard = ({
   );
 };
 
+const ErrorBanner = ({ onRetry }: { onRetry: () => void }) => (
+  <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-lg p-4">
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+        <p className="text-sm text-red-700 dark:text-red-300">
+          Unable to load hosted tools. Please check your connection and try again. If the problem persists, contact us on Discord.
+        </p>
+      </div>
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={onRetry}
+        className="shrink-0"
+      >
+        <RefreshCw className="h-4 w-4 mr-2" />
+        Retry
+      </Button>
+    </div>
+  </div>
+);
+
 export function HostedServers() {
   const params = useParams();
   const projectId = typeof params.projectId === 'string' ? params.projectId : params.projectId?.[0];
@@ -111,13 +129,9 @@ export function HostedServers() {
       setLoading(true);
       const response = await listAvailableMcpServers(projectId || "");
       
-      if (response.error) {
-        console.error(`Call to listAvailableMcpServers failed with projectId: ${projectId} and error: ${response.error}`);
-        throw new Error(response.error);
-      }
-      
-      if (!response.data) {
-        throw new Error('No data received from server');
+      if (response.error || !response.data) {
+        setError('No hosted tools found. Make sure to set your Klavis API key. Contact us on discord if you\'re still unable to see hosted tools.');
+        return;
       }
       
       // Mark all servers as hosted type
@@ -129,7 +143,7 @@ export function HostedServers() {
       setServers(serversWithType);
       setError(null);
     } catch (err: any) {
-      setError(err?.message || 'Failed to load MCP servers');
+      setError('No hosted tools found. Make sure to set your Klavis API key. Contact us on discord if you\'re still unable to see hosted tools.');
       console.error('Error fetching servers:', err);
       setServers([]);
     } finally {
@@ -471,6 +485,25 @@ export function HostedServers() {
     );
   }));
 
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 dark:border-gray-200 mx-auto"></div>
+        <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Loading tools...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <p className="text-center text-red-500 dark:text-red-400">
+          {error}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4">
@@ -516,32 +549,26 @@ export function HostedServers() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 dark:border-gray-200 mx-auto"></div>
-          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Загрузка инструментов...</p>
-        </div>
-      ) : error ? (
-        <div className="text-center py-8 text-red-500 dark:text-red-400">{error}</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredServers.map((server) => (
-            <ServerCard
-              key={server.instanceId}
-              server={server}
-              onToggle={() => handleToggleTool(server)}
-              onManageTools={() => setSelectedServer(server)}
-              onSync={() => handleSyncServer(server)}
-              onAuth={() => handleAuthenticate(server)}
-              isToggling={togglingServers.has(server.name)}
-              isSyncing={syncingServers.has(server.name)}
-              operation={serverOperations.get(server.name)}
-              error={toggleError?.serverId === server.name ? toggleError : undefined}
-              showAuth={true}
-            />
-          ))}
-        </div>
-      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredServers.map((server) => (
+          <ServerCard
+            key={server.instanceId}
+            server={server}
+            onToggle={() => handleToggleTool(server)}
+            onManageTools={() => setSelectedServer(server)}
+            onSync={() => handleSyncServer(server)}
+            onAuth={() => handleAuthenticate(server)}
+            isToggling={togglingServers.has(server.name)}
+            isSyncing={syncingServers.has(server.name)}
+            operation={serverOperations.get(server.name)}
+            error={toggleError?.serverId === server.name ? toggleError : undefined}
+            showAuth={true}
+          />
+        ))}
+      </div>
+
+        
 
       <ToolManagementPanel
         server={selectedServer}
