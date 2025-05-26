@@ -8,7 +8,19 @@ from openai import OpenAI
 from scenario_types import TestSimulation, TestResult, AggregateResults, TestScenario
 
 from db import write_test_result, get_scenario_by_id
-from rowboat import Client, StatefulChat
+
+# Проверяем, нужно ли использовать мок
+USE_MOCK_ROWBOAT = os.environ.get("MOCK_ROWBOAT", "false").lower() == "true"
+USE_DEBUG_ROWBOAT = os.environ.get("DEBUG_ROWBOAT", "false").lower() == "true"
+
+if USE_MOCK_ROWBOAT:
+    print("🔧 Используется мок-версия Rowboat для тестирования")
+    from mock_rowboat import MockClient as Client, MockStatefulChat as StatefulChat
+elif USE_DEBUG_ROWBOAT:
+    print("🔧 Используется отладочная версия Rowboat для диагностики")
+    from debug_rowboat_client import DebugClient as Client, DebugStatefulChat as StatefulChat
+else:
+    from rowboat import Client, StatefulChat
 
 openai_client = OpenAI()
 MODEL_NAME = "gpt-4o"
@@ -30,12 +42,18 @@ async def simulate_simulation(
 
     loop = asyncio.get_running_loop()
     pass_criteria = pass_criteria
+    
+    print(f"🔄 Начинаю симуляцию:")
+    print(f"   Сценарий: {scenario.name}")
+    print(f"   Profile ID: {profile_id}")
+    print(f"   Workflow ID: {workflow_id}")
+    print(f"   Max iterations: {max_iterations}")
 
     # Todo: add profile_id
     support_chat = StatefulChat(
         rowboat_client,
         workflow_id=workflow_id,
-        test_profile_id=profile_id
+        test_profile_id=None
     )
 
     messages = [
@@ -50,10 +68,14 @@ async def simulate_simulation(
     # -------------------------
     # (1) MAIN SIMULATION LOOP
     # -------------------------
-    for _ in range(max_iterations):
+    print(f"🤖 Запуск основного цикла симуляции ({max_iterations} итераций)...")
+    
+    for iteration in range(max_iterations):
+        print(f"   Итерация {iteration + 1}/{max_iterations}")
         openai_input = messages
 
         # Run OpenAI API call in a separate thread (non-blocking)
+        print(f"   🧠 Вызов OpenAI API...")
         simulated_user_response = await loop.run_in_executor(
             None,  # default ThreadPool
             lambda: openai_client.chat.completions.create(
@@ -64,18 +86,30 @@ async def simulate_simulation(
         )
 
         simulated_content = simulated_user_response.choices[0].message.content.strip()
+        print(f"   👤 Сгенерированное сообщение пользователя: {simulated_content}")
         messages.append({"role": "assistant", "content": simulated_content})
+        
         # Run Rowboat chat in a thread if it's synchronous
-        rowboat_response = await loop.run_in_executor(
-            None,
-            lambda: support_chat.run(simulated_content)
-        )
-
-        messages.append({"role": "user", "content": rowboat_response})
+        print(f"   🛥️  Вызов Rowboat API...")
+        try:
+            rowboat_response = await loop.run_in_executor(
+                None,
+                lambda: support_chat.run(simulated_content)
+            )
+            print(f"   🤖 Ответ Rowboat: {rowboat_response}")
+            messages.append({"role": "user", "content": rowboat_response})
+        except Exception as e:
+            print(f"   ❌ Ошибка при вызове Rowboat: {e}")
+            print(f"   📋 Детали клиента Rowboat:")
+            print(f"      Host: {rowboat_client.base_url}")
+            print(f"      Headers: {rowboat_client.headers}")
+            raise e
 
     # -------------------------
     # (2) EVALUATION STEP
     # -------------------------
+    print(f"📊 Начинаю оценку результатов...")
+    
     # swap the roles of the assistant and the user
     transcript_str = ""
     for m in messages:
@@ -113,6 +147,7 @@ async def simulate_simulation(
     ]
 
     # Run evaluation in a separate thread
+    print(f"🧠 Вызов OpenAI API для оценки...")
     eval_response = await loop.run_in_executor(
         None,
         lambda: openai_client.chat.completions.create(
@@ -135,6 +170,7 @@ async def simulate_simulation(
     if evaluation_result is None:
         raise Exception("No 'verdict' field found in evaluation response")
 
+    print(f"✅ Оценка завершена: {evaluation_result} - {details}")
     return (evaluation_result, details, transcript)
 
 async def simulate_simulations(

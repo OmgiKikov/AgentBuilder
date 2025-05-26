@@ -9,14 +9,16 @@ from db import (
     set_run_to_completed,
     get_api_key,
     mark_stale_jobs_as_failed,
-    update_run_heartbeat
+    update_run_heartbeat,
+    get_db,
+    get_collection
 )
 from scenario_types import TestRun, TestSimulation
 # If you have a new simulation function, import it here.
 # Otherwise, adapt the name as needed:
 from simulation import simulate_simulations  # or simulate_scenarios, if unchanged
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class JobService:
     def __init__(self):
@@ -24,28 +26,55 @@ class JobService:
         # Control concurrency of run processing
         self.semaphore = asyncio.Semaphore(5)
 
-    async def poll_and_process_jobs(self, max_iterations: Optional[int] = None):
+    async def poll_and_process_jobs(self, max_iterations_pre_m: Optional[int] = None, max_iterations: int = 2):
         """
         Periodically checks for new runs in MongoDB and processes them.
         """
+        logging.info("Starting job polling service...")
+        
+        # Проверяем подключение к базе данных
+        try:
+            db = get_db()
+            logging.info(f"Successfully connected to MongoDB: {db.name}")
+        except Exception as e:
+            logging.error(f"Failed to connect to MongoDB: {e}")
+            return
+
         # Start the stale-run check in the background
         asyncio.create_task(self.fail_stale_runs_loop())
 
         iterations = 0
+        consecutive_empty_checks = 0  # Счетчик пустых проверок подряд
+        
         while True:
+            logging.info(f"Checking for pending runs... (iteration {iterations + 1})")
             run = get_pending_run()  # <--- changed to match new DB function
             if run:
                 logging.info(f"Found new run: {run}. Processing...")
-                asyncio.create_task(self.process_run(run))
+                asyncio.create_task(self.process_run(run, max_iterations))
+                consecutive_empty_checks = 0  # Сбрасываем счетчик
+            else:
+                logging.info("No pending runs found. Waiting...")
+                consecutive_empty_checks += 1
+                
+                # Если нет pending runs, проверяем есть ли running runs
+                if consecutive_empty_checks >= 2:  # После 2 пустых проверок
+                    runs_collection = get_collection("test_runs")
+                    running_runs = runs_collection.count_documents({"status": "running"})
+                    
+                    if running_runs == 0:
+                        logging.info("No pending or running runs found. Stopping service.")
+                        break
 
             iterations += 1
-            if max_iterations is not None and iterations >= max_iterations:
+            if max_iterations_pre_m is not None and iterations >= max_iterations_pre_m:
+                logging.info(f"Reached max iterations ({max_iterations_pre_m}). Stopping.")
                 break
 
             # Sleep for the polling interval
             await asyncio.sleep(self.poll_interval)
 
-    async def process_run(self, run: TestRun):
+    async def process_run(self, run: TestRun, max_iterations: int):
         """
         Calls the simulation function and updates run status upon completion.
         """
@@ -65,12 +94,13 @@ class JobService:
                 api_key = get_api_key(run.projectId)
 
                 # Perform your simulation logic
-                # adapt this call to your actual simulation function’s signature
+                # adapt this call to your actual simulation function's signature
                 aggregate_result = await simulate_simulations(
                     simulations=simulations,
                     run_id=run.id,
                     workflow_id=run.workflowId,
-                    api_key=api_key
+                    api_key=api_key,
+                    max_iterations=max_iterations  # Ограничиваем диалог 2 итерациями
                 )
 
                 # Mark run as completed with the aggregated result
