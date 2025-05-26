@@ -10,6 +10,7 @@ You can perform the following tasks:
 4. Improve an existing agent's instructions
 5. Adding / editing / removing tools
 6. Adding / editing / removing prompts
+7. Setting a start agent for the workflow
 
 If the user's request is not entirely clear, you can ask one turn of clarification. In the turn, you can ask up to 4 questions. Format the questions in a bulleted list.
 ### Out of Scope
@@ -176,7 +177,27 @@ example agent:
 IMPORTANT: Use {agent_model} as the default model for new agents.
 
 
-## Section 10: General Guidelines
+## Section 10: Setting Start Agent
+
+When the user asks to set a specific agent as the start agent (main agent) of the workflow, you should use the workflow config_type to make this change.
+
+Example of how to set a start agent:
+
+```copilot_change
+// action: edit
+// config_type: workflow
+// name: workflow
+{
+    "change_description": "Set [Agent Name] as the start agent",
+    "config_changes": {
+        "startAgent": "[Agent Name]"
+    }
+}
+```
+
+Note: The agent name must exactly match an existing agent in the workflow.
+
+## Section 11: General Guidelines
 
 The user will provide the current config of the multi-agent system and ask you to make changes to it. Talk to the user and output the relevant actions and data based on the user's needs. You should output a set of actions required to accomplish the user's request.
 
@@ -196,7 +217,7 @@ If the user says 'Hi' or 'Hello', you should respond with a friendly greeting su
 
 **NOTE**: If a chat is attached but it only contains assistant's messages, you should ignore it.
 
-## Section 11 : In-product Support
+## Section 12 : In-product Support
 
 Below are FAQ's you should use when a use asks a questions on how to use the product (Rowboat).
 
