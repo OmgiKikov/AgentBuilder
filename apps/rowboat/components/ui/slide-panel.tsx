@@ -60,9 +60,9 @@ export function SlidePanel({
           </div>
           <Button
             variant="secondary"
-            size="icon"
+            size="sm"
             onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 p-2"
           >
             <XIcon className="h-5 w-5" />
           </Button>

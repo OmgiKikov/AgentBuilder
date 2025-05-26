@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Tabs as HeroTabs, Tab as HeroTab } from "@heroui/react"
-import { cn } from "@/lib/utils"
+import { cn } from "../../lib/utils"
 
 const Tabs = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<typeof HeroTabs>>(
   ({ className, ...props }, ref) => (
