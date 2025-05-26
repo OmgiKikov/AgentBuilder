@@ -625,7 +625,7 @@ export function WorkflowEditor({
                 console.error("Error loading agent order:", e);
             }
         }
-    }, [workflow._id]);
+    }, [workflow._id, workflow.agents]);
 
     // Function to trigger copilot chat
     const triggerCopilotChat = useCallback((message: string) => {
