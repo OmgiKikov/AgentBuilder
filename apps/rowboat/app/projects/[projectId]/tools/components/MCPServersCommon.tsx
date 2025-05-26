@@ -208,13 +208,13 @@ export function ServerCard({
               {server.availableTools && server.availableTools.length > 0 && (
                 <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
                   bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
-                  {server.availableTools.length} tools available
+                  {server.availableTools.length} инструментов доступно
                 </span>
               )}
               {isEligible && server.tools.length > 0 && (
                 <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
                   bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300">
-                  {server.tools.length} tools selected
+                  {server.tools.length} инструментов выбрано
                 </span>
               )}
             </div>

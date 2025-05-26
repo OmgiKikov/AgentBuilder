@@ -85,7 +85,7 @@ export function WebhookConfig() {
         <div className="space-y-6">
             <Section 
                 title="Webhook URL"
-                description="In workflow editor, tool calls will be posted to this URL, unless they are mocked."
+                description="В редакторе рабочих процессов, вызовы инструментов будут отправляться на этот URL, если они не мокаются."
             >
                 <div className="space-y-2">
                     <div className={clsx(
@@ -103,7 +103,7 @@ export function WebhookConfig() {
                                 setWebhookUrl(value);
                                 updateWebhookUrl(projectId, value);
                             }}
-                            placeholder="Enter webhook URL..."
+                            placeholder="Введите URL вебхука..."
                             className="w-full text-sm bg-transparent focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 transition-colors px-4 py-3"
                             autoResize
                             disabled={loading}
@@ -112,7 +112,7 @@ export function WebhookConfig() {
                     {loading && (
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                             <Spinner size="sm" />
-                            <span>Loading...</span>
+                            <span>Загрузка...</span>
                         </div>
                     )}
                     {error && (

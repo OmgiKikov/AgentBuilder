@@ -299,7 +299,7 @@ export function CustomServers() {
             <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
           <p className="text-sm text-blue-700 dark:text-blue-300">
-            Add your own MCP servers here. These servers will be available to agents in the Build view once toggled ON.
+            Добавьте свои собственные MCP серверы здесь. Эти серверы будут доступны агентам в режиме Build после того, как они будут включены.
           </p>
         </div>
       </div>
@@ -312,7 +312,7 @@ export function CustomServers() {
         >
           <div className="inline-flex items-center">
             <Plus className="h-4 w-4" />
-            <span className="ml-2">Add Server</span>
+            <span className="ml-2">Добавить сервер</span>
           </div>
         </Button>
         <div className="relative flex-1">
@@ -321,7 +321,7 @@ export function CustomServers() {
           </div>
           <input
             type="text"
-            placeholder="Search servers or tools..."
+            placeholder="Поиск серверов или инструментов..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-8 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md 
@@ -345,13 +345,13 @@ export function CustomServers() {
         <div className="space-y-4">
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Server Name
+              Имя сервера
             </label>
             <input
               type="text"
               value={newServerName}
               onChange={(e) => setNewServerName(e.target.value)}
-              placeholder="e.g., My Custom Server"
+              placeholder="Например, My Custom Server"
               className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md 
                 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100
                 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
@@ -359,13 +359,13 @@ export function CustomServers() {
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Server URL
+              URL сервера
             </label>
             <input
               type="text"
               value={newServerUrl}
               onChange={(e) => setNewServerUrl(e.target.value)}
-              placeholder="e.g., http://localhost:3000"
+              placeholder="Например, http://localhost:3000"
               className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md 
                 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100
                 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
@@ -381,7 +381,7 @@ export function CustomServers() {
                 setNewServerUrl('');
               }}
             >
-              Cancel
+              Отмена
             </Button>
             <Button
               size="sm"
@@ -389,7 +389,7 @@ export function CustomServers() {
               onClick={handleAddServer}
               disabled={!newServerName || !newServerUrl}
             >
-              Add Server
+              Добавить сервер
             </Button>
           </div>
         </div>
@@ -398,7 +398,7 @@ export function CustomServers() {
       {loading ? (
         <div className="text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 dark:border-gray-200 mx-auto"></div>
-          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Loading servers...</p>
+          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Загрузка серверов...</p>
         </div>
       ) : error ? (
         <div className="text-center py-8 text-red-500 dark:text-red-400">{error}</div>
