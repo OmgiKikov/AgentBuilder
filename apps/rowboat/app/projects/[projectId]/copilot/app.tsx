@@ -277,7 +277,7 @@ export const Copilot = forwardRef<{ handleUserMessage: (message: string) => void
                         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                             COPILOT
                         </div>
-                        <Tooltip content="Ask copilot to help you build and modify your workflow">
+                        <Tooltip content="Спросить copilot помочь вам построить и изменить ваш рабочий процесс">
                             <InfoIcon className="w-4 h-4 text-gray-400 cursor-help" />
                         </Tooltip>
                     </div>
@@ -287,7 +287,7 @@ export const Copilot = forwardRef<{ handleUserMessage: (message: string) => void
                         onClick={handleNewChat}
                         className="bg-blue-50 text-blue-700 hover:bg-blue-100"
                         showHoverContent={true}
-                        hoverContent="New chat"
+                        hoverContent="Новый чат"
                     >
                         <PlusIcon className="w-4 h-4" />
                     </Button>
@@ -300,7 +300,7 @@ export const Copilot = forwardRef<{ handleUserMessage: (message: string) => void
                         size="sm"
                         onClick={() => appRef.current?.handleCopyChat()}
                         showHoverContent={true}
-                        hoverContent={showCopySuccess ? "Copied" : "Copy JSON"}
+                        hoverContent={showCopySuccess ? "Скопировано" : "Скопировать JSON"}
                     >
                         {showCopySuccess ? (
                             <CheckIcon className="w-4 h-4" />

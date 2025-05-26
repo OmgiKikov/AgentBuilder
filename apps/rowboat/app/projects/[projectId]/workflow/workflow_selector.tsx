@@ -25,11 +25,11 @@ function WorkflowCard({
         <div className="flex flex-col gap-1 items-start">
             <div className="flex items-center gap-1">
                 <WorkflowIcon />
-                <div className="text-black truncate">{workflow.name || 'Unnamed workflow'}</div>
+                <div className="text-black truncate">{workflow.name || 'Безымянный рабочий процесс'}</div>
                 {live && <PublishedBadge />}
             </div>
             <div className="text-xs text-gray-400">
-                updated <RelativeTime date={new Date(workflow.lastUpdatedAt)} />
+                обновлено <RelativeTime date={new Date(workflow.lastUpdatedAt)} />
             </div>
         </div>
     </button>;
@@ -101,13 +101,13 @@ export function WorkflowSelector({
 
     return <div className="flex flex-col gap-2 max-w-[768px] mx-auto w-full border border-gray-200 rounded-lg p-4">
         <div className="flex items-center gap-2 justify-between">
-            <div className="text-lg">Select a workflow version</div>
+            <div className="text-lg">Выберите версию рабочего процесса</div>
             <Button
                 color="primary"
                 startContent={<PlusIcon size={16} />}
                 onPress={handleCreateNewVersion}
             >
-                Create new version
+                Создать новую версию
             </Button>
         </div>
         <Divider />
@@ -137,11 +137,11 @@ export function WorkflowSelector({
                 onClick={handleRetry}
                 className="px-4 py-2 text-sm bg-red-100 hover:bg-red-200 rounded"
             >
-                Retry
+                Повторить
             </button>
         </div>}
         {!loading && !error && workflows.length == 0 && <div className="flex flex-col items-center gap-2">
-            <div className="text-sm text-gray-500">No versions found. Create a new version to get started.</div>
+            <div className="text-sm text-gray-500">Версии не найдены. Создайте новую версию, чтобы начать.</div>
         </div>}
         {!loading && !error && workflows.length > 0 && <div className="flex flex-col gap-2">
             <div className="flex flex-col gap-2">

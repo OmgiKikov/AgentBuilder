@@ -27,6 +27,7 @@ import { BackIcon, HamburgerIcon, WorkflowIcon } from "../../../lib/components/i
 import { CopyIcon, ImportIcon, Layers2Icon, RadioIcon, RedoIcon, ServerIcon, Sparkles, UndoIcon, RocketIcon, PenLine, AlertTriangle } from "lucide-react";
 import { EntityList } from "./entity_list";
 import { ProductTour } from "@/components/common/product-tour";
+import { getMcpToolsFromProject } from "@/app/actions/mcp_actions";
 
 enablePatches();
 
@@ -534,6 +535,8 @@ function reducer(state: State, action: Action): State {
                             draft.workflow.startAgent = action.name;
                             draft.chatKey++;
                             break;
+
+
                     }
                 }
             );
@@ -661,6 +664,13 @@ export function WorkflowEditor({
         }
     }, [state.present.workflow, state.present.pendingChanges]);
 
+
+    // Отслеживаем изменения в списке MCP серверов
+    const prevMcpServersRef = useRef<Array<z.infer<typeof MCPServer>>>([]);
+    const initialToolsImported = useRef<boolean>(false);
+
+
+
     function handleSelectAgent(name: string) {
         dispatch({ type: "select_agent", name });
     }
@@ -706,7 +716,7 @@ export function WorkflowEditor({
     }
 
     function handleDeleteAgent(name: string) {
-        if (window.confirm(`Are you sure you want to delete the agent "${name}"?`)) {
+        if (window.confirm(`Вы уверены, что хотите удалить агента "${name}"?`)) {
             dispatch({ type: "delete_agent", name });
         }
     }
@@ -716,7 +726,7 @@ export function WorkflowEditor({
     }
 
     function handleDeleteTool(name: string) {
-        if (window.confirm(`Are you sure you want to delete the tool "${name}"?`)) {
+        if (window.confirm(`Вы уверены, что хотите удалить инструмент "${name}"?`)) {
             dispatch({ type: "delete_tool", name });
         }
     }
@@ -726,7 +736,7 @@ export function WorkflowEditor({
     }
 
     function handleDeletePrompt(name: string) {
-        if (window.confirm(`Are you sure you want to delete the prompt "${name}"?`)) {
+        if (window.confirm(`Вы уверены, что хотите удалить промпт "${name}"?`)) {
             dispatch({ type: "delete_prompt", name });
         }
     }
@@ -737,6 +747,9 @@ export function WorkflowEditor({
 
     function handleSetMainAgent(name: string) {
         dispatch({ type: "set_main_agent", name });
+        // Принудительное сохранение сразу после установки стартового агента
+        dispatch({ type: "set_saving", saving: true });
+        processQueue(state, dispatch);
     }
 
     function handleReorderAgents(agents: z.infer<typeof WorkflowAgent>[]) {
@@ -815,13 +828,13 @@ export function WorkflowEditor({
         <div className="shrink-0 flex justify-between items-center pb-6">
             <div className="workflow-version-selector flex items-center gap-4 px-2 text-gray-800 dark:text-gray-100">
                 <WorkflowIcon size={16} />
-                <Tooltip content="Click to edit">
+                <Tooltip content="Нажмите для редактирования">
                     <div>
                         <EditableField
                             key={state.present.workflow._id}
                             value={state.present.workflow?.name || ''}
                             onChange={handleRenameWorkflow}
-                            placeholder="Name this version"
+                            placeholder="Назовите эту версию"
                             className="text-sm font-semibold"
                             inline={true}
                         />
@@ -841,7 +854,7 @@ export function WorkflowEditor({
                 <Dropdown>
                     <DropdownTrigger>
                         <div>
-                            <Tooltip content="Version Menu">
+                            <Tooltip content="Меню версий">
                                 <button className="p-1.5 text-gray-500 hover:text-gray-800 transition-colors">
                                     <HamburgerIcon size={20} />
                                 </button>
@@ -870,7 +883,7 @@ export function WorkflowEditor({
                             startContent={<div className="text-gray-500"><BackIcon size={16} /></div>}
                             className="gap-x-2"
                         >
-                            View versions
+                            Просмотр версий
                         </DropdownItem>
 
                         <DropdownItem
@@ -878,7 +891,7 @@ export function WorkflowEditor({
                             startContent={<div className="text-gray-500"><Layers2Icon size={16} /></div>}
                             className="gap-x-2"
                         >
-                            Clone this version
+                            Клонировать эту версию
                         </DropdownItem>
 
                         <DropdownItem
@@ -886,19 +899,19 @@ export function WorkflowEditor({
                             startContent={<div className="text-gray-500"><CopyIcon size={16} /></div>}
                             className="gap-x-2"
                         >
-                            Export as JSON
+                            Экспорт в JSON
                         </DropdownItem>
                     </DropdownMenu>
                 </Dropdown>
             </div>
             {showCopySuccess && <div className="flex items-center gap-2">
-                <div className="text-green-500">Copied to clipboard</div>
+                <div className="text-green-500">Скопировано в буфер обмена</div>
             </div>}
             <div className="flex items-center gap-2">
                 {isLive && <div className="flex items-center gap-2">
                     <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2">
                         <AlertTriangle size={16} />
-                        This version is locked. You cannot make changes. Changes applied through copilot will<b>not</b>be reflected.
+                        Эта версия заблокирована. Вы не можете вносить изменения. Изменения, примененные через Copilot, <b>не</b> будут отражены.
                     </div>
                     <Button
                         variant="solid"
@@ -907,7 +920,7 @@ export function WorkflowEditor({
                         className="gap-2 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm"
                         startContent={<Layers2Icon size={16} />}
                     >
-                        Clone this version
+                        Клонировать эту версию
                     </Button>
                     <Button
                         variant="solid"
@@ -916,22 +929,22 @@ export function WorkflowEditor({
                         className="gap-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
                         startContent={showCopilot ? null : <Sparkles size={16} />}
                     >
-                        {showCopilot ? "Hide Copilot" : "Copilot"}
+                        {showCopilot ? "Скрыть Copilot" : "Copilot"}
                     </Button>
                 </div>}
                 {!isLive && <div className="text-xs text-gray-400">
                     {state.present.saving && <div className="flex items-center gap-1">
                         <Spinner size="sm" />
-                        <div>Saving...</div>
+                        <div>Сохранение...</div>
                     </div>}
                     {!state.present.saving && state.present.workflow && <div>
-                        Updated <RelativeTime date={new Date(state.present.lastUpdatedAt)} />
+                        Обновлено <RelativeTime date={new Date(state.present.lastUpdatedAt)} />
                     </div>}
                 </div>}
                 {!isLive && <>
                     <button
                         className="p-1 text-gray-400 hover:text-black hover:cursor-pointer"
-                        title="Undo"
+                        title="Отменить"
                         disabled={state.currentIndex <= 0}
                         onClick={() => dispatch({ type: "undo" })}
                     >
@@ -939,7 +952,7 @@ export function WorkflowEditor({
                     </button>
                     <button
                         className="p-1 text-gray-400 hover:text-black hover:cursor-pointer"
-                        title="Redo"
+                        title="Повторить"
                         disabled={state.currentIndex >= state.patches.length}
                         onClick={() => dispatch({ type: "redo" })}
                     >
@@ -953,7 +966,7 @@ export function WorkflowEditor({
                         startContent={<RocketIcon size={16} />}
                         data-tour-target="deploy"
                     >
-                        Deploy
+                        Развернуть
                     </Button>
                     <Button
                         variant="solid"
@@ -962,7 +975,7 @@ export function WorkflowEditor({
                         className="gap-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
                         startContent={showCopilot ? null : <Sparkles size={16} />}
                     >
-                        {showCopilot ? "Hide Copilot" : "Copilot"}
+                        {showCopilot ? "Скрыть Copilot" : "Copilot"}
                     </Button>
                 </>}
             </div>

@@ -40,7 +40,7 @@ export function SourcesList({ projectId }: { projectId: string }) {
             title={
                 <div className="flex items-center gap-3">
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        DATA SOURCES
+                        Источники данных
                     </div>
                 </div>
             }
@@ -53,7 +53,7 @@ export function SourcesList({ projectId }: { projectId: string }) {
                             className="bg-blue-50 text-blue-700 hover:bg-blue-100"
                             startContent={<PlusIcon className="w-4 h-4" />}
                         >
-                            Add data source
+                            Добавить источник данных
                         </Button>
                     </Link>
                 </div>
@@ -64,11 +64,11 @@ export function SourcesList({ projectId }: { projectId: string }) {
                     {loading && (
                         <div className="flex items-center gap-2">
                             <Spinner size="sm" />
-                            <div>Loading...</div>
+                            <div>Загрузка...</div>
                         </div>
                     )}
                     {!loading && !sources.length && (
-                        <p className="mt-4 text-center">You have not added any data sources.</p>
+                        <p className="mt-4 text-center">Вы не добавили ни одного источника данных.</p>
                     )}
                     {!loading && sources.length > 0 && (
                         <>
@@ -88,7 +88,7 @@ export function SourcesList({ projectId }: { projectId: string }) {
                                         />
                                     </svg>
                                     <div className="text-sm text-blue-700 dark:text-blue-300">
-                                        After creating data sources, go to the RAG tab inside individual agent settings to connect them to agents.
+                                        После создания источников данных перейдите на вкладку RAG внутри настроек отдельного агента, чтобы подключить их к агентам.
                                     </div>
                                 </div>
                             </div>
@@ -97,18 +97,18 @@ export function SourcesList({ projectId }: { projectId: string }) {
                                     <thead className="bg-gray-50 dark:bg-gray-800/50">
                                         <tr>
                                             <th className="w-[30%] px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                                Name
+                                                Имя
                                             </th>
                                             <th className="w-[20%] px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                                Type
+                                                Тип
                                             </th>
                                             {sources.some(source => source.status) && (
                                                 <th className="w-[35%] px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                                    Status
+                                                    Статус
                                                 </th>
                                             )}
                                             <th className="w-[15%] px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                                Active
+                                                Активный
                                             </th>
                                         </tr>
                                     </thead>
@@ -132,25 +132,25 @@ export function SourcesList({ projectId }: { projectId: string }) {
                                                     {source.data.type == 'urls' && (
                                                         <div className="flex gap-2 items-center text-sm text-gray-600 dark:text-gray-300">
                                                             <DataSourceIcon type="urls" />
-                                                            <div>List URLs</div>
+                                                            <div>Список URL</div>
                                                         </div>
                                                     )}
                                                     {source.data.type == 'text' && (
                                                         <div className="flex gap-2 items-center text-sm text-gray-600 dark:text-gray-300">
                                                             <DataSourceIcon type="text" />
-                                                            <div>Text</div>
+                                                            <div>Текст</div>
                                                         </div>
                                                     )}
                                                     {source.data.type == 'files_local' && (
                                                         <div className="flex gap-2 items-center text-sm text-gray-600 dark:text-gray-300">
                                                             <DataSourceIcon type="files" />
-                                                            <div>Files (Local)</div>
+                                                            <div>Файлы (Локально)</div>
                                                         </div>
                                                     )}
                                                     {source.data.type == 'files_s3' && (
                                                         <div className="flex gap-2 items-center text-sm text-gray-600 dark:text-gray-300">
                                                             <DataSourceIcon type="files" />
-                                                            <div>Files (S3)</div>
+                                                            <div>Файлы (S3)</div>
                                                         </div>
                                                     )}
                                                 </td>

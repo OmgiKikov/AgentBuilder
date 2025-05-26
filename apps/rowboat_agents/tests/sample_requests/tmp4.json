@@ -9,7 +9,7 @@
       "chatId": "",
       "createdAt": "2025-05-08T07:06:48.280Z",
       "role": "assistant",
-      "content": "How can I help you today?",
+      "content": "Как я могу вам помочь?",
       "agenticSender": "Example Agent",
       "agenticResponseType": "external"
     },
@@ -69,7 +69,7 @@
         "tool_name": null
       },
       {
-        "content": "How can I help you today?",
+        "content": "Как я могу вам помочь?",
         "role": "assistant",
         "sender": "Example Agent",
         "tool_calls": null,

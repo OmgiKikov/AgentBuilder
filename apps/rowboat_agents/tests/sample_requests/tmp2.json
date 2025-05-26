@@ -9,7 +9,7 @@
       "chatId": "",
       "createdAt": "2025-05-05T17:29:15.822Z",
       "role": "assistant",
-      "content": "How can I help you today?",
+      "content": "Как я могу вам помочь?",
       "agenticSender": "Interview Evaluation Hub",
       "agenticResponseType": "external"
     },
@@ -33,7 +33,7 @@
         "tool_name": null
       },
       {
-        "content": "How can I help you today?",
+        "content": "Как я могу вам помочь?",
         "role": "assistant",
         "sender": "Interview Evaluation Hub",
         "tool_calls": null,
@@ -59,7 +59,7 @@
       },
       "turn_messages": [
         {
-          "content": "How can I help you today?",
+          "content": "Как я могу вам помочь?",
           "role": "assistant",
           "sender": "Interview Evaluation Hub",
           "tool_calls": null,

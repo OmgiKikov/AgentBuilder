@@ -9,7 +9,7 @@
       "chatId": "",
       "createdAt": "2025-05-06T10:20:53.651Z",
       "role": "assistant",
-      "content": "How can I help you today?",
+      "content": "Как я могу вам помочь?",
       "agenticSender": "Blog Writer Hub",
       "agenticResponseType": "external"
     },
@@ -166,7 +166,7 @@
         "tool_name": null
       },
       {
-        "content": "How can I help you today?",
+        "content": "Как я могу вам помочь?",
         "role": "assistant",
         "sender": "Blog Writer Hub",
         "tool_calls": null,

@@ -1,8 +1,9 @@
 'use client';
 
-import { Button, Spinner } from "@heroui/react";
 import { useRef, useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { AudioInputButton } from "./audio-input-button";
 
 // Add a type to support both message formats
 type FlexibleMessage = {
@@ -13,6 +14,11 @@ type FlexibleMessage = {
     createdAt?: string;
     // Add any other optional fields that might be needed
 };
+
+interface IconProps {
+    size: number;
+    className?: string;
+}
 
 interface ComposeBoxCopilotProps {
     handleUserMessage: (message: string) => void;
@@ -74,6 +80,14 @@ export function ComposeBoxCopilot({
         onFocus?.();
     };
 
+    function handleAudioText(text: string) {
+        if (text.trim()) {
+            setInput(text);
+            // Если нужно автоматически отправлять распознанный текст, раскомментируйте следующую строку
+            // handleUserMessage(text);
+        }
+    }
+
     return (
         <div className="relative group">
             {/* Keyboard shortcut hint */}
@@ -85,6 +99,9 @@ export function ComposeBoxCopilot({
             {/* Outer container with padding */}
             <div className="rounded-2xl border-[1.5px] border-gray-200 dark:border-[#2a2d31] p-3 relative 
                           bg-white dark:bg-[#1e2023] flex items-end gap-2">
+                {/* Audio input button */}
+                <AudioInputButton onTextReceived={handleAudioText} disabled={loading} />
+                
                 {/* Textarea */}
                 <div className="flex-1">
                     <Textarea
@@ -116,10 +133,9 @@ export function ComposeBoxCopilot({
 
                 {/* Send button */}
                 <Button
-                    size="sm"
-                    isIconOnly
+                    size="icon"
                     disabled={!loading && !input.trim()}
-                    onPress={loading ? onCancel : handleInput}
+                    onClick={loading ? onCancel : handleInput}
                     className={`
                         transition-all duration-200
                         ${loading 
@@ -132,6 +148,7 @@ export function ComposeBoxCopilot({
                         disabled:opacity-50 disabled:scale-95
                         hover:shadow-md dark:hover:shadow-indigo-950/10
                         mb-0.5
+                        w-9 h-9 p-1.5
                     `}
                 >
                     {loading ? (
@@ -149,7 +166,7 @@ export function ComposeBoxCopilot({
 }
 
 // Custom SendIcon component for better visual alignment
-function SendIcon({ size, className }: { size: number, className?: string }) {
+function SendIcon({ size, className }: IconProps) {
     return (
         <svg 
             width={size} 
@@ -169,7 +186,7 @@ function SendIcon({ size, className }: { size: number, className?: string }) {
 }
 
 // Custom StopIcon component for better visual alignment
-function StopIcon({ size, className }: { size: number, className?: string }) {
+function StopIcon({ size, className }: IconProps) {
     return (
         <svg 
             width={size} 

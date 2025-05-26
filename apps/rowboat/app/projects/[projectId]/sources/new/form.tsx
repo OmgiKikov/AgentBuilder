@@ -150,12 +150,12 @@ export function Form({
                                 />
                             </svg>
                             <div className="text-sm text-blue-700 dark:text-blue-300">
-                                After creating data sources, go to the RAG tab inside individual agent settings to connect them to agents.
+                                После создания источников данных, перейдите на вкладку RAG внутри настроек отдельного агента, чтобы подключить их к агентам.
                             </div>
                         </div>
                     </div>
                     <Dropdown
-                        label="Select type"
+                        label="Выберите тип"
                         value={sourceType}
                         onChange={setSourceType}
                         options={dropdownOptions}
@@ -167,7 +167,7 @@ export function Form({
                     >
                         <div className="space-y-2">
                             <label className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                Specify URLs (one per line)
+                                Укажите URL-адреса (по одному на строку)
                             </label>
                             <Textarea
                                 required
@@ -179,23 +179,23 @@ export function Form({
                         </div>
                         <div className="space-y-2">
                             <label className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                Name
+                                Имя
                             </label>
                             <Textarea
                                 required
                                 name="name"
-                                placeholder="e.g. Help articles"
+                                placeholder="Например, статьи о помощи"
                                 rows={1}
                                 className="rounded-lg p-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 focus:shadow-inner focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                             />
                         </div>
                         <div className="space-y-2">
                             <label className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                Description
+                                Описание
                             </label>
                             <Textarea
                                 name="description"
-                                placeholder="e.g. A collection of help articles from our documentation"
+                                placeholder="Например, коллекция статей о помощи из нашей документации"
                                 rows={2}
                                 className="rounded-lg p-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 focus:shadow-inner focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                             />
@@ -215,23 +215,23 @@ export function Form({
                                         d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
                                     />
                                 </svg>
-                                <span className="font-medium">Note</span>
+                                <span className="font-medium">Примечание</span>
                             </div>
                             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400 ml-7">
                                 <li className="flex items-start">
                                     <span className="mr-2">•</span>
-                                    <span>Expect about 5-10 minutes to scrape 100 pages</span>
+                                    <span>Ожидайте около 5-10 минут для скрапинга 100 страниц</span>
                                 </li>
                                 <li className="flex items-start">
                                     <span className="mr-2">•</span>
-                                    <span>Only the first 100 (valid) URLs will be scraped</span>
+                                    <span>Будут скрапиться только первые 100 (корректных) URL-адресов</span>
                                 </li>
                             </ul>
                         </div>
                         <FormStatusButton
                             props={{
                                 type: "submit",
-                                children: "Add data source",
+                                children: "Добавить источник данных",
                                 className: "self-start",
                                 startContent: <PlusIcon className="w-4 h-4" />
                             }}
@@ -245,23 +245,23 @@ export function Form({
                         <input type="hidden" name="type" value={sourceType} />
                         <div className="space-y-2">
                             <label className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                Name
+                                Имя
                             </label>
                             <Textarea
                                 required
                                 name="name"
-                                placeholder="e.g. Documentation files"
+                                placeholder="Например, файлы документации"
                                 rows={1}
                                 className="rounded-lg p-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 focus:shadow-inner focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                             />
                         </div>
                         <div className="space-y-2">
                             <label className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                Description
+                                Описание
                             </label>
                             <Textarea
                                 name="description"
-                                placeholder="e.g. A collection of documentation files"
+                                placeholder="Например, коллекция файлов документации"
                                 rows={2}
                                 className="rounded-lg p-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 focus:shadow-inner focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                             />
@@ -281,16 +281,16 @@ export function Form({
                                         d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
                                     />
                                 </svg>
-                                <span className="font-medium">Note</span>
+                                <span className="font-medium">Примечание</span>
                             </div>
                             <div className="text-sm text-gray-600 dark:text-gray-400 ml-7">
-                                You will be able to upload files in the next step
+                                Вы сможете загрузить файлы в следующем шаге
                             </div>
                         </div>
                         <FormStatusButton
                             props={{
                                 type: "submit",
-                                children: "Add data source",
+                                children: "Добавить источник данных",
                                 className: "self-start",
                                 startContent: <PlusIcon className="w-[24px] h-[24px]" />
                             }}
@@ -303,35 +303,35 @@ export function Form({
                     >
                         <div className="space-y-2">
                             <label className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                Content
+                                Содержимое
                             </label>
                             <Textarea
                                 required
                                 name="content"
-                                placeholder="Enter your text content here"
+                                placeholder="Введите ваше текстовое содержимое здесь"
                                 rows={10}
                                 className="rounded-lg p-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 focus:shadow-inner focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                             />
                         </div>
                         <div className="space-y-2">
                             <label className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                Name
+                                Имя
                             </label>
                             <Textarea
                                 required
                                 name="name"
-                                placeholder="e.g. Product documentation"
+                                placeholder="Например, документация продукта"
                                 rows={1}
                                 className="rounded-lg p-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 focus:shadow-inner focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                             />
                         </div>
                         <div className="space-y-2">
                             <label className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                Description
+                                Описание
                             </label>
                             <Textarea
                                 name="description"
-                                placeholder="e.g. A collection of documentation for our product"
+                                placeholder="Например, коллекция документации для нашего продукта"
                                 rows={2}
                                 className="rounded-lg p-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 focus:shadow-inner focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-400/20 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                             />
@@ -339,7 +339,7 @@ export function Form({
                         <FormStatusButton
                             props={{
                                 type: "submit",
-                                children: "Add data source",
+                                children: "Добавить источник данных",
                                 className: "self-start",
                                 startContent: <PlusIcon className="w-[24px] h-[24px]" />
                             }}

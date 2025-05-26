@@ -13,14 +13,14 @@ export default function App() {
     const [projects, setProjects] = useState<z.infer<typeof Project>[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isProjectPaneOpen, setIsProjectPaneOpen] = useState(false);
-    const [defaultName, setDefaultName] = useState('Assistant 1');
+    const [defaultName, setDefaultName] = useState('Ассистент 1');
 
     const getNextAssistantNumber = (projects: z.infer<typeof Project>[]) => {
         const untitledProjects = projects
             .map(p => p.name)
-            .filter(name => name.startsWith('Assistant '))
+            .filter(name => name.startsWith('Ассистент '))
             .map(name => {
-                const num = parseInt(name.replace('Assistant ', ''));
+                const num = parseInt(name.replace('Ассистент ', ''));
                 return isNaN(num) ? 0 : num;
             });
 
@@ -42,7 +42,7 @@ export default function App() {
                 setProjects(sortedProjects);
                 setIsLoading(false);
                 const nextNumber = getNextAssistantNumber(sortedProjects);
-                const newDefaultName = `Assistant ${nextNumber}`;
+                const newDefaultName = `Ассистент ${nextNumber}`;
                 setDefaultName(newDefaultName);
             }
         }
@@ -61,7 +61,7 @@ export default function App() {
                     <SearchProjects
                         projects={projects}
                         isLoading={isLoading}
-                        heading="Select existing assistant"
+                        heading="Выбрать существующего ассистента"
                         className="h-full"
                         onClose={() => setIsProjectPaneOpen(false)}
                     />

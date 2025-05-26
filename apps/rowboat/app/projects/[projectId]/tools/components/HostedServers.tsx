@@ -512,7 +512,7 @@ export function HostedServers() {
             <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
           <p className="text-sm text-blue-700 dark:text-blue-300">
-            To make hosted MCP tools available to agents in the Build view, first toggle the servers ON here. Some tools may require authentication after enabling.
+            Чтобы сделать доступными MCP инструменты в представлении Build, сначала переключите серверы ВКЛ. Некоторые инструменты могут потребовать аутентификации после включения.
           </p>
         </div>
       </div>
@@ -525,7 +525,7 @@ export function HostedServers() {
             </div>
             <input
               type="text"
-              placeholder="Search servers or tools..."
+              placeholder="Поиск серверов или инструментов..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-8 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md 
@@ -543,11 +543,12 @@ export function HostedServers() {
           >
             <div className="inline-flex items-center">
               <RefreshCw className={clsx("h-4 w-4", loading && "animate-spin")} />
-              <span className="ml-2">Refresh</span>
+              <span className="ml-2">Обновить</span>
             </div>
           </Button>
         </div>
       </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredServers.map((server) => (
@@ -566,6 +567,8 @@ export function HostedServers() {
           />
         ))}
       </div>
+
+        
 
       <ToolManagementPanel
         server={selectedServer}

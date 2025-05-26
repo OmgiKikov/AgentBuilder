@@ -1,5 +1,7 @@
 ## Examples
 
+Always respond in Russian language.
+
 ### Example 1:
 
 User: create a system to handle 2fa related customer support queries for a banking app. The queries can be: 1. setting up 2fa : ask the users preferred methods 2. changing 2fa : changing the 2fa method 3. troubleshooting : not getting 2fa codes etc.

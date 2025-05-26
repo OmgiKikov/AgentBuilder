@@ -138,7 +138,7 @@ export function App({
                             <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 PLAYGROUND
                             </div>
-                            <Tooltip content="Test your workflow and chat with your agents in real-time">
+                            <Tooltip content="Тестируйте ваш рабочий процесс и общайтесь с вашими агентами в реальном времени">
                                 <InfoIcon className="w-4 h-4 text-gray-400 cursor-help" />
                             </Tooltip>
                         </div>
@@ -148,7 +148,7 @@ export function App({
                             onClick={handleNewChatButtonClick}
                             className="bg-blue-50 text-blue-700 hover:bg-blue-100"
                             showHoverContent={true}
-                            hoverContent="New chat"
+                            hoverContent="Новый чат"
                         >
                             <PlusIcon className="w-4 h-4" />
                         </Button>
@@ -158,7 +158,7 @@ export function App({
                             onClick={() => setShowDebugMessages(!showDebugMessages)}
                             className={showDebugMessages ? "bg-blue-50 text-blue-700 hover:bg-blue-100" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}
                             showHoverContent={true}
-                            hoverContent={showDebugMessages ? "Hide debug messages" : "Show debug messages"}
+                            hoverContent={showDebugMessages ? "Скрыть отладочные сообщения" : "Показать отладочные сообщения"}
                         >
                             {showDebugMessages ? (
                                 <BugIcon className="w-4 h-4" />
@@ -176,7 +176,7 @@ export function App({
                                 size="sm"
                                 onClick={() => setIsProfileSelectorOpen(true)}
                                 showHoverContent={true}
-                                hoverContent={testProfile?.name || 'Select test profile'}
+                                hoverContent={testProfile?.name || 'Выберите профиль тестирования'}
                             >
                                 <UserIcon className="w-4 h-4" />
                             </Button>
@@ -186,7 +186,7 @@ export function App({
                             size="sm"
                             onClick={handleCopyJson}
                             showHoverContent={true}
-                            hoverContent={showCopySuccess ? "Copied" : "Copy JSON"}
+                            hoverContent={showCopySuccess ? "Скопировано" : "Скопировать JSON"}
                         >
                             {showCopySuccess ? (
                                 <CheckIcon className="w-4 h-4" />

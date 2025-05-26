@@ -76,7 +76,7 @@ export function Panel({
                 {SHOW_COPILOT_MARQUEE && (
                     <div className="relative mt-8 max-w-full px-8">
                         <div className="font-mono text-sm whitespace-nowrap text-blue-400/60 dark:text-blue-500/40 font-small inline-flex">
-                            <div className="overflow-hidden w-0 animate-typing">What can I help you build?</div>
+                            <div className="overflow-hidden w-0 animate-typing">Что я могу помочь вам построить?</div>
                             <div className="border-r-2 border-blue-400 dark:border-blue-500 animate-cursor">&nbsp;</div>
                         </div>
                     </div>
