@@ -13,7 +13,7 @@ import { clsx } from "clsx";
 import { MCPServer } from "@/app/lib/types/types";
 import { getMcpToolsFromProject } from "@/app/actions/mcp_actions";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { ServerLogo } from '../tools/components/HostedServers';
+import { ServerLogo } from '../tools/components/MCPServersCommon';
 
 // Reduced gap size to match Cursor's UI
 const GAP_SIZE = 4; // 1 unit * 4px (tailwind's default spacing unit)

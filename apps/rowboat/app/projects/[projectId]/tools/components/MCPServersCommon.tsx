@@ -16,9 +16,10 @@ type McpToolType = z.infer<typeof McpTool>;
 interface ServerLogoProps {
   serverName: string;
   className?: string;
+  fallback?: React.ReactNode;
 }
 
-export function ServerLogo({ serverName, className = "" }: ServerLogoProps) {
+export function ServerLogo({ serverName, className = "", fallback }: ServerLogoProps) {
   const logoMap: Record<string, string> = {
     'GitHub': '/mcp-server-images/github.svg',
     'Google Drive': '/mcp-server-images/gdrive.svg',
@@ -34,11 +35,14 @@ export function ServerLogo({ serverName, className = "" }: ServerLogoProps) {
     'Firecrawl Deep Research': '/mcp-server-images/firecrawl.webp',
     'Discord': '/mcp-server-images/discord.svg',
     'YouTube': '/mcp-server-images/youtube.svg',
+    'Google Sheets': '/mcp-server-images/gsheets.svg',
+    'Google Calendar': '/mcp-server-images/gcalendar.svg',
+    'Gmail': '/mcp-server-images/gmail.svg',
   };
 
-  const logoPath = logoMap[serverName] || '';
+  const logoPath = logoMap[serverName];
   
-  if (!logoPath) return null;
+  if (!logoPath) return fallback || null;
 
   return (
     <div className={`relative w-6 h-6 ${className}`}>
@@ -46,6 +50,7 @@ export function ServerLogo({ serverName, className = "" }: ServerLogoProps) {
         src={logoPath}
         alt={`${serverName} logo`}
         fill
+        sizes="16px"
         className="object-contain"
       />
     </div>

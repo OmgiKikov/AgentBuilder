@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { SlidePanel } from '@/components/ui/slide-panel';
@@ -40,47 +39,6 @@ const fadeInAnimation = {
     animation: 'fadeIn 0.2s ease-out'
   }
 } as const;
-
-interface ServerLogoProps {
-  serverName: string;
-  className?: string;
-  fallback?: React.ReactNode;
-}
-
-export function ServerLogo({ serverName, className = "", fallback }: ServerLogoProps) {
-  const logoMap: Record<string, string> = {
-    'GitHub': '/mcp-server-images/github.svg',
-    'Google Drive': '/mcp-server-images/gdrive.svg',
-    'Google Docs': '/mcp-server-images/gdocs.svg',
-    'Jira': '/mcp-server-images/jira.svg',
-    'Notion': '/mcp-server-images/notion.svg',
-    'Resend': '/mcp-server-images/resend.svg',
-    'Slack': '/mcp-server-images/slack.svg',
-    'WordPress': '/mcp-server-images/wordpress.svg',
-    'Supabase': '/mcp-server-images/supabase.svg',
-    'Postgres': '/mcp-server-images/postgres.svg',
-    'Firecrawl Web Search': '/mcp-server-images/firecrawl.webp',
-    'Firecrawl Deep Research': '/mcp-server-images/firecrawl.webp',
-    'Discord': '/mcp-server-images/discord.svg',
-    'YouTube': '/mcp-server-images/youtube.svg',
-  };
-
-  const logoPath = logoMap[serverName];
-  
-  if (!logoPath) return fallback || null;
-
-  return (
-    <div className={`relative inline-flex ${className}`} style={{ minWidth: '16px', minHeight: '16px' }}>
-      <Image
-        src={logoPath}
-        alt={`${serverName} logo`}
-        fill
-        className="object-contain"
-        sizes="16px"
-      />
-    </div>
-  );
-}
 
 const toolCardStyles = {
     base: clsx(
