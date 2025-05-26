@@ -171,16 +171,16 @@ export function ServerCard({
             operation={operation} 
           />
         )}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex-1">
-            <div className="flex items-center justify-between">
+        <div className="flex justify-between items-start mb-6 flex-wrap gap-2">
+          <div className="flex-1 min-w-[200px]">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <ServerLogo serverName={server.name} className="mr-2" />
                 <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">
                   {server.name}
                 </h3>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <Switch
                   checked={server.isActive}
                   onCheckedChange={onToggle}
@@ -188,7 +188,8 @@ export function ServerCard({
                   className={clsx(
                     "data-[state=checked]:bg-blue-500 dark:data-[state=checked]:bg-blue-600",
                     "data-[state=unchecked]:bg-gray-200 dark:data-[state=unchecked]:bg-gray-700",
-                    isToggling && "opacity-50 cursor-not-allowed"
+                    isToggling && "opacity-50 cursor-not-allowed",
+                    "scale-75"
                   )}
                 />
                 {onRemove && (
@@ -203,7 +204,7 @@ export function ServerCard({
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
               {server.availableTools && server.availableTools.length > 0 && (
                 <span className="px-1.5 py-0.5 rounded-full text-xs font-medium 
                   bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
@@ -238,23 +239,24 @@ export function ServerCard({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 mt-auto">
+        <div className="flex items-center gap-2 mt-auto flex-wrap">
           {showAuth && server.isActive && server.authNeeded && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {!server.isAuthenticated && onAuth && (
                 <Button
                   size="sm"
                   variant="primary"
                   onClick={onAuth}
+                  className="text-xs shrink-0"
                 >
                   <div className="inline-flex items-center">
                     <Lock className="h-3.5 w-3.5" />
-                    <span className="ml-1.5">Authenticate</span>
+                    <span className="ml-1.5">Auth</span>
                   </div>
                 </Button>
               )}
               <div className={clsx(
-                "text-xs py-1 px-2 rounded-full",
+                "text-xs py-1 px-2 rounded-full shrink-0",
                 server.isAuthenticated 
                   ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20"
                   : "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20"
@@ -263,13 +265,14 @@ export function ServerCard({
               </div>
             </div>
           )}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2 flex-wrap">
             {isEligible && onSync && (
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={onSync}
                 disabled={isSyncing}
+                className="text-xs shrink-0"
               >
                 <div className="inline-flex items-center">
                   <RefreshCcw className={clsx(
@@ -277,7 +280,7 @@ export function ServerCard({
                     isSyncing && "animate-spin"
                   )} />
                   <span className="ml-1.5">
-                    {isSyncing ? 'Syncing...' : 'Sync Tools'}
+                    {isSyncing ? 'Syncing...' : 'Sync'}
                   </span>
                 </div>
               </Button>
@@ -286,10 +289,11 @@ export function ServerCard({
               size="sm"
               variant="secondary"
               onClick={onManageTools}
+              className="text-xs shrink-0"
             >
               <div className="inline-flex items-center">
-                <Info className="h-4 w-4" />
-                <span className="ml-1.5">{isEligible ? 'Manage Tools' : 'Tools'}</span>
+                <Info className="h-3.5 w-3.5" />
+                <span className="ml-1.5">{isEligible ? 'Tools' : 'Tools'}</span>
               </div>
             </Button>
           </div>
