@@ -5,9 +5,9 @@ import json
 import os
 from openai import OpenAI
 
-from scenario_types import TestSimulation, TestResult, AggregateResults, TestScenario
+from apps.experimental.simulation_runner.scenario_types import TestSimulation, TestResult, AggregateResults, TestScenario
 
-from db import write_test_result, get_scenario_by_id
+from apps.experimental.simulation_runner.db import write_test_result, get_scenario_by_id
 
 # Проверяем, нужно ли использовать мок
 USE_MOCK_ROWBOAT = os.environ.get("MOCK_ROWBOAT", "false").lower() == "true"

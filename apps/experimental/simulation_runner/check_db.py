@@ -1,4 +1,4 @@
-from db import get_collection
+from apps.experimental.simulation_runner.db import get_collection
 from bson import ObjectId
 import json
 import os
@@ -12,7 +12,7 @@ def get_simulation_pairs():
     simulations = list(simulations_collection.find())
     
     # Загружаем данные из runtime.json
-    runtime_file = 'apps/experimental/simulation_runner/runtime.json'
+    runtime_file = 'benchmark/run_time/runtime.json'
     runtime_data = {}
     
     if os.path.exists(runtime_file):
@@ -21,7 +21,7 @@ def get_simulation_pairs():
                 runtime_list = json.load(f)
                 # Преобразуем список в словарь по project_id для быстрого поиска
                 for item in runtime_list:
-                    project_id = item.get('REAL_PROJECT_ID')
+                    project_id = item.get('simulation_name')
                     if project_id:
                         runtime_data[project_id] = item
         except Exception as e:
@@ -57,8 +57,8 @@ def get_simulation_pairs():
                 pair_data["workflow_id"] = workflow_map[project_id]
             
             # Добавляем дополнительные данные из runtime.json
-            if project_id in runtime_data:
-                runtime_info = runtime_data[project_id]
+            if name in runtime_data:
+                runtime_info = runtime_data[name]
                 pair_data.update({
                     "REAL_WORKFLOW_ID": runtime_info.get("REAL_WORKFLOW_ID"),
                     "scenario_name": runtime_info.get("scenario_name"),

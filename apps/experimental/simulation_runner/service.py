@@ -3,7 +3,7 @@ import logging
 from typing import List, Optional
 
 # Updated imports from your new db module and scenario_types
-from db import (
+from apps.experimental.simulation_runner.db import (
     get_pending_run,
     get_simulations_for_run,
     set_run_to_completed,
@@ -13,10 +13,10 @@ from db import (
     get_db,
     get_collection
 )
-from scenario_types import TestRun, TestSimulation
+from apps.experimental.simulation_runner.scenario_types import TestRun, TestSimulation
 # If you have a new simulation function, import it here.
 # Otherwise, adapt the name as needed:
-from simulation import simulate_simulations  # or simulate_scenarios, if unchanged
+from apps.experimental.simulation_runner.simulation import simulate_simulations  # or simulate_scenarios, if unchanged
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 

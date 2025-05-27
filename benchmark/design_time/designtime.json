@@ -1,0 +1,24 @@
+[
+    {
+        "PROJECT_ID": "f6004ec7-cdff-4ec7-815d-b7afaffb4031",
+        "PROJECT_API_KEY": "b298b02db079c98c1e726627ed8eb97a226381035ec5c15e12236db08c1cd2e3",
+        "first_message": "Создай агента который будет использовать калькулятор",
+        "scenario_name": "Сценарий 1",
+        "scenario_description": "Ты хочешь создать простого агента с калькулятором",
+        "list_of_passCriteria": [
+            {"test_name": "Проверка создания калькулятора", "passCriteria": "Copilot успешно создал агента с инструментом калькулятора @tool:calculator"}
+        ],
+        "MAX_DIALOG_ITERATIONS": 1
+    },
+    {
+        "PROJECT_ID": "f6004ec7-cdff-4ec7-815d-b7afaffb4031",
+        "PROJECT_API_KEY": "b298b02db079c98c1e726627ed8eb97a226381035ec5c15e12236db08c1cd2e3",
+        "first_message": "Привет! Что ты умеешь?",
+        "scenario_name": "Сценарий 2",
+        "scenario_description": "Ты просто добрый агент, который говорит привет!",
+        "list_of_passCriteria": [
+            {"test_name": "Проверка на ответ", "passCriteria": "Copilot успешно описал, что он умеет"}
+        ],
+        "MAX_DIALOG_ITERATIONS": 1
+    }
+]
