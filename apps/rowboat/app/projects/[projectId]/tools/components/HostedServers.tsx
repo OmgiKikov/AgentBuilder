@@ -8,7 +8,8 @@ import { clsx } from 'clsx';
 import { 
   listAvailableMcpServers,
   enableServer,
-  updateProjectServers
+  updateProjectServers,
+  generateServerAuthUrl
 } from '@/app/actions/klavis_actions';
 import { toggleMcpTool, fetchMcpToolsForServer } from '@/app/actions/mcp_actions';
 import { z } from 'zod';
@@ -301,7 +302,10 @@ export function HostedServers() {
 
   const handleAuthenticate = async (server: McpServerType) => {
     try {
-      const authUrl = `https://api.klavis.ai/oauth/${server.name.toLowerCase()}/authorize?instance_id=${server.instanceId}&redirect_url=${window.location.origin}/projects/${projectId}/tools/oauth/callback`;
+      if (!server.instanceId) {
+        throw new Error('Server instance ID not found');
+      }
+      const authUrl = await generateServerAuthUrl(server.name, projectId, server.instanceId);
       const authWindow = window.open(
         authUrl,
         '_blank',

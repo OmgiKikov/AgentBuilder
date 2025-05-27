@@ -6,6 +6,7 @@ import { MCPServer, McpTool, McpServerResponse, McpServerTool } from '../lib/typ
 import { projectsCollection } from '../lib/mongodb';
 import { fetchMcpTools, toggleMcpTool } from './mcp_actions';
 import { fetchMcpToolsForServer } from './mcp_actions';
+import { headers } from 'next/headers';
 
 type McpServerType = z.infer<typeof MCPServer>;
 type McpToolType = z.infer<typeof McpTool>;
@@ -769,6 +770,63 @@ export async function deleteMcpServerInstance(
     }
   } catch (error: any) {
     console.error('[Klavis API] Error deleting instance:', error);
+    throw error;
+  }
+}
+
+// Server name to URL parameter mapping
+const SERVER_URL_PARAMS: Record<string, string> = {
+  'Google Calendar': 'gcalendar',
+  'Google Drive': 'gdrive',
+  'Google Docs': 'gdocs',
+  'Google Sheets': 'gsheets',
+};
+
+// Server name to environment variable mapping for client IDs
+const SERVER_CLIENT_ID_MAP: Record<string, string | undefined> = {
+  'GitHub': process.env.KLAVIS_GITHUB_CLIENT_ID,
+  'Google Calendar': process.env.KLAVIS_GOOGLE_CLIENT_ID,
+  'Google Drive': process.env.KLAVIS_GOOGLE_CLIENT_ID,
+  'Google Docs': process.env.KLAVIS_GOOGLE_CLIENT_ID,
+  'Google Sheets': process.env.KLAVIS_GOOGLE_CLIENT_ID,
+  'Slack': process.env.KLAVIS_SLACK_ID,
+};
+
+export async function generateServerAuthUrl(
+  serverName: string,
+  projectId: string,
+  instanceId: string,
+): Promise<string> {
+  try {
+    await projectAuthCheck(projectId);
+
+    // Get the origin from request headers
+    const headersList = headers();
+    const host = headersList.get('host') || '';
+    const protocol = headersList.get('x-forwarded-proto') || 'http';
+    const origin = `${protocol}://${host}`;
+
+    // Get the URL parameter for this server
+    const serverUrlParam = SERVER_URL_PARAMS[serverName] || serverName.toLowerCase();
+
+    // Build base params
+    const params: Record<string, string> = {
+      instance_id: instanceId,
+      redirect_url: `${origin}/projects/${projectId}/tools/oauth/callback`
+    };
+
+    // Add client_id if available for this server
+    const clientId = SERVER_CLIENT_ID_MAP[serverName];
+    if (clientId) {
+      params.client_id = clientId;
+    }
+
+    let authUrl = `${KLAVIS_BASE_URL}/oauth/${serverUrlParam}/authorize?${new URLSearchParams(params).toString()}`
+    console.log('authUrl', authUrl);
+
+    return authUrl;
+  } catch (error) {
+    console.error('[Klavis API] Error generating auth URL:', error);
     throw error;
   }
 }
