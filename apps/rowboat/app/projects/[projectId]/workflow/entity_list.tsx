@@ -10,8 +10,6 @@ import { CSS } from '@dnd-kit/utilities';
 import { Panel } from "@/components/common/panel-common";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
-import { MCPServer } from "@/app/lib/types/types";
-import { getMcpToolsFromProject } from "@/app/actions/mcp_actions";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { ServerLogo } from '../tools/components/MCPServersCommon';
 
