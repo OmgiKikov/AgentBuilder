@@ -130,6 +130,13 @@ export async function fetchMcpToolsForServer(projectId: string, serverName: stri
 
         // List tools
         const result = await client.listTools();
+        
+        // Log just essential info about tools
+        console.log('[Klavis API] Received tools from server:', {
+            serverName,
+            toolCount: result.tools.length,
+            tools: result.tools.map(tool => tool.name).join(', ')
+        });
 
         // Get all available tools from the server
         const availableToolNames = new Set(mcpServer.availableTools?.map(t => t.name) || []);
@@ -177,10 +184,7 @@ export async function fetchMcpToolsForServer(projectId: string, serverName: stri
             serverName,
             toolCount: tools.length,
             availableToolCount: availableToolNames.size,
-            tools: tools.map(t => ({
-                name: t.name,
-                parameters: t.parameters
-            }))
+            tools: tools.map(t => t.name).join(', ')
         });
     } catch (e) {
         console.error(`[Klavis API] Error fetching MCP tools from ${mcpServer.name}:`, {

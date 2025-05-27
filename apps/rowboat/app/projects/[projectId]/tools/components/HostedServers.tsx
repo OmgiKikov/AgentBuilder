@@ -9,7 +9,8 @@ import {
   listAvailableMcpServers,
   enableServer,
   updateProjectServers,
-  generateServerAuthUrl
+  generateServerAuthUrl,
+  syncServerTools
 } from '@/app/actions/klavis_actions';
 import { toggleMcpTool, fetchMcpToolsForServer } from '@/app/actions/mcp_actions';
 import { z } from 'zod';
@@ -324,7 +325,7 @@ export function HostedServers() {
                 return next;
               });
               
-              await updateProjectServers(projectId);
+              await updateProjectServers(projectId, server.name);
               
               const response = await listAvailableMcpServers(projectId);
               if (response.data) {
@@ -426,46 +427,28 @@ export function HostedServers() {
         next.add(server.name);
         return next;
       });
-      const enrichedTools = await fetchMcpToolsForServer(projectId, server.name);
-      
-      setServers(prevServers => {
-        return prevServers.map(s => {
-          if (s.name === server.name) {
-            const updatedAvailableTools = (s.availableTools || []).map(originalTool => {
-              const enrichedTool = enrichedTools.find(t => t.name === originalTool.name);
-              return enrichedTool ? {
-                ...originalTool,
-                description: enrichedTool.description,
-                parameters: enrichedTool.parameters
-              } : originalTool;
-            });
-            
-            return {
-              ...s,
-              availableTools: updatedAvailableTools
-            };
-          }
-          return s;
-        });
-      });
 
-      if (selectedServer?.name === server.name) {
-        setSelectedServer(prev => {
-          if (!prev) return null;
-          const updatedAvailableTools = (prev.availableTools || []).map(originalTool => {
-            const enrichedTool = enrichedTools.find(t => t.name === originalTool.name);
-            return enrichedTool ? {
-              ...originalTool,
-              description: enrichedTool.description,
-              parameters: enrichedTool.parameters
-            } : originalTool;
+      // Call the server action to sync and update DB
+      await syncServerTools(projectId, server.name);
+      
+      // Refresh the server list to get updated data
+      const response = await listAvailableMcpServers(projectId);
+      if (response.data) {
+        const updatedServer = response.data.find(s => s.name === server.name);
+        if (updatedServer) {
+          setServers(prevServers => {
+            return prevServers.map(s => {
+              if (s.name === server.name) {
+                return { ...updatedServer, serverType: 'hosted' as const };
+              }
+              return s;
+            });
           });
-          
-          return {
-            ...prev,
-            availableTools: updatedAvailableTools
-          };
-        });
+
+          if (selectedServer?.name === server.name) {
+            setSelectedServer({ ...updatedServer, serverType: 'hosted' as const });
+          }
+        }
       }
     } finally {
       setSyncingServers(prev => {
