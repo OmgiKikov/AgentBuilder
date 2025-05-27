@@ -729,6 +729,8 @@ export async function deleteMcpServerInstance(
   projectId: string,
 ): Promise<void> {
   try {
+    await projectAuthCheck(projectId);
+
     console.log('[Klavis API] Deleting instance:', { instanceId });
     
     const endpoint = `/mcp-server/instance/delete/${instanceId}`;

@@ -3,6 +3,7 @@
 import { projectsCollection } from '../lib/mongodb';
 import { MCPServer } from '../lib/types/types';
 import { z } from 'zod';
+import { projectAuthCheck } from './project_actions';
 
 type McpServerType = z.infer<typeof MCPServer>;
 
@@ -16,6 +17,8 @@ function formatServerUrl(url: string): string {
 }
 
 export async function fetchCustomServers(projectId: string) {
+  await projectAuthCheck(projectId);
+
   const project = await projectsCollection.findOne({ _id: projectId });
   return (project?.mcpServers || [])
     .filter(server => server.serverType === 'custom')
@@ -27,6 +30,8 @@ export async function fetchCustomServers(projectId: string) {
 }
 
 export async function addCustomServer(projectId: string, server: McpServerType) {
+  await projectAuthCheck(projectId);
+
   // Format the server URL and ensure isReady is true for custom servers
   const formattedServer = {
     ...server,
@@ -43,6 +48,8 @@ export async function addCustomServer(projectId: string, server: McpServerType) 
 }
 
 export async function removeCustomServer(projectId: string, serverName: string) {
+  await projectAuthCheck(projectId);
+
   await projectsCollection.updateOne(
     { _id: projectId },
     { $pull: { mcpServers: { name: serverName } } }
@@ -50,6 +57,8 @@ export async function removeCustomServer(projectId: string, serverName: string) 
 }
 
 export async function toggleCustomServer(projectId: string, serverName: string, isActive: boolean) {
+  await projectAuthCheck(projectId);
+
   await projectsCollection.updateOne(
     { _id: projectId, "mcpServers.name": serverName },
     { 
@@ -67,6 +76,8 @@ export async function updateCustomServerTools(
   tools: McpServerType['tools'],
   availableTools?: McpServerType['availableTools']
 ) {
+  await projectAuthCheck(projectId);
+
   const update: Record<string, any> = {
     "mcpServers.$.tools": tools
   };
