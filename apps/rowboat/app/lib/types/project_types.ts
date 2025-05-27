@@ -13,7 +13,7 @@ export const Project = z.object({
     publishedWorkflowId: z.string().optional(),
     nextWorkflowNumber: z.number().optional(),
     testRunCounter: z.number().default(0),
-    mcpServers: z.array(MCPServer).default([]),
+    mcpServers: z.array(MCPServer).optional(),
 });
 
 export const ProjectMember = z.object({
