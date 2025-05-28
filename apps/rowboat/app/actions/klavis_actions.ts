@@ -6,6 +6,7 @@ import { MCPServer, McpTool, McpServerResponse, McpServerTool } from '../lib/typ
 import { projectsCollection } from '../lib/mongodb';
 import { fetchMcpTools, toggleMcpTool } from './mcp_actions';
 import { fetchMcpToolsForServer } from './mcp_actions';
+import { headers } from 'next/headers';
 
 type McpServerType = z.infer<typeof MCPServer>;
 type McpToolType = z.infer<typeof McpTool>;
@@ -53,6 +54,17 @@ interface UserInstance {
 
 interface GetUserInstancesResponse {
   instances: UserInstance[];
+}
+
+// Add type for raw MCP tool response at the top with other types
+interface RawMcpTool {
+    name: string;
+    description: string;
+    inputSchema: string | {
+        type: string;
+        properties: Record<string, any>;
+        required?: string[];
+    };
 }
 
 const KLAVIS_BASE_URL = 'https://api.klavis.ai';
@@ -126,18 +138,14 @@ export async function listActiveServerInstances(projectId: string): Promise<User
     const endpoint = `/user/instances?${queryParams}`;
     const data = await klavisApiCall<GetUserInstancesResponse>(endpoint);
 
-    console.log('[Klavis API] =================== Active Instances ===================');
-    data.instances.forEach((instance, index) => {
-      console.log(`[Klavis API] Instance ${index + 1}:`, {
-        id: instance.id,
-        name: instance.name,
-        description: instance.description,
-        tools: `[${instance.tools?.length || 0} tools]`,
-        isAuthenticated: instance.isAuthenticated,
-        authNeeded: instance.authNeeded
-      });
+    // Only show instances that are authenticated or need auth
+    const relevantInstances = data.instances.filter(i => i.isAuthenticated || i.authNeeded);
+    console.log('[Klavis API] Active instances:', {
+      count: relevantInstances.length,
+      authenticated: relevantInstances.filter(i => i.isAuthenticated).map(i => i.name).join(', '),
+      needsAuth: relevantInstances.filter(i => i.authNeeded && !i.isAuthenticated).map(i => i.name).join(', ')
     });
-    console.log('[Klavis API] =====================================================');
+
     return data.instances;
   } catch (error) {
     console.error('[Klavis API] Error listing active instances:', error);
@@ -152,25 +160,28 @@ async function enrichToolsWithParameters(
     isNewlyEnabled: boolean = false
 ): Promise<McpToolType[]> {
     try {
-        console.log('[Klavis API] Starting tool enrichment:', {
-            serverName,
-            isNewlyEnabled,
-            basicToolCount: basicTools.length,
-            basicTools: basicTools.map(t => t.name)
-        });
-
-        // Fetch full tool details including parameters for this specific server
-        console.log(`[Klavis API] Fetching enriched tools for ${serverName} from MCP...`);
+        console.log(`[Klavis API] Starting tool enrichment for ${serverName}`);
         const enrichedTools = await fetchMcpToolsForServer(projectId, serverName);
         
-        console.log('[Klavis API] Raw MCP tools response:', {
-            serverName,
-            rawResponse: enrichedTools
-        });
+        if (enrichedTools.length === 0) {
+            console.log(`[Klavis API] No tools enriched for ${serverName}`);
+            return basicTools.map(tool => ({
+                id: tool.name,
+                name: tool.name,
+                description: tool.description,
+                parameters: {
+                    type: 'object',
+                    properties: {},
+                    required: []
+                }
+            }));
+        }
+
+        console.log(`[Klavis API] Processing ${enrichedTools.length} tools for ${serverName}`);
 
         // Create a map of enriched tools for this server
         const enrichedToolMap = new Map(
-            enrichedTools.map(t => [t.name, t])
+            enrichedTools.map((t: any) => [t.name, t as RawMcpTool])
         );
 
         // Find tools that couldn't be enriched
@@ -181,38 +192,51 @@ async function enrichToolsWithParameters(
         if (unenrichedTools.length > 0) {
             console.log('[Klavis API] Tools that could not be enriched:', {
                 serverName,
-                unenrichedTools
+                unenrichedTools: unenrichedTools.join(', ')
             });
         }
-
-        console.log('[Klavis API] Tool enrichment results:', {
-            serverName,
-            totalEnrichedTools: enrichedTools.length,
-            serverSpecificTools: enrichedToolMap.size,
-            enrichedToolNames: Array.from(enrichedToolMap.keys())
-        });
 
         // Enrich the basic tools with parameters and descriptions
         const result = basicTools.map(basicTool => {
             const enrichedTool = enrichedToolMap.get(basicTool.name);
+            
+            const parameters = {
+                type: 'object' as const,
+                properties: {} as Record<string, { description: string; type: string }>,
+                required: [] as string[]
+            };
+
+            if (enrichedTool?.inputSchema) {
+                try {
+                    // Parse inputSchema if it's a string
+                    const schema = typeof enrichedTool.inputSchema === 'string' 
+                        ? JSON.parse(enrichedTool.inputSchema)
+                        : enrichedTool.inputSchema;
+                    
+                    parameters.properties = schema.properties || {};
+                    if (schema.required) parameters.required = schema.required;
+                } catch (error) {
+                    console.error('[Klavis API] Error parsing inputSchema:', {
+                        toolName: basicTool.name,
+                        error: error instanceof Error ? error.message : 'Unknown error'
+                    });
+                }
+            }
+
             const tool: McpToolType = {
                 id: basicTool.name,
                 name: basicTool.name,
-                description: enrichedTool?.description || basicTool.description || '', // Use MCP server description if available
-                parameters: {
-                    type: 'object',
-                    properties: enrichedTool?.parameters?.properties || {},
-                    required: enrichedTool?.parameters?.required || []
-                }
+                description: enrichedTool?.description || basicTool.description || '',
+                parameters
             };
             
             return tool;
         });
 
-        console.log('[Klavis API] Enrichment complete:', {
+        console.log('[Klavis API] Tools processed:', {
             serverName,
-            totalTools: result.length,
-            enrichedCount: result.filter(t => enrichedToolMap.has(t.name)).length
+            toolCount: result.length,
+            tools: result.map(t => t.name).join(', ')
         });
 
         return result;
@@ -257,10 +281,7 @@ export async function listAvailableMcpServers(projectId: string): Promise<McpSer
 
         console.log('[Klavis API] Raw server response:', { 
             serverCount: rawData.servers.length,
-            servers: rawData.servers.map(s => ({
-                name: s.name,
-                toolCount: s.tools?.length || 0
-            }))
+            servers: rawData.servers.map(s => s.name).join(', ')
         });
         
         if (!rawData || !rawData.servers || !Array.isArray(rawData.servers)) {
@@ -282,11 +303,8 @@ export async function listAvailableMcpServers(projectId: string): Promise<McpSer
             activeInstances = instancesData.instances;
             console.log('[Klavis API] Active instances:', {
                 count: activeInstances.length,
-                instances: activeInstances.map(i => ({
-                    name: i.name,
-                    isAuthenticated: i.isAuthenticated,
-                    authNeeded: i.authNeeded
-                }))
+                authenticated: activeInstances.filter(i => i.isAuthenticated).map(i => i.name).join(', '),
+                needsAuth: activeInstances.filter(i => i.authNeeded && !i.isAuthenticated).map(i => i.name).join(', ')
             });
         } catch (error) {
             console.error('[Klavis API] Failed to fetch user instances:', error);
@@ -322,14 +340,7 @@ export async function listAvailableMcpServers(projectId: string): Promise<McpSer
             // Only use MongoDB data for eligible servers
             if (isEligible) {
                 eligibleCount++;
-                console.log('[Klavis API] Processing eligible server:', {
-                    serverName: server.name,
-                    isActive,
-                    isAuthenticated,
-                    authNeeded,
-                    hasMongodbData: !!mongodbServer,
-                    mongoToolCount: mongodbServer?.tools.length || 0
-                });
+                console.log('[Klavis API] Processing server:', server.name);
 
                 // Use MongoDB data if available
                 availableTools = mongodbServer?.availableTools || basicTools;
@@ -418,179 +429,120 @@ async function getServerInstance(instanceId: string): Promise<{
   return await klavisApiCall(endpoint);
 }
 
-export async function updateProjectServers(projectId: string): Promise<void> {
-  try {
-    await projectAuthCheck(projectId);
-    
-    console.log('[Auth] Starting server data update after OAuth:', { projectId });
-
-    // Get current MongoDB data
-    const project = await projectsCollection.findOne({ _id: projectId });
-    if (!project) {
-      console.error('[Auth] Project not found in MongoDB:', { projectId });
-      throw new Error("Project not found");
-    }
-
-    const mcpServers = project.mcpServers || [];
-    console.log('[Auth] Current MongoDB servers:', {
-      serverCount: mcpServers.length,
-      servers: mcpServers.map(s => ({
-        name: s.name,
-        isActive: s.isActive,
-        isReady: s.isReady,
-        isAuthenticated: s.isAuthenticated,
-        authNeeded: s.authNeeded,
-        serverUrl: s.serverUrl
-      }))
-    });
-    
-    // Get active instances to find auth status
-    console.log('[Auth] Fetching active instances...');
-    const instances = await listActiveServerInstances(projectId);
-    console.log('[Auth] Active instances:', {
-      count: instances.length,
-      instances: instances.map(i => ({
-        name: i.name,
-        id: i.id,
-        isAuthenticated: i.isAuthenticated,
-        authNeeded: i.authNeeded
-      }))
-    });
-    
-    // For each active instance, get its current status
-    for (const instance of instances) {
-      if (!instance.id) {
-        console.warn('[Auth] Instance missing ID:', { instanceName: instance.name });
-        continue;
-      }
-
-      try {
-        console.log('[Auth] Getting fresh instance data:', { 
-          instanceName: instance.name,
-          instanceId: instance.id 
-        });
+export async function updateProjectServers(projectId: string, targetServerName?: string): Promise<void> {
+    try {
+        await projectAuthCheck(projectId);
         
-        // Get fresh instance data
-        const serverInstance = await getServerInstance(instance.id);
-        console.log('[Auth] Server instance data:', {
-          name: instance.name,
-          authNeeded: serverInstance.authNeeded,
-          isAuthenticated: serverInstance.isAuthenticated,
-          serverUrl: serverInstance.serverUrl
-        });
-        
-        // Find this server in MongoDB
-        const serverIndex = mcpServers.findIndex(s => s.name === instance.name);
-        console.log('[Auth] MongoDB server lookup:', {
-          name: instance.name,
-          found: serverIndex >= 0,
-          index: serverIndex
-        });
-        
-        // Update server readiness based on auth status
-        const isReady = !serverInstance.authNeeded || serverInstance.isAuthenticated;
-        console.log('[Auth] Server readiness check:', {
-          name: instance.name,
-          isReady,
-          authNeeded: serverInstance.authNeeded,
-          isAuthenticated: serverInstance.isAuthenticated
-        });
-        
-        if (serverIndex >= 0) {
-          // Update existing server
-          const updatedServer = {
-            ...mcpServers[serverIndex],
-            isAuthenticated: serverInstance.isAuthenticated,
-            isReady: isReady
-          };
+        console.log('[Auth] Starting server data update:', { projectId, targetServerName });
 
-          console.log('[Auth] Updating existing server in MongoDB:', {
-            name: instance.name,
-            oldAuth: mcpServers[serverIndex].isAuthenticated,
-            newAuth: serverInstance.isAuthenticated,
-            oldReady: mcpServers[serverIndex].isReady,
-            newReady: isReady
-          });
-
-          mcpServers[serverIndex] = updatedServer;
-
-          // If server is now ready and has no tools, try to enrich them
-          if (isReady && (!updatedServer.tools || updatedServer.tools.length === 0)) {
-            try {
-              console.log(`[Auth] Enriching tools for newly authenticated server ${instance.name}`);
-              const enrichedTools = await enrichToolsWithParameters(
-                projectId,
-                instance.name,
-                updatedServer.availableTools || [],
-                true
-              );
-
-              if (enrichedTools.length > 0) {
-                updatedServer.availableTools = enrichedTools;
-                await batchAddTools(projectId, instance.name, enrichedTools);
-              }
-            } catch (enrichError) {
-              console.error(`[Auth] Tool enrichment failed for ${instance.name}:`, enrichError);
-            }
-          }
+        // Get current MongoDB data
+        const project = await projectsCollection.findOne({ _id: projectId });
+        if (!project) {
+            console.error('[Auth] Project not found in MongoDB:', { projectId });
+            throw new Error("Project not found");
         }
-      } catch (error) {
-        console.error('[Auth] Error updating server instance:', {
-          instanceId: instance.id,
-          instanceName: instance.name,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
+
+        const mcpServers = project.mcpServers || [];
+        
+        // Get active instances to find auth status
+        const instances = await listActiveServerInstances(projectId);
+        
+        // If targetServerName is provided, only process that server
+        const instancesToProcess = targetServerName 
+            ? instances.filter(i => i.name === targetServerName)
+            : instances;
+        
+        // For each active instance, get its current status
+        for (const instance of instancesToProcess) {
+            if (!instance.id) continue;
+
+            try {
+                // Get fresh instance data
+                const serverInstance = await getServerInstance(instance.id);
+                
+                // Find this server in MongoDB
+                const serverIndex = mcpServers.findIndex(s => s.name === instance.name);
+                if (serverIndex === -1) continue;
+                
+                // Update server readiness based on auth status
+                const isReady = !serverInstance.authNeeded || serverInstance.isAuthenticated;
+                
+                // Update existing server
+                const updatedServer = {
+                    ...mcpServers[serverIndex],
+                    isAuthenticated: serverInstance.isAuthenticated,
+                    isReady
+                };
+                mcpServers[serverIndex] = updatedServer;
+
+                // If server is now ready and has no tools, try to enrich them
+                if (isReady && (!updatedServer.tools || updatedServer.tools.length === 0)) {
+                    try {
+                        console.log(`[Auth] Enriching tools for ${instance.name}`);
+                        const enrichedTools = await enrichToolsWithParameters(
+                            projectId,
+                            instance.name,
+                            updatedServer.availableTools || [],
+                            true
+                        );
+
+                        if (enrichedTools.length > 0) {
+                            console.log(`[Auth] Writing ${enrichedTools.length} tools to DB for ${instance.name}`);
+                            updatedServer.availableTools = enrichedTools;
+                            await batchAddTools(projectId, instance.name, enrichedTools);
+                        }
+                    } catch (enrichError) {
+                        console.error(`[Auth] Tool enrichment failed for ${instance.name}:`, enrichError);
+                    }
+                }
+            } catch (error) {
+                console.error(`[Auth] Error updating ${instance.name}:`, error);
+            }
+        }
+
+        // Update MongoDB with new server data
+        await projectsCollection.updateOne(
+            { _id: projectId },
+            { $set: { mcpServers } }
+        );
+        console.log('[Auth] MongoDB update completed');
+    } catch (error) {
+        console.error('[Auth] Error updating server data:', error);
+        throw error;
     }
-
-    // Update MongoDB with new server data
-    console.log('[Auth] Updating MongoDB with new server data:', {
-      serverCount: mcpServers.length,
-      servers: mcpServers.map(s => ({
-        name: s.name,
-        isActive: s.isActive,
-        isReady: s.isReady,
-        isAuthenticated: s.isAuthenticated
-      }))
-    });
-
-    await projectsCollection.updateOne(
-      { _id: projectId },
-      { $set: { mcpServers } }
-    );
-    console.log('[Auth] MongoDB update completed successfully');
-  } catch (error) {
-    console.error('[Auth] Error updating server data:', {
-      projectId,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-    throw error;
-  }
 }
 
 async function batchAddTools(projectId: string, serverName: string, tools: McpToolType[]): Promise<void> {
-    console.log(`[Klavis API] Batch adding ${tools.length} tools for ${serverName}`);
+    console.log(`[Klavis API] Writing ${tools.length} tools to ${serverName}`);
     
+    const toolsToWrite = tools.map(tool => ({
+        id: tool.id,
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters || {
+            type: 'object',
+            properties: {},
+            required: []
+        }
+    }));
+
+    console.log('[Klavis API] DB Write - batchAddTools:', {
+        serverName,
+        toolCount: tools.length,
+        tools: tools.map(t => t.name).join(', ')
+    });
+
     // Update MongoDB in a single operation
     await projectsCollection.updateOne(
         { _id: projectId, "mcpServers.name": serverName },
         { 
             $set: { 
-                "mcpServers.$.tools": tools.map(tool => ({
-                    id: tool.id,
-                    name: tool.name,
-                    description: tool.description,
-                    parameters: tool.parameters || {
-                        type: 'object',
-                        properties: {},
-                        required: []
-                    }
-                }))
+                "mcpServers.$.tools": toolsToWrite
             }
         }
     );
     
-    console.log(`[Klavis API] Successfully added ${tools.length} tools to ${serverName}`);
+    console.log(`[Klavis API] Tools written to ${serverName}`);
 }
 
 export async function enableServer(
@@ -666,16 +618,16 @@ export async function enableServer(
 
             // Try to enrich tools regardless of auth status
             try {
-                console.log(`[Klavis API] Enriching tools for newly enabled server ${serverName}`);
+                console.log(`[Klavis API] Enriching tools for ${serverName}`);
                 const enrichedTools = await enrichToolsWithParameters(
                     projectId,
                     serverName,
                     basicTools,
-                    true // isNewlyEnabled = true
+                    true
                 );
 
                 if (enrichedTools.length > 0) {
-                    // Update server with enriched tools
+                    console.log(`[Klavis API] Writing ${enrichedTools.length} tools to DB for ${serverName}`);
                     await projectsCollection.updateOne(
                         { _id: projectId, "mcpServers.name": serverName },
                         { 
@@ -685,8 +637,8 @@ export async function enableServer(
                         }
                     );
 
-                    // For auth-needed servers, we'll still write the tools but they won't be usable until auth
                     await batchAddTools(projectId, serverName, enrichedTools);
+                    console.log(`[Klavis API] Successfully wrote tools for ${serverName}`);
                 }
             } catch (enrichError) {
                 console.error(`[Klavis API] Tool enrichment failed for ${serverName}:`, enrichError);
@@ -729,6 +681,8 @@ export async function deleteMcpServerInstance(
   projectId: string,
 ): Promise<void> {
   try {
+    await projectAuthCheck(projectId);
+
     console.log('[Klavis API] Deleting instance:', { instanceId });
     
     const endpoint = `/mcp-server/instance/delete/${instanceId}`;
@@ -769,4 +723,124 @@ export async function deleteMcpServerInstance(
     console.error('[Klavis API] Error deleting instance:', error);
     throw error;
   }
+}
+
+// Server name to URL parameter mapping
+const SERVER_URL_PARAMS: Record<string, string> = {
+  'Google Calendar': 'gcalendar',
+  'Google Drive': 'gdrive',
+  'Google Docs': 'gdocs',
+  'Google Sheets': 'gsheets',
+};
+
+// Server name to environment variable mapping for client IDs
+const SERVER_CLIENT_ID_MAP: Record<string, string | undefined> = {
+  'GitHub': process.env.KLAVIS_GITHUB_CLIENT_ID,
+  'Google Calendar': process.env.KLAVIS_GOOGLE_CLIENT_ID,
+  'Google Drive': process.env.KLAVIS_GOOGLE_CLIENT_ID,
+  'Google Docs': process.env.KLAVIS_GOOGLE_CLIENT_ID,
+  'Google Sheets': process.env.KLAVIS_GOOGLE_CLIENT_ID,
+  'Slack': process.env.KLAVIS_SLACK_ID,
+};
+
+export async function generateServerAuthUrl(
+  serverName: string,
+  projectId: string,
+  instanceId: string,
+): Promise<string> {
+  try {
+    await projectAuthCheck(projectId);
+
+    // Get the origin from request headers
+    const headersList = headers();
+    const host = headersList.get('host') || '';
+    const protocol = headersList.get('x-forwarded-proto') || 'http';
+    const origin = `${protocol}://${host}`;
+
+    // Get the URL parameter for this server
+    const serverUrlParam = SERVER_URL_PARAMS[serverName] || serverName.toLowerCase();
+
+    // Build base params
+    const params: Record<string, string> = {
+      instance_id: instanceId,
+      redirect_url: `${origin}/projects/${projectId}/tools/oauth/callback`
+    };
+
+    // Add client_id if available for this server
+    const clientId = SERVER_CLIENT_ID_MAP[serverName];
+    if (clientId) {
+      params.client_id = clientId;
+    }
+
+    let authUrl = `${KLAVIS_BASE_URL}/oauth/${serverUrlParam}/authorize?${new URLSearchParams(params).toString()}`
+    console.log('authUrl', authUrl);
+
+    return authUrl;
+  } catch (error) {
+    console.error('[Klavis API] Error generating auth URL:', error);
+    throw error;
+  }
+}
+
+export async function syncServerTools(projectId: string, serverName: string): Promise<void> {
+    try {
+        await projectAuthCheck(projectId);
+        
+        console.log('[Klavis API] Starting server tool sync:', { projectId, serverName });
+        
+        // Get enriched tools from MCP
+        const enrichedTools = await fetchMcpToolsForServer(projectId, serverName);
+        console.log('[Klavis API] Received enriched tools:', {
+            serverName,
+            toolCount: enrichedTools.length
+        });
+
+        // Convert enriched tools to the correct format
+        const formattedTools = enrichedTools.map(tool => {
+            return {
+                id: tool.name,
+                name: tool.name,
+                description: tool.description,
+                parameters: {
+                    type: 'object' as const,
+                    properties: tool.parameters?.properties || {},
+                    required: tool.parameters?.required || []
+                }
+            };
+        });
+
+        // First verify the server exists
+        const project = await projectsCollection.findOne({ _id: projectId });
+        if (!project) {
+            throw new Error(`Project ${projectId} not found`);
+        }
+        const server = project.mcpServers?.find(s => s.name === serverName);
+        if (!server) {
+            throw new Error(`Server ${serverName} not found in project ${projectId}`);
+        }
+
+        // Update MongoDB with enriched tools
+        const updateResult = await projectsCollection.updateOne(
+            { _id: projectId, "mcpServers.name": serverName },
+            { 
+                $set: { 
+                    "mcpServers.$.availableTools": formattedTools,
+                    "mcpServers.$.tools": formattedTools // Also update selected tools to match
+                }
+            }
+        );
+
+        console.log('[Klavis API] Tools synced:', {
+            serverName,
+            toolCount: formattedTools.length,
+            success: updateResult.modifiedCount > 0
+        });
+
+    } catch (error) {
+        console.error('[Klavis API] Error syncing server tools:', {
+            serverName,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
+        throw error;
+    }
 }

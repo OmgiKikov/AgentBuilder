@@ -8,7 +8,9 @@ import { clsx } from 'clsx';
 import { 
   listAvailableMcpServers,
   enableServer,
-  updateProjectServers
+  updateProjectServers,
+  generateServerAuthUrl,
+  syncServerTools
 } from '@/app/actions/klavis_actions';
 import { toggleMcpTool, fetchMcpToolsForServer } from '@/app/actions/mcp_actions';
 import { z } from 'zod';
@@ -114,6 +116,8 @@ export function HostedServers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showOnlyEnabled, setShowOnlyEnabled] = useState(false);
+  const [showOnlyReady, setShowOnlyReady] = useState(false);
   const [toggleError, setToggleError] = useState<{serverId: string; message: string} | null>(null);
   const [enabledServers, setEnabledServers] = useState<Set<string>>(new Set());
   const [togglingServers, setTogglingServers] = useState<Set<string>>(new Set());
@@ -301,7 +305,10 @@ export function HostedServers() {
 
   const handleAuthenticate = async (server: McpServerType) => {
     try {
-      const authUrl = `https://api.klavis.ai/oauth/${server.name.toLowerCase()}/authorize?instance_id=${server.instanceId}&redirect_url=${window.location.origin}/projects/${projectId}/tools/oauth/callback`;
+      if (!server.instanceId) {
+        throw new Error('Server instance ID not found');
+      }
+      const authUrl = await generateServerAuthUrl(server.name, projectId, server.instanceId);
       const authWindow = window.open(
         authUrl,
         '_blank',
@@ -320,7 +327,7 @@ export function HostedServers() {
                 return next;
               });
               
-              await updateProjectServers(projectId);
+              await updateProjectServers(projectId, server.name);
               
               const response = await listAvailableMcpServers(projectId);
               if (response.data) {
@@ -422,46 +429,28 @@ export function HostedServers() {
         next.add(server.name);
         return next;
       });
-      const enrichedTools = await fetchMcpToolsForServer(projectId, server.name);
-      
-      setServers(prevServers => {
-        return prevServers.map(s => {
-          if (s.name === server.name) {
-            const updatedAvailableTools = (s.availableTools || []).map(originalTool => {
-              const enrichedTool = enrichedTools.find(t => t.name === originalTool.name);
-              return enrichedTool ? {
-                ...originalTool,
-                description: enrichedTool.description,
-                parameters: enrichedTool.parameters
-              } : originalTool;
-            });
-            
-            return {
-              ...s,
-              availableTools: updatedAvailableTools
-            };
-          }
-          return s;
-        });
-      });
 
-      if (selectedServer?.name === server.name) {
-        setSelectedServer(prev => {
-          if (!prev) return null;
-          const updatedAvailableTools = (prev.availableTools || []).map(originalTool => {
-            const enrichedTool = enrichedTools.find(t => t.name === originalTool.name);
-            return enrichedTool ? {
-              ...originalTool,
-              description: enrichedTool.description,
-              parameters: enrichedTool.parameters
-            } : originalTool;
+      // Call the server action to sync and update DB
+      await syncServerTools(projectId, server.name);
+      
+      // Refresh the server list to get updated data
+      const response = await listAvailableMcpServers(projectId);
+      if (response.data) {
+        const updatedServer = response.data.find(s => s.name === server.name);
+        if (updatedServer) {
+          setServers(prevServers => {
+            return prevServers.map(s => {
+              if (s.name === server.name) {
+                return { ...updatedServer, serverType: 'hosted' as const };
+              }
+              return s;
+            });
           });
-          
-          return {
-            ...prev,
-            availableTools: updatedAvailableTools
-          };
-        });
+
+          if (selectedServer?.name === server.name) {
+            setSelectedServer({ ...updatedServer, serverType: 'hosted' as const });
+          }
+        }
       }
     } finally {
       setSyncingServers(prev => {
@@ -475,14 +464,24 @@ export function HostedServers() {
   const filteredServers = sortServers(servers.filter(server => {
     const searchLower = searchQuery.toLowerCase();
     const serverTools = server.tools || [];
-    return (
+    
+    // Search text filter
+    const matchesSearch = 
       server.name.toLowerCase().includes(searchLower) ||
       server.description.toLowerCase().includes(searchLower) ||
       serverTools.some(tool => 
         tool.name.toLowerCase().includes(searchLower) ||
         tool.description.toLowerCase().includes(searchLower)
-      )
-    );
+      );
+
+    // Enabled servers filter
+    const matchesEnabled = !showOnlyEnabled || server.isActive;
+
+    // Ready to use filter (server is active and either doesn't need auth or is already authenticated)
+    const isReady = server.isActive && (!server.authNeeded || server.isAuthenticated);
+    const matchesReady = !showOnlyReady || isReady;
+
+    return matchesSearch && matchesEnabled && matchesReady;
   }));
 
   if (loading) {
@@ -519,9 +518,57 @@ export function HostedServers() {
 
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-2 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+          <div className="flex-1 flex items-center gap-4">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-2 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search servers or tools..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md 
+                  bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 
+                  placeholder-gray-400 dark:placeholder-gray-500
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
+                  hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+              />
+            </div>
+            <div className="flex items-center gap-8">
+              <div className="group relative flex items-center gap-1">
+                <label className="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300">
+                  <Checkbox
+                    isSelected={showOnlyEnabled}
+                    onValueChange={setShowOnlyEnabled}
+                    size="sm"
+                  />
+                  Enabled Only
+                </label>
+                <div className="relative">
+                  <Info className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 cursor-help ml-1" />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap shadow-lg">
+                    Shows only servers that are currently toggled ON
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative flex items-center gap-1">
+                <label className="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300">
+                  <Checkbox
+                    isSelected={showOnlyReady}
+                    onValueChange={setShowOnlyReady}
+                    size="sm"
+                  />
+                  Ready to Use
+                </label>
+                <div className="relative">
+                  <Info className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 cursor-help ml-1" />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap shadow-lg">
+                    Shows only servers that are enabled and fully authenticated
+                  </div>
+                </div>
+              </div>
             </div>
             <input
               type="text"
@@ -534,6 +581,7 @@ export function HostedServers() {
                 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
                 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
             />
+
           </div>
           <Button
             size="sm"

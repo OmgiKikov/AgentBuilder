@@ -8,6 +8,20 @@ export const McpToolInputSchema = z.object({
     properties: z.record(z.object({
         type: z.string(),
         description: z.string(),
+        enum: z.array(z.any()).optional(),
+        default: z.any().optional(),
+        minimum: z.number().optional(),
+        maximum: z.number().optional(),
+        items: z.any().optional(),  // For array types
+        format: z.string().optional(),
+        pattern: z.string().optional(),
+        minLength: z.number().optional(),
+        maxLength: z.number().optional(),
+        minItems: z.number().optional(),
+        maxItems: z.number().optional(),
+        uniqueItems: z.boolean().optional(),
+        multipleOf: z.number().optional(),
+        examples: z.array(z.any()).optional(),
     })).default({}),
     required: z.array(z.string()).default([]),
 });
