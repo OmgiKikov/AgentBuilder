@@ -88,7 +88,7 @@ const ErrorBanner = ({ onRetry }: { onRetry: () => void }) => (
       <div className="flex items-center gap-3">
         <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
         <p className="text-sm text-red-700 dark:text-red-300">
-          Unable to load hosted tools. Please check your connection and try again. If the problem persists, contact us on Discord.
+          Не удалось загрузить инструменты. Пожалуйста, проверьте ваше соединение и попробуйте снова. Если проблема не решается, свяжитесь с нами.
         </p>
       </div>
       <Button
@@ -130,7 +130,7 @@ export function HostedServers() {
       const response = await listAvailableMcpServers(projectId || "");
       
       if (response.error || !response.data) {
-        setError('No hosted tools found. Make sure to set your Klavis API key. Contact us on discord if you\'re still unable to see hosted tools.');
+        setError('No hosted tools found. Make sure to set your Klavis API key. Contact us at support@rowboatlabs.com if you\'re still unable to see hosted tools.');
         return;
       }
       
@@ -143,7 +143,7 @@ export function HostedServers() {
       setServers(serversWithType);
       setError(null);
     } catch (err: any) {
-      setError('No hosted tools found. Make sure to set your Klavis API key. Contact us on discord if you\'re still unable to see hosted tools.');
+      setError('No hosted tools found. Make sure to set your Klavis API key. Contact us at support@rowboatlabs.com if you\'re still unable to see hosted tools.');
       console.error('Error fetching servers:', err);
       setServers([]);
     } finally {
@@ -281,7 +281,7 @@ export function HostedServers() {
         });
         setToggleError({
           serverId: serverKey,
-          message: "We're having trouble setting up this server. Please reach out on discord."
+          message: "We're having trouble setting up this server. Please reach out at support@rowboatlabs.com."
         });
       }
     } finally {

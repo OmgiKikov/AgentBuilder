@@ -1,24 +1,24 @@
 # Using the Python SDK
 
-This is a guide on using the RowBoat Python SDK as an alternative to the [RowBoat HTTP API](/using_the_api) to power conversations with the assistant created in Studio.
+This is a guide on using the AgentBuilder Python SDK as an alternative to the [AgentBuilder HTTP API](/using_the_api) to power conversations with the assistant created in Studio.
 
 ## Prerequisites
-- ``` pip install rowboat ```
+- ``` pip install AgentBuilder ```
 - [Deploy your assistant to production](/using_the_api/#deploy-your-assistant-to-production-on-studio)
 - [Obtain your `<API_KEY>` and `<PROJECT_ID>`](/using_the_api/#obtain-api-key-and-project-id)
 
 ### API Host
 - For the open source installation, the `<HOST>` is [http://localhost:3000](http://localhost:3000)
-- When using the hosted app, the `<HOST>` is [https://app.rowboatlabs.com](https://app.rowboatlabs.com)
+- When using the hosted app, the `<HOST>` is [https://app.AgentBuilderlabs.com](https://app.AgentBuilderlabs.com)
 
 ## Usage
 
 ### Basic Usage with StatefulChat
 
-The easiest way to interact with Rowboat is using the `StatefulChat` class, which maintains conversation state automatically:
+The easiest way to interact with AgentBuilder is using the `StatefulChat` class, which maintains conversation state automatically:
 
 ```python
-from rowboat import Client, StatefulChat
+from AgentBuilder import Client, StatefulChat
 
 # Initialize the client
 client = Client(
@@ -74,7 +74,7 @@ chat = StatefulChat(
 For more control over the conversation, you can use the `Client` class directly:
 
 ```python
-from rowboat.schema import UserMessage
+from AgentBuilder.schema import UserMessage
 
 # Initialize the client
 client = Client(

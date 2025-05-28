@@ -56,7 +56,7 @@ export function HelpModal({ isOpen, onClose, onStartTour }: HelpModalProps) {
                     </a>
 
                     <a 
-                        href="https://discord.gg/gtbGcqF4"
+                        href="mailto:johnkikov01@gmail.com"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="block"
@@ -68,10 +68,10 @@ export function HelpModal({ isOpen, onClose, onStartTour }: HelpModalProps) {
                             <div className="bg-indigo-100 dark:bg-indigo-500/20 p-2 rounded-lg group-hover:bg-indigo-200 dark:group-hover:bg-indigo-500/30 transition-colors">
                                 <MessageCircle className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                             </div>
-                            <div>
-                                <div className="font-medium text-base text-gray-900 dark:text-gray-100">Присоединиться к Discord</div>
+                            <div>   
+                                <div className="font-medium text-base text-gray-900 dark:text-gray-100">Связаться с нами</div>
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                                    Получите помощь от сообщества
+                                    Получите помощь от нашей команды
                                 </div>
                             </div>
                         </Button>

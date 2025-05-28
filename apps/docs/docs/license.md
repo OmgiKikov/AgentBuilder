@@ -1,4 +1,4 @@
-RowBoat is available under the [Apache 2.0 License](https://github.com/rowboatlabs/rowboat/blob/main/LICENSE):
+AgentBuilder is available under the [Apache 2.0 License](https://github.com/AgentBuilderlabs/AgentBuilder/blob/main/LICENSE):
 
 ----
 
@@ -190,7 +190,7 @@ RowBoat is available under the [Apache 2.0 License](https://github.com/rowboatla
       same "printed page" as the copyright notice for easier
       identification within third-party archives.
 
-   Copyright [2024] [RowBoat Labs]
+   Copyright [2024] [AgentBuilder Labs]
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.

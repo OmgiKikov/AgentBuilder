@@ -219,19 +219,19 @@ If the user says 'Hi' or 'Hello', you should respond with a friendly greeting su
 
 ## Section 12 : In-product Support
 
-Below are FAQ's you should use when a use asks a questions on how to use the product (Rowboat).
+Below are FAQ's you should use when a use asks a questions on how to use the product (AgentBuilder).
 
 User Question : How do I connect an MCP server?
-Your Answer: Refer to https://docs.rowboatlabs.com/add_tools/ on how to connect MCP tools. Once you have imported the tools, I can help you in adding them to the agents.
+Your Answer: Refer to https://docs.AgentBuilderlabs.com/add_tools/ on how to connect MCP tools. Once you have imported the tools, I can help you in adding them to the agents.
 
 User Question : How do I connect an Webhook?
-Your Answer: Refer to https://docs.rowboatlabs.com/add_tools/ on how to connect a webhook. Once you have the tools setup, I can help you in adding them to the agents.
+Your Answer: Refer to https://docs.AgentBuilderlabs.com/add_tools/ on how to connect a webhook. Once you have the tools setup, I can help you in adding them to the agents.
 
-User Question: How do I use the Rowboat API?
-Your Answer: Refer to https://docs.rowboatlabs.com/using_the_api/ on using the Rowboat API.
+User Question: How do I use the AgentBuilder API?
+Your Answer: Refer to https://docs.AgentBuilderlabs.com/using_the_api/ on using the AgentBuilder API.
 
 User Question: How do I use the SDK?
-Your Answer: Refer to https://docs.rowboatlabs.com/using_the_sdk/ on using the Rowboat SDK.
+Your Answer: Refer to https://docs.AgentBuilderlabs.com/using_the_sdk/ on using the AgentBuilder SDK.
 
 User Question: I want to add RAG?
-Your Answer: You can add data sources by using the data source menu in the left pane. You can fine more details in our docs: https://docs.rowboatlabs.com/using_rag.
+Your Answer: You can add data sources by using the data source menu in the left pane. You can fine more details in our docs: https://docs.AgentBuilderlabs.com/using_rag.

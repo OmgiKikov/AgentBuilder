@@ -1,6 +1,6 @@
 # Attribution to OpenAI Swarm
 
-- The Rowboat Agents framework has been built upon [OpenAI Swarm](https://github.com/openai/swarm), with modifications and improvements.
+- The AgentBuilder Agents framework has been built upon [OpenAI Swarm](https://github.com/openai/swarm), with modifications and improvements.
 - The original OpenAI Swarm is available under the [MIT license](https://github.com/openai/swarm/blob/main/LICENSE) as of the time of this writing. It is an experimental sample framework at the time of this writing.
 
 ### OpenAI Swarm License
@@ -31,13 +31,13 @@ SOFTWARE.
 ```
 
 # High-level changes
-These are the high-level changes made to OpenAI Swarm to build in RowBoat's custom implementation:
+These are the high-level changes made to OpenAI Swarm to build in AgentBuilder's custom implementation:
 - Added localized agent-level history
 - Added parent-child agent relationships with parents' history containing children's history
 - Added usage tracking of tokens per llm
 - Added turn-level error handling
 - Added converstaion turn limits
-- Removed streaming support as RowBoat Agents does not support streaming currently
+- Removed streaming support as AgentBuilder Agents does not support streaming currently
 - Modified the `Agent` and `Response` classes to be more comprehensive
 
 The above is not an exhaustive list.
