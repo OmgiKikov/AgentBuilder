@@ -239,30 +239,32 @@ export function ServerCard({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 mt-auto flex-wrap">
+        <div className="flex items-end gap-2 mt-auto flex-wrap">
           {showAuth && server.isActive && server.authNeeded && (
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-col items-start gap-1 mb-0">
               {!server.isAuthenticated && onAuth && (
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={onAuth}
-                  className="text-xs shrink-0"
-                >
-                  <div className="inline-flex items-center">
-                    <Lock className="h-3.5 w-3.5" />
-                    <span className="ml-1.5">Auth</span>
-                  </div>
-                </Button>
+                <>
+                  <span className="text-xs font-medium text-orange-600 dark:text-orange-400 mb-1">
+                    Needs authentication!
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={onAuth}
+                    className="text-xs shrink-0"
+                  >
+                    <div className="inline-flex items-center">
+                      <Lock className="h-3.5 w-3.5" />
+                      <span className="ml-1.5">Auth</span>
+                    </div>
+                  </Button>
+                </>
               )}
-              <div className={clsx(
-                "text-xs py-1 px-2 rounded-full shrink-0",
-                server.isAuthenticated 
-                  ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20"
-                  : "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20"
-              )}>
-                {server.isAuthenticated ? 'Authenticated' : 'Needs Authentication'}
-              </div>
+              {server.isAuthenticated && (
+                <div className="text-xs py-1 px-2 rounded-full shrink-0 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20">
+                  Authenticated
+                </div>
+              )}
             </div>
           )}
           <div className="ml-auto flex items-center gap-2 flex-wrap">
