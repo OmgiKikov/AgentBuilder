@@ -285,7 +285,7 @@ export function HostedServers() {
         });
         setToggleError({
           serverId: serverKey,
-          message: "We're having trouble setting up this server. Please reach out at support@rowboatlabs.com."
+          message: "We're having trouble setting up this server. Please reach out at AgentBuilder"
         });
       }
     } finally {
@@ -488,7 +488,7 @@ export function HostedServers() {
     return (
       <div className="text-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 dark:border-gray-200 mx-auto"></div>
-        <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Loading tools...</p>
+        <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Загрузка инструментов...</p>
       </div>
     );
   }
@@ -525,7 +525,7 @@ export function HostedServers() {
               </div>
               <input
                 type="text"
-                placeholder="Search servers or tools..."
+                placeholder="Поиск серверов или инструментов..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-8 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md 
@@ -543,12 +543,12 @@ export function HostedServers() {
                     onValueChange={setShowOnlyEnabled}
                     size="sm"
                   />
-                  Enabled Only
+                  Только включенные
                 </label>
                 <div className="relative">
                   <Info className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 cursor-help ml-1" />
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap shadow-lg">
-                    Shows only servers that are currently toggled ON
+                    Показывает только серверы, которые сейчас включены
                   </div>
                 </div>
               </div>
@@ -560,28 +560,16 @@ export function HostedServers() {
                     onValueChange={setShowOnlyReady}
                     size="sm"
                   />
-                  Ready to Use
+                  Готовые к использованию
                 </label>
                 <div className="relative">
                   <Info className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 cursor-help ml-1" />
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap shadow-lg">
-                    Shows only servers that are enabled and fully authenticated
+                    Показывает только серверы, которые включены и полностью аутентифицированы
                   </div>
                 </div>
               </div>
             </div>
-            <input
-              type="text"
-              placeholder="Поиск серверов или инструментов..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md 
-                bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 
-                placeholder-gray-400 dark:placeholder-gray-500
-                focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
-                hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
-            />
-
           </div>
           <Button
             size="sm"
