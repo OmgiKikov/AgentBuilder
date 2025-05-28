@@ -77,10 +77,12 @@ async def call_rag_tool(
 
     print(f"Sources: {sources}")
     # Filter sources to those in source_ids
-    valid_source_ids = [
-        str(s["_id"]) for s in sources if str(s["_id"]) in source_ids
-    ]
-
+    valid_source_ids = []
+    for s in sources:
+        # Проверяем совпадение как по ID, так и по имени
+        if str(s["_id"]) in source_ids or s["name"] in source_ids:
+            valid_source_ids.append(str(s["_id"]))
+    
     print(f"Valid source ids: {valid_source_ids}")
     # If no valid sources are found, return empty results
     if not valid_source_ids:

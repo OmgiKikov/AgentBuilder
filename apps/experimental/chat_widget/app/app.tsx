@@ -41,7 +41,7 @@ function ChatWindowHeader({
           }
         }}>
           <DropdownItem key="close">
-            Close chat
+            Закрыть чат
           </DropdownItem>
         </DropdownMenu>
       </Dropdown>}
@@ -72,7 +72,7 @@ function AssistantMessage({
   children: React.ReactNode;
 }) {
   return <div className="flex flex-col gap-1 items-start">
-    <div className="text-gray-800 dark:text-white text-xs pl-2">Assistant</div>
+    <div className="text-gray-800 dark:text-white text-xs pl-2">Ассистент</div>
     <div className="bg-gray-200 rounded-md dark:bg-gray-800 text-gray-800 dark:text-white mr-[20%] rounded-bl-none p-2">
       {typeof children === 'string' ? <MarkdownContent content={children} /> : children}
     </div>
@@ -105,7 +105,7 @@ function ChatWindowMessages({
 
   return <div className="flex flex-col grow p-2 gap-4 overflow-auto">
     <AssistantMessage>
-      Hello! I&apos;m Rowboat, your personal assistant. How can I help you today?
+      Привет! Я AgentBuilder, ваш персональный ассистент. Как я могу помочь вам сегодня?
     </AssistantMessage>
     {messages.map((message, index) => {
       switch (message.role) {
@@ -114,7 +114,7 @@ function ChatWindowMessages({
         case "assistant":
           return <AssistantMessage key={index}>{message.content}</AssistantMessage>;
         case "system":
-          return null; // Hide system messages from the UI
+          return null; // Скрыть системные сообщения из интерфейса
         case "tool":
           return <AssistantMessage key={index}>
             Tool response ({message.tool_name}): {message.content}
@@ -147,7 +147,7 @@ function ChatWindowInput({
 
   return <div className="bg-white rounded-md dark:bg-gray-900 shrink-0 p-2">
     <Textarea
-      placeholder="Ask me anything..."
+      placeholder="Спросите меня что угодно..."
       minRows={1}
       maxRows={3}
       variant="flat"
@@ -199,11 +199,11 @@ function ChatWindowBody({
       handleUserMessage={handleUserMessage}
     />}
     {closed && <div className="flex flex-col items-center py-4 gap-2">
-      <div className="text-gray-800 dark:text-white">This chat is closed</div>
+      <div className="text-gray-800 dark:text-white">Этот чат закрыт</div>
       <Button
         onPress={resetState}
       >
-        Start new chat
+        Начать новый чат
       </Button>
     </div>}
   </div>

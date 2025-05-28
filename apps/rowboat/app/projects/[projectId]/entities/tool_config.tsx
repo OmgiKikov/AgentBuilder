@@ -58,9 +58,9 @@ export function ParameterConfig({
                         size="sm"
                         onClick={() => handleDelete(param.name)}
                         startContent={<XIcon className="w-4 h-4" />}
-                        aria-label={`Remove parameter ${param.name}`}
+                        aria-label={`Удалить параметр ${param.name}`}
                     >
-                        Remove
+                        Удалить
                     </Button>
                 )}
             </div>
@@ -68,7 +68,7 @@ export function ParameterConfig({
             <div className="space-y-4">
                 <div className="space-y-2">
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        Name
+                        Имя
                     </label>
                     <Textarea
                         value={localName}
@@ -78,7 +78,7 @@ export function ParameterConfig({
                                 handleRename(param.name, localName);
                             }
                         }}
-                        placeholder="Enter parameter name..."
+                        placeholder="Введите имя параметра..."
                         disabled={readOnly}
                         className={textareaStyles}
                         autoResize
@@ -87,7 +87,7 @@ export function ParameterConfig({
 
                 <div className="space-y-2">
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        Description
+                        Описание
                     </label>
                     <Textarea
                         value={param.description}
@@ -97,7 +97,7 @@ export function ParameterConfig({
                                 description: e.target.value
                             });
                         }}
-                        placeholder="Describe this parameter..."
+                        placeholder="Опишите этот параметр..."
                         disabled={readOnly}
                         className={textareaStyles}
                         autoResize
@@ -106,7 +106,7 @@ export function ParameterConfig({
 
                 <div className="space-y-2">
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        Type
+                        Тип
                     </label>
                     <Select
                         variant="bordered"
@@ -141,7 +141,7 @@ export function ParameterConfig({
                     isDisabled={readOnly}
                 >
                     <span className="text-sm text-gray-500 dark:text-gray-400">
-                        Required parameter
+                        Обязательный параметр
                     </span>
                 </Checkbox>
             </div>
@@ -254,7 +254,7 @@ export function ToolConfig({
 
     function validateToolName(value: string) {
         if (value.length === 0) {
-            return "Name cannot be empty";
+            return "Имя не может быть пустым";
         }
         return null;
     }
@@ -322,7 +322,7 @@ export function ToolConfig({
                         size="sm"
                         onClick={handleClose}
                         showHoverContent={true}
-                        hoverContent="Close"
+                        hoverContent="Закрыть"
                     >
                         <XIcon className="w-4 h-4" />
                     </Button>
@@ -334,7 +334,7 @@ export function ToolConfig({
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <label className={sectionHeaderStyles}>
-                                Name
+                                Имя
                             </label>
                             <div className={clsx(
                                 "border rounded-lg focus-within:ring-2",
@@ -357,7 +357,7 @@ export function ToolConfig({
                                             name: value
                                         });
                                     }}
-                                    placeholder="Enter tool name..."
+                                    placeholder="Введите имя инструмента..."
                                     className="w-full text-sm bg-transparent focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 transition-colors px-4 py-3"
                                     autoResize
                                 />
@@ -372,7 +372,7 @@ export function ToolConfig({
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <label className={sectionHeaderStyles}>
-                            Description
+                            Описание
                         </label>
                         <Textarea
                             value={tool.description}
@@ -380,7 +380,7 @@ export function ToolConfig({
                                 ...tool,
                                 description: e.target.value
                             })}
-                            placeholder="Describe what this tool does..."
+                            placeholder="Опишите, что делает этот инструмент..."
                             disabled={isReadOnly}
                             className={textareaStyles}
                             autoResize
@@ -391,7 +391,7 @@ export function ToolConfig({
                 {!isReadOnly && (
                     <div className="space-y-4">
                         <label className={sectionHeaderStyles}>
-                            Tool Mode
+                            Режим инструмента
                         </label>
                         
                         <RadioGroup
@@ -415,7 +415,7 @@ export function ToolConfig({
                                     label: "text-base font-normal text-gray-900 dark:text-gray-100 px-3 py-1"
                                 }}
                             >
-                                Mock tool responses
+                                Мок-ответы инструмента
                             </Radio>
                             <Radio 
                                 value="api"
@@ -424,7 +424,7 @@ export function ToolConfig({
                                     label: "text-base font-normal text-gray-900 dark:text-gray-100 px-3 py-1"
                                 }}
                             >
-                                Connect tool to your API
+                                Подключить инструмент к API
                             </Radio>
                         </RadioGroup>
                     </div>
@@ -434,7 +434,7 @@ export function ToolConfig({
                     <div className={`space-y-4 ${dividerStyles} pt-6`}>
                         <div className="space-y-4">
                             <label className={sectionHeaderStyles}>
-                                Mock Settings
+                                Настройки мок-ответов
                             </label>
                             <div className="pl-3 space-y-4">
                                 <Checkbox
@@ -446,7 +446,7 @@ export function ToolConfig({
                                     })}
                                 >
                                     <span className="text-sm text-gray-600 dark:text-gray-300">
-                                        Automatically send mock response in chat
+                                        Автоматически отправлять мок-ответ в чат
                                     </span>
                                 </Checkbox>
 
@@ -456,7 +456,7 @@ export function ToolConfig({
                                         ...tool,
                                         mockInstructions: e.target.value
                                     })}
-                                    placeholder="Describe the response the mock tool should return..."
+                                    placeholder="Опишите ответ, который должен вернуть мок-инструмент..."
                                     className={textareaStyles}
                                     autoResize
                                 />
@@ -467,7 +467,7 @@ export function ToolConfig({
 
                 <div className={`space-y-4 ${dividerStyles} pt-6`}>
                     <label className={sectionHeaderStyles}>
-                        Parameters
+                        Параметры
                     </label>
                     <div className="pl-3 space-y-3">
                         {renderParameters()}
@@ -500,7 +500,7 @@ export function ToolConfig({
                                 }}
                                 className="hover:bg-indigo-100 dark:hover:bg-indigo-900 hover:shadow-indigo-500/20 dark:hover:shadow-indigo-400/20 hover:shadow-lg transition-all"
                             >
-                                Add Parameter
+                                Добавить параметр
                             </Button>
                         </div>
                     )}

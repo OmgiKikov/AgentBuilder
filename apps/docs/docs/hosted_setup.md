@@ -1,18 +1,18 @@
 # Using the Hosted App
 
-- This is the developers guide to self-hosting the open-source version of RowBoat.
+- This is the developers guide to self-hosting the open-source version of AgentBuilder.
 - Please see our [Introduction](/) page before referring to this guide.
-- For direct installation steps, please head to the README of RowBoat's Github repo: [@rowboatlabs/rowboat](https://github.com/rowboatlabs/rowboat/). This page provides more context about the installation process and the different components involved. 
+- For direct installation steps, please head to the README of AgentBuilder's Github repo: [@AgentBuilderlabs/AgentBuilder](https://github.com/AgentBuilderlabs/AgentBuilder/). This page provides more context about the installation process and the different components involved. 
 
 ## Overview
 
-RowBoat's codebase has three main components:
+AgentBuilder's codebase has three main components:
 
 | Component | Description |
 |--------------|---------------|
 | **Agents** | Python framework responsible for carrying out multi-agent conversations |
-| **Copilot** | Python framework powering the copilot in RowBoat Studio |
-| **RowBoat** | Frontend and backend services to power RowBoat Studio and Chat APIs |
+| **Copilot** | Python framework powering the copilot in AgentBuilder Studio |
+| **AgentBuilder** | Frontend and backend services to power AgentBuilder Studio and Chat APIs |
 
 These components are structured as separate services, each containerized with Docker. Running `docker-compose up --build` enables you to use the Studio in your browser, as well as stands up the APIs and SDK. 
 
@@ -26,11 +26,11 @@ All of these prerequistes have open-source or free versions.
 | **MongoDB** | Stores workflow versions, chats and RAG embeddings |
 | **Auth0 Account** | Handles user authentication and identity management for Studio |
 
-Refer to our [Github Readme for Prerequisites](https://github.com/rowboatlabs/rowboat/?tab=readme-ov-file#prerequisites) to set up prerequisites.
+Refer to our [Github Readme for Prerequisites](https://github.com/AgentBuilderlabs/AgentBuilder/?tab=readme-ov-file#prerequisites) to set up prerequisites.
 
 ## Setting up
 
-Refer to our [Github Readme for Local Development](https://github.com/rowboatlabs/rowboat/?tab=readme-ov-file#local-development-setup) to set up Studio, Chat API and SDK via `docker-compose`. 
+Refer to our [Github Readme for Local Development](https://github.com/AgentBuilderlabs/AgentBuilder/?tab=readme-ov-file#local-development-setup) to set up Studio, Chat API and SDK via `docker-compose`. 
 
 ### Testing Studio
 
@@ -135,13 +135,13 @@ The last message in `messages` is either a user-facing response or a tool call b
 ### Testing the Python Chat SDK
 
 ```bash
-pip install rowboat
+pip install AgentBuilder
 ```
 
 Modify the user message in `messages`, based on your example project.
 
 ```python
-from rowboat import Client
+from AgentBuilder import Client
 
 client = Client(
     host="http://localhost:3000",

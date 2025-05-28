@@ -28,6 +28,7 @@ services:
       - AGENTS_API_KEY=${AGENTS_API_KEY}
       - COPILOT_API_URL=http://copilot:3002
       - COPILOT_API_KEY=${COPILOT_API_KEY}
+      - KLAVIS_API_KEY=${KLAVIS_API_KEY}
       - REDIS_URL=redis://redis:6379
       - USE_RAG=${USE_RAG}
       - QDRANT_URL=http://qdrant:6333
@@ -54,6 +55,15 @@ services:
     restart: unless-stopped
     volumes:
       - uploads:/app/uploads
+
+  hello-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    profiles: ["mcp_server"]
 
   rowboat_agents:
     build:

@@ -18,7 +18,7 @@ export function SearchInput({
     onChange, 
     onTimeFilterChange,
     timeFilter,
-    placeholder = "Search projects..." 
+    placeholder = "Поиск проектов..." 
 }: SearchInputProps) {
     return (
         <div className="space-y-3">
@@ -52,26 +52,34 @@ export function SearchInput({
                 />
             </div>
             <div className="flex gap-2">
-                {(['all', 'today', 'week', 'month'] as const).map(filter => (
-                    <button
-                        key={filter}
-                        onClick={() => onTimeFilterChange(filter)}
-                        className={clsx(
-                            "px-3 py-1",
-                            tokens.typography.sizes.sm,
-                            tokens.typography.weights.medium,
-                            tokens.radius.md,
-                            tokens.transitions.default,
-                            timeFilter === filter
-                                ? "bg-indigo-600 text-white"
-                                : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400",
-                            "hover:bg-gray-100 dark:hover:bg-gray-700",
-                            "focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
-                        )}
-                    >
-                        {filter.charAt(0).toUpperCase() + filter.slice(1)}
-                    </button>
-                ))}
+                {(['all', 'today', 'week', 'month'] as const).map(filter => {
+                    const filterLabels = {
+                        all: 'Все',
+                        today: 'Сегодня',
+                        week: 'Неделя',
+                        month: 'Месяц'
+                    };
+                    return (
+                        <button
+                            key={filter}
+                            onClick={() => onTimeFilterChange(filter)}
+                            className={clsx(
+                                "px-3 py-1",
+                                tokens.typography.sizes.sm,
+                                tokens.typography.weights.medium,
+                                tokens.radius.md,
+                                tokens.transitions.default,
+                                timeFilter === filter
+                                    ? "bg-indigo-600 text-white"
+                                    : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400",
+                                "hover:bg-gray-100 dark:hover:bg-gray-700",
+                                "focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
+                            )}
+                        >
+                            {filterLabels[filter]}
+                        </button>
+                    );
+                })}
             </div>
         </div>
     );

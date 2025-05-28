@@ -1,6 +1,6 @@
-# Using RAG in Rowboat
+# Using RAG in AgentBuilder
 
-Rowboat provides multiple ways to enhance your agents with Retrieval-Augmented Generation (RAG). This guide will help you set up and use each RAG feature.
+AgentBuilder provides multiple ways to enhance your agents with Retrieval-Augmented Generation (RAG). This guide will help you set up and use each RAG feature.
 
 ## Quick Start
 
@@ -75,7 +75,7 @@ export GOOGLE_API_KEY=your_google_api_key
 
 ## Embedding Model options
 
-By default, Rowboat uses OpenAI's `text-embedding-3-small` model for generating embeddings. You can customize this by setting the following:
+By default, AgentBuilder uses OpenAI's `text-embedding-3-small` model for generating embeddings. You can customize this by setting the following:
 
 ```bash
 # Override the default embedding model
@@ -101,4 +101,4 @@ export EMBEDDING_PROVIDER_BASE_URL=your-provider-base-url
 export EMBEDDING_PROVIDER_API_KEY=your-provider-api-key
 ```
 
-If you don't specify the provider settings, Rowboat will use OpenAI as the default provider.
+If you don't specify the provider settings, AgentBuilder will use OpenAI as the default provider.

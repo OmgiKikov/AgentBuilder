@@ -3,11 +3,11 @@
 ## Overview
 
 - Multi-agent systems are popularly represented as graphs, where each agent is a node in the graph.  
-- In RowBoat, agents are connected to each other as Directed Acyclic Graphs (DAG).
+- In AgentBuilder, agents are connected to each other as Directed Acyclic Graphs (DAG).
 - The graph is also called a workflow, which defines agents, tools, and their connections.
 - Since the graph is directed, the control of conversation flows from "parent" agents to their "children" agents
 - Every agent is responsible for carrying out a specific part of the workflow, which can involve conversing with the user and / or carrying out tasks such as directing the conversation to other agents.
-- [Langgraph](https://www.langchain.com/langgraph) and [Swarm](https://github.com/openai/swarm) are examples of open-source frameworks used to define multi-agent graphs. RowBoat currently supports a Swarm implementation and will extend to Langgraph too in the future.
+- [Langgraph](https://www.langchain.com/langgraph) and [Swarm](https://github.com/openai/swarm) are examples of open-source frameworks used to define multi-agent graphs. AgentBuilder currently supports a Swarm implementation and will extend to Langgraph too in the future.
 
 ## Control Passing
 
@@ -19,5 +19,5 @@
 
 ## Pipelines
 
-- RowBoat also has the concept of pipelines - specialized agents invoked sequentially after an agent in the graph has produced a user-facing response. 
+- AgentBuilder also has the concept of pipelines - specialized agents invoked sequentially after an agent in the graph has produced a user-facing response. 
 - E.g. a pipeline with a post processing agent and a guardrail agent will ensure that every response is post processed and guardrailed for appropriateness before presenting it to the user.

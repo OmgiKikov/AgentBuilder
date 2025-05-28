@@ -74,6 +74,14 @@ export function Action({
                     prompt: changes
                 });
                 break;
+            case 'workflow':
+                if (field === 'startAgent') {
+                    dispatch({
+                        type: 'set_main_agent',
+                        name: changes[field]
+                    });
+                }
+                break;
         }
 
         setAppliedChanges(prev => ({
@@ -137,6 +145,17 @@ export function Action({
                         prompt: action.config_changes
                     });
                     break;
+                case 'workflow':
+                    // Handle workflow changes
+                    Object.entries(action.config_changes).forEach(([field, value]) => {
+                        if (field === 'startAgent') {
+                            dispatch({
+                                type: 'set_main_agent',
+                                name: value as string
+                            });
+                        }
+                    });
+                    break;
             }
         }
 
@@ -161,7 +180,7 @@ export function Action({
             <ActionSummary />
             {expanded && <PreviewModalProvider>
                 {action.error && <div className="flex flex-col gap-1 px-1 text-xs bg-red-50 dark:bg-red-900/20 rounded-sm">
-                    <div className="text-red-500 dark:text-red-400 font-medium text-xs">This configuration is invalid and cannot be applied:</div>
+                    <div className="text-red-500 dark:text-red-400 font-medium text-xs">Эта конфигурация недействительна и не может быть применена:</div>
                     <div className="text-xs font-mono dark:text-gray-300">{action.error}</div>
                 </div>}
                 <div className="flex flex-col gap-2 px-1">
@@ -174,7 +193,7 @@ export function Action({
                 {action.error && <div className="grow rounded-l-sm bg-red-100 dark:bg-red-900/20 text-red-500 dark:text-red-400 flex flex-col items-center justify-center h-8">
                     <div className="flex items-center gap-2 justify-center">
                         <AlertTriangleIcon size={16} />
-                        <div className="font-medium text-xs">Error</div>
+                        <div className="font-medium text-xs">Ошибка</div>
                     </div>
                 </div>}
                 {!action.error && <button
@@ -184,7 +203,7 @@ export function Action({
                 >
                     <div className="flex items-center gap-2 justify-center">
                         <CheckCheckIcon size={16} />
-                        <div className="font-medium text-xs">{allApplied ? 'Applied' : 'Apply'}</div>
+                        <div className="font-medium text-xs">{allApplied ? 'Применено' : 'Применить'}</div>
                     </div>
                 </button>}
                 <button
@@ -219,8 +238,8 @@ export function ActionHeader() {
     const { msgIndex, actionIndex, action, workflow, appliedFields, stale } = useContext(ActionContext);
     if (!action || !workflow) return null;
 
-    const targetType = action.config_type === 'tool' ? 'tool' : action.config_type === 'agent' ? 'agent' : 'prompt';
-    const change = action.action === 'create_new' ? 'Create' : 'Edit';
+    const targetType = action.config_type === 'tool' ? 'инструмент' : action.config_type === 'agent' ? 'агент' : 'промт';
+    const change = action.action === 'create_new' ? 'Создать' : 'Изменить';
 
     return <div className="flex gap-2 items-center py-1 px-1">
         {action.action == 'create_new' && <PlusIcon size={16} />}
@@ -286,7 +305,7 @@ export function ActionField({
                 (typeof newValue === 'string' ? newValue : JSON.stringify(newValue)),
                 markdownPreviewCondition,
                 `${action.name} - ${field}`,
-                "Review changes",
+                "Просмотр изменений",
                 () => onApply(field)
             );
         }
@@ -328,7 +347,7 @@ export function StreamingAction({
 }: {
     action: {
         action?: 'create_new' | 'edit';
-        config_type?: 'tool' | 'agent' | 'prompt';
+        config_type?: 'tool' | 'agent' | 'prompt' | 'workflow';
         name?: string;
     };
     loading: boolean;
@@ -341,14 +360,14 @@ export function StreamingAction({
             {action.action == 'create_new' && <PlusIcon size={16} />}
             {action.action == 'edit' && <PencilIcon size={16} />}
             <div className="text-sm truncate">
-                {action.config_type && `${action.action === 'create_new' ? 'Create' : 'Edit'} ${action.config_type}`}
+                {action.config_type && `${action.action === 'create_new' ? 'Создать' : 'Изменить'} ${action.config_type === 'tool' ? 'инструмент' : action.config_type === 'agent' ? 'агент' : action.config_type === 'prompt' ? 'промт' : 'workflow'}`}
                 {action.name && <span className="font-medium ml-1">{action.name}</span>}
             </div>
         </div>
         <div className="px-1 my-1">
             <div className="bg-white dark:bg-gray-800 rounded-sm p-2 text-sm flex items-center gap-2">
                 {loading && <Spinner size="sm" />}
-                {!loading && <div className="text-gray-400">Canceled</div>}
+                {!loading && <div className="text-gray-400">Отменено</div>}
             </div>
         </div>
     </div>;

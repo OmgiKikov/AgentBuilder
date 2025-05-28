@@ -4,8 +4,8 @@ export function CopyAsJsonButton({ onCopy }: { onCopy: () => void }) {
     return <div className="absolute top-0 right-0">
         <CopyButton
             onCopy={onCopy}
-            label="Copy as JSON"
-            successLabel="Copied"
+            label="Скопировать как JSON"
+            successLabel="Скопировано"
         />
     </div>
 }

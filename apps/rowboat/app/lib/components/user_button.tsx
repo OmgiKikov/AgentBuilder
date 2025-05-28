@@ -10,7 +10,7 @@ export function UserButton() {
         return <></>;
     }
 
-    const name = user.name ?? user.email ?? 'Unknown user';
+    const name = user.name ?? user.email ?? 'Неизвестный пользователь';
 
     return <Dropdown>
         <DropdownTrigger>
@@ -29,7 +29,7 @@ export function UserButton() {
         >
             <DropdownSection title={name}>
                 <DropdownItem key="logout">
-                    Logout
+                    Выйти
                 </DropdownItem>
             </DropdownSection>
         </DropdownMenu>

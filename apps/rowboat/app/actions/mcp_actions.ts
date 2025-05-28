@@ -130,13 +130,6 @@ export async function fetchMcpToolsForServer(projectId: string, serverName: stri
 
         // List tools
         const result = await client.listTools();
-        
-        // Log just essential info about tools
-        console.log('[Klavis API] Received tools from server:', {
-            serverName,
-            toolCount: result.tools.length,
-            tools: result.tools.map(tool => tool.name).join(', ')
-        });
 
         // Get all available tools from the server
         const availableToolNames = new Set(mcpServer.availableTools?.map(t => t.name) || []);
@@ -184,7 +177,10 @@ export async function fetchMcpToolsForServer(projectId: string, serverName: stri
             serverName,
             toolCount: tools.length,
             availableToolCount: availableToolNames.size,
-            tools: tools.map(t => t.name).join(', ')
+            tools: tools.map(t => ({
+                name: t.name,
+                parameters: t.parameters
+            }))
         });
     } catch (e) {
         console.error(`[Klavis API] Error fetching MCP tools from ${mcpServer.name}:`, {
@@ -328,6 +324,165 @@ export async function getSelectedMcpTools(projectId: string, serverName: string)
     if (!server) return [];
 
     return server.tools.map(t => t.id);
+}
+
+export async function getMcpToolsFromProject(projectId: string): Promise<z.infer<typeof WorkflowTool>[]> {
+    await projectAuthCheck(projectId);
+    
+    try {
+        // Get project's MCP servers and their tools
+        const project = await projectsCollection.findOne({ _id: projectId });
+        if (!project?.mcpServers) return [];
+
+        console.log('[MCP] Getting tools from project:', {
+            projectId,
+            serverCount: project.mcpServers.length,
+            servers: project.mcpServers.map(s => ({
+                name: s.name,
+                isReady: s.isReady,
+                toolCount: s.tools.length,
+                tools: s.tools.map(t => ({
+                    name: t.name,
+                    hasParams: !!t.parameters,
+                    paramCount: t.parameters ? Object.keys(t.parameters.properties).length : 0,
+                    required: t.parameters?.required || []
+                }))
+            }))
+        });
+
+        // Строго фильтруем только активные серверы
+        const activeServers = project.mcpServers.filter(server => 
+            server.isReady === true && 
+            server.serverUrl && 
+            server.tools && 
+            server.tools.length > 0
+        );
+        
+        if (activeServers.length === 0) {
+            console.log(`[MCP] No active servers found for project ${projectId}`);
+            return [];
+        }
+        
+        console.log('[MCP] Found active servers:', {
+            activeCount: activeServers.length, 
+            activeServers: activeServers.map(s => s.name)
+        });
+
+        // Convert MCP tools to workflow tools format, but only from ready servers
+        const mcpTools = activeServers.flatMap(server => {
+            return server.tools.map(tool => ({
+                name: tool.name,
+                description: tool.description || "",
+                parameters: {
+                    type: 'object' as const,
+                    properties: tool.parameters?.properties || {},
+                    required: tool.parameters?.required || []
+                },
+                isMcp: true,
+                mcpServerName: server.name,
+                mcpServerURL: server.serverUrl,
+            }));
+        });
+
+        // Проверяем на дубликаты инструментов
+        const toolNames = new Set<string>();
+        const uniqueTools: z.infer<typeof WorkflowTool>[] = [];
+        const duplicateTools: string[] = [];
+
+        for (const tool of mcpTools) {
+            if (toolNames.has(tool.name)) {
+                duplicateTools.push(tool.name);
+            } else {
+                toolNames.add(tool.name);
+                uniqueTools.push(tool);
+            }
+        }
+
+        if (duplicateTools.length > 0) {
+            console.log('[MCP] Found duplicate tools across servers:', { duplicateTools });
+        }
+
+        console.log('[MCP] Converted tools from ready servers:', uniqueTools.map(t => ({
+            name: t.name,
+            serverName: t.mcpServerName,
+            hasParams: !!t.parameters,
+            paramCount: t.parameters ? Object.keys(t.parameters.properties).length : 0,
+            required: t.parameters?.required || []
+        })));
+
+        return uniqueTools;
+    } catch (error) {
+        console.error('Error fetching MCP tools:', error);
+        return [];
+    }
+}
+
+export async function mergeMcpTools(
+    workflowTools: z.infer<typeof WorkflowTool>[],
+    mcpTools: z.infer<typeof WorkflowTool>[]
+): Promise<z.infer<typeof WorkflowTool>[]> {
+    // Filter out any existing MCP tools from workflow tools
+    const nonMcpTools = workflowTools.filter(t => !t.isMcp);
+    
+    // Merge with MCP tools
+    const merged = [
+        ...nonMcpTools,
+        ...mcpTools.map(tool => ({
+            ...tool,
+            isMcp: true as const,  // Ensure isMcp is set
+            parameters: {
+                type: 'object' as const,
+                properties: tool.parameters?.properties || {},
+                required: tool.parameters?.required || []
+            }
+        }))
+    ];
+
+    console.log('[mergeMcpTools] Merged tools:', {
+        totalCount: merged.length,
+        nonMcpCount: nonMcpTools.length,
+        mcpCount: mcpTools.length,
+        tools: merged.map(t => ({
+            name: t.name,
+            isMcp: t.isMcp,
+            hasParams: !!t.parameters,
+            paramCount: t.parameters ? Object.keys(t.parameters.properties).length : 0,
+            parameters: t.parameters
+        }))
+    });
+
+    return merged;
+}
+
+export async function listProjectTools(projectId: string): Promise<z.infer<typeof WorkflowTool>[]> {
+    await projectAuthCheck(projectId);
+    
+    try {
+        // Get project's MCP servers and their tools
+        const project = await projectsCollection.findOne({ _id: projectId });
+        if (!project?.mcpServers) return [];
+
+        // Convert MCP tools to workflow tools format, but only from ready servers
+        return project.mcpServers
+            .filter(server => server.isReady) // Only include tools from ready servers
+            .flatMap(server => {
+                return server.tools.map(tool => ({
+                    name: tool.name,
+                    description: tool.description || "",
+                    parameters: {
+                        type: 'object' as const,
+                        properties: tool.parameters?.properties || {},
+                        required: tool.parameters?.required || []
+                    },
+                    isMcp: true,
+                    mcpServerName: server.name,
+                    mcpServerURL: server.serverUrl,
+                }));
+            });
+    } catch (error) {
+        console.error('Error fetching project tools:', error);
+        return [];
+    }
 }
 
 export async function listProjectMcpTools(projectId: string): Promise<z.infer<typeof WorkflowTool>[]> {

@@ -90,7 +90,7 @@ const ErrorBanner = ({ onRetry }: { onRetry: () => void }) => (
       <div className="flex items-center gap-3">
         <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
         <p className="text-sm text-red-700 dark:text-red-300">
-          Unable to load hosted tools. Please check your connection and try again. If the problem persists, contact us on Discord.
+          Не удалось загрузить инструменты. Пожалуйста, проверьте ваше соединение и попробуйте снова. Если проблема не решается, свяжитесь с нами.
         </p>
       </div>
       <Button
@@ -134,7 +134,7 @@ export function HostedServers() {
       const response = await listAvailableMcpServers(projectId || "");
       
       if (response.error || !response.data) {
-        setError('No hosted tools found. Make sure to set your Klavis API key. Contact us on discord if you\'re still unable to see hosted tools.');
+        setError('No hosted tools found. Make sure to set your Klavis API key. Contact us at support@rowboatlabs.com if you\'re still unable to see hosted tools.');
         return;
       }
       
@@ -147,7 +147,7 @@ export function HostedServers() {
       setServers(serversWithType);
       setError(null);
     } catch (err: any) {
-      setError('No hosted tools found. Make sure to set your Klavis API key. Contact us on discord if you\'re still unable to see hosted tools.');
+      setError('No hosted tools found. Make sure to set your Klavis API key. Contact us at support@rowboatlabs.com if you\'re still unable to see hosted tools.');
       console.error('Error fetching servers:', err);
       setServers([]);
     } finally {
@@ -285,7 +285,7 @@ export function HostedServers() {
         });
         setToggleError({
           serverId: serverKey,
-          message: "We're having trouble setting up this server. Please reach out on discord."
+          message: "We're having trouble setting up this server. Please reach out at support@rowboatlabs.com."
         });
       }
     } finally {
@@ -511,7 +511,7 @@ export function HostedServers() {
             <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
           <p className="text-sm text-blue-700 dark:text-blue-300">
-            To make hosted MCP tools available to agents in the Build view, first toggle the servers ON here. Some tools may require authentication after enabling.
+            Чтобы сделать доступными MCP инструменты в представлении Build, сначала переключите серверы ВКЛ. Некоторые инструменты могут потребовать аутентификации после включения.
           </p>
         </div>
       </div>
@@ -570,6 +570,18 @@ export function HostedServers() {
                 </div>
               </div>
             </div>
+            <input
+              type="text"
+              placeholder="Поиск серверов или инструментов..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md 
+                bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 
+                placeholder-gray-400 dark:placeholder-gray-500
+                focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
+                hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+            />
+
           </div>
           <Button
             size="sm"
@@ -579,11 +591,12 @@ export function HostedServers() {
           >
             <div className="inline-flex items-center">
               <RefreshCw className={clsx("h-4 w-4", loading && "animate-spin")} />
-              <span className="ml-2">Refresh</span>
+              <span className="ml-2">Обновить</span>
             </div>
           </Button>
         </div>
       </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredServers.map((server) => (
@@ -602,6 +615,8 @@ export function HostedServers() {
           />
         ))}
       </div>
+
+        
 
       <ToolManagementPanel
         server={selectedServer}

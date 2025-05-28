@@ -58,13 +58,13 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
   const navItems = [
     {
       href: 'workflow',
-      label: 'Build',
+      label: 'Создать агентов',
       icon: WorkflowIcon,
       requiresProject: true
     },
     ...(USE_TESTING_FEATURE ? [{
       href: 'test',
-      label: 'Test',
+      label: 'Тест',
       icon: PlayIcon,
       requiresProject: true
     }] : []),
@@ -76,13 +76,13 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
     }] : []),
     {
       href: 'tools',
-      label: 'Tools',
+      label: 'Инструменты',
       icon: Wrench,
       requiresProject: true
     },
     {
       href: 'config',
-      label: 'Settings',
+      label: 'Настройки',
       icon: SettingsIcon,
       requiresProject: true
     }
@@ -198,7 +198,7 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
           {/* Theme and Auth Controls */}
           <div className="p-3 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
             {USE_PRODUCT_TOUR && !isProjectsRoute && (
-              <Tooltip content={collapsed ? "Help" : ""} showArrow placement="right">
+              <Tooltip content={collapsed ? "Помощь" : ""} showArrow placement="right">
                 <button 
                   onClick={showHelpModal}
                   className={`
@@ -211,12 +211,12 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
                   data-tour-target="tour-button"
                 >
                   <HelpCircle size={COLLAPSED_ICON_SIZE} />
-                  {!collapsed && <span>Help</span>}
+                  {!collapsed && <span>Помощь</span>}
                 </button>
               </Tooltip>
             )}
 
-            <Tooltip content={collapsed ? "Appearance" : ""} showArrow placement="right">
+            <Tooltip content={collapsed ? "Тема" : ""} showArrow placement="right">
               <button 
                 onClick={toggleTheme}
                 className={`
@@ -228,12 +228,12 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
                 `}
               >
                 { theme == "light" ? <Moon size={COLLAPSED_ICON_SIZE} /> : <Sun size={COLLAPSED_ICON_SIZE} /> }
-                {!collapsed && <span>Appearance</span>}
+                {!collapsed && <span>Тема</span>}
               </button>
             </Tooltip>
 
             {useAuth && (
-              <Tooltip content={collapsed ? "Account" : ""} showArrow placement="right">
+              <Tooltip content={collapsed ? "Аккаунт" : ""} showArrow placement="right">
                 <div 
                   className={`
                     w-full rounded-md flex items-center
@@ -243,7 +243,7 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
                   `}
                 >
                   <UserButton />
-                  {!collapsed && <span>Account</span>}
+                  {!collapsed && <span>Аккаунт</span>}
                 </div>
               </Tooltip>
             )}

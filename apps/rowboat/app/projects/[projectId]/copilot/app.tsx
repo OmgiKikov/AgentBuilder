@@ -79,6 +79,28 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
         onMessagesChange?.(messages);
     }, [messages, onMessagesChange]);
 
+    // Загрузка истории сообщений при инициализации
+    useEffect(() => {
+        const messagesKey = `copilot_messages_${projectId}`;
+        const savedMessages = localStorage.getItem(messagesKey);
+        if (savedMessages && messages.length === 0) {
+            try {
+                const parsedMessages = JSON.parse(savedMessages);
+                setMessages(parsedMessages);
+            } catch (error) {
+                console.error('Ошибка при загрузке истории сообщений copilot:', error);
+            }
+        }
+    }, [projectId, messages.length]);
+    
+    // Сохранение сообщений при их изменении
+    useEffect(() => {
+        const messagesKey = `copilot_messages_${projectId}`;
+        if (messages.length > 0) {
+            localStorage.setItem(messagesKey, JSON.stringify(messages));
+        }
+    }, [messages, projectId]);
+
     // Check for initial prompt in local storage and send it
     useEffect(() => {
         const prompt = localStorage.getItem(`project_prompt_${projectId}`);
@@ -220,6 +242,10 @@ export const Copilot = forwardRef<{ handleUserMessage: (message: string) => void
     function handleNewChat() {
         setCopilotKey(prev => prev + 1);
         setMessages([]);
+        
+        // Очистка сохраненной истории сообщений
+        const messagesKey = `copilot_messages_${projectId}`;
+        localStorage.removeItem(messagesKey);
     }
 
     function handleCopyJson(data: { messages: any[] }) {
@@ -251,7 +277,7 @@ export const Copilot = forwardRef<{ handleUserMessage: (message: string) => void
                         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                             COPILOT
                         </div>
-                        <Tooltip content="Ask copilot to help you build and modify your workflow">
+                        <Tooltip content="Спросить copilot помочь вам построить и изменить ваш рабочий процесс">
                             <InfoIcon className="w-4 h-4 text-gray-400 cursor-help" />
                         </Tooltip>
                     </div>
@@ -261,7 +287,7 @@ export const Copilot = forwardRef<{ handleUserMessage: (message: string) => void
                         onClick={handleNewChat}
                         className="bg-blue-50 text-blue-700 hover:bg-blue-100"
                         showHoverContent={true}
-                        hoverContent="New chat"
+                        hoverContent="Новый чат"
                     >
                         <PlusIcon className="w-4 h-4" />
                     </Button>
@@ -274,7 +300,7 @@ export const Copilot = forwardRef<{ handleUserMessage: (message: string) => void
                         size="sm"
                         onClick={() => appRef.current?.handleCopyChat()}
                         showHoverContent={true}
-                        hoverContent={showCopySuccess ? "Copied" : "Copy JSON"}
+                        hoverContent={showCopySuccess ? "Скопировано" : "Скопировать JSON"}
                     >
                         {showCopySuccess ? (
                             <CheckIcon className="w-4 h-4" />
