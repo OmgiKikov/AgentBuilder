@@ -5,6 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def call_tool(function_name: str, parameters: dict, functions_map: dict):
     """
     1) Lookup a function in functions_map by name.
@@ -25,10 +26,7 @@ def call_tool(function_name: str, parameters: dict, functions_map: dict):
     signature = inspect.signature(func)
 
     # 2) Identify required parameters
-    required_params = [
-        pname for pname, p in signature.parameters.items()
-        if p.default == inspect.Parameter.empty
-    ]
+    required_params = [pname for pname, p in signature.parameters.items() if p.default == inspect.Parameter.empty]
 
     # Check required params
     for rp in required_params:

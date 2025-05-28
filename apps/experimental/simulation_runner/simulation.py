@@ -14,13 +14,14 @@ openai_client = OpenAI()
 MODEL_NAME = "gpt-4o"
 ROWBOAT_API_HOST = os.environ.get("ROWBOAT_API_HOST", "http://127.0.0.1:3000").strip()
 
+
 async def simulate_simulation(
     scenario: TestScenario,
     profile_id: str,
     pass_criteria: str,
     rowboat_client: Client,
     workflow_id: str,
-    max_iterations: int = 5
+    max_iterations: int = 5,
 ) -> tuple[str, str, str]:
     """
     Runs a mock simulation for a given TestSimulation asynchronously.
@@ -32,18 +33,14 @@ async def simulate_simulation(
     pass_criteria = pass_criteria
 
     # Todo: add profile_id
-    support_chat = StatefulChat(
-        rowboat_client,
-        workflow_id=workflow_id,
-        test_profile_id=profile_id
-    )
+    support_chat = StatefulChat(rowboat_client, workflow_id=workflow_id, test_profile_id=profile_id)
 
     messages = [
         {
             "role": "system",
             "content": (
                 f"You are role playing a customer talking to a chatbot (the user is role playing the chatbot). Have the following chat with the chatbot. Scenario:\n{scenario.description}. You are provided no other information. If the chatbot asks you for information that is not in context, go ahead and provide one unless stated otherwise in the scenario. Directly have the chat with the chatbot. Start now with your first message."
-            )
+            ),
         }
     ]
 
@@ -60,16 +57,13 @@ async def simulate_simulation(
                 model=MODEL_NAME,
                 messages=openai_input,
                 temperature=0.0,
-            )
+            ),
         )
 
         simulated_content = simulated_user_response.choices[0].message.content.strip()
         messages.append({"role": "assistant", "content": simulated_content})
         # Run Rowboat chat in a thread if it's synchronous
-        rowboat_response = await loop.run_in_executor(
-            None,
-            lambda: support_chat.run(simulated_content)
-        )
+        rowboat_response = await loop.run_in_executor(None, lambda: support_chat.run(simulated_content))
 
         messages.append({"role": "user", "content": rowboat_response})
 
@@ -100,7 +94,7 @@ async def simulate_simulation(
                 "Return ONLY a JSON object in this format:\n"
                 '{"verdict": "pass", "details": <reason>} or '
                 '{"verdict": "fail", "details": <reason>}.'
-            )
+            ),
         },
         {
             "role": "user",
@@ -108,19 +102,16 @@ async def simulate_simulation(
                 f"Here is the conversation transcript:\n\n{transcript_str}\n\n"
                 "Did the support bot answer correctly or not? "
                 "Return only 'pass' or 'fail' for verdict, and a brief explanation for details."
-            )
-        }
+            ),
+        },
     ]
 
     # Run evaluation in a separate thread
     eval_response = await loop.run_in_executor(
         None,
         lambda: openai_client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=evaluation_prompt,
-            temperature=0.0,
-            response_format={"type": "json_object"}
-        )
+            model=MODEL_NAME, messages=evaluation_prompt, temperature=0.0, response_format={"type": "json_object"}
+        ),
     )
 
     if not eval_response.choices:
@@ -137,12 +128,9 @@ async def simulate_simulation(
 
     return (evaluation_result, details, transcript)
 
+
 async def simulate_simulations(
-    simulations: List[TestSimulation],
-    run_id: str,
-    workflow_id: str,
-    api_key: str,
-    max_iterations: int = 5
+    simulations: List[TestSimulation], run_id: str, workflow_id: str, api_key: str, max_iterations: int = 5
 ) -> AggregateResults:
     """
     Simulates a list of TestSimulations asynchronously and aggregates the results.
@@ -153,11 +141,7 @@ async def simulate_simulations(
 
     project_id = simulations[0].projectId
 
-    client = Client(
-        host=ROWBOAT_API_HOST,
-        project_id=project_id,
-        api_key=api_key
-    )
+    client = Client(host=ROWBOAT_API_HOST, project_id=project_id, api_key=api_key)
 
     # Store results here
     results: List[TestResult] = []
@@ -169,7 +153,7 @@ async def simulate_simulations(
             pass_criteria=simulation.passCriteria,
             rowboat_client=client,
             workflow_id=workflow_id,
-            max_iterations=max_iterations
+            max_iterations=max_iterations,
         )
 
         # Create a new TestResult
@@ -179,7 +163,7 @@ async def simulate_simulations(
             simulationId=simulation.id,
             result=verdict,
             details=details,
-            transcript=transcript
+            transcript=transcript,
         )
         results.append(test_result)
 
@@ -191,8 +175,4 @@ async def simulate_simulations(
     pass_count = sum(1 for r in results if r.result == "pass")
     fail_count = sum(1 for r in results if r.result == "fail")
 
-    return AggregateResults(
-        total=total_count,
-        passCount=pass_count,
-        failCount=fail_count
-    )
+    return AggregateResults(total=total_count, passCount=pass_count, failCount=fail_count)

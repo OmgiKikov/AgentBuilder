@@ -9,14 +9,16 @@ from db import (
     set_run_to_completed,
     get_api_key,
     mark_stale_jobs_as_failed,
-    update_run_heartbeat
+    update_run_heartbeat,
 )
 from scenario_types import TestRun, TestSimulation
+
 # If you have a new simulation function, import it here.
 # Otherwise, adapt the name as needed:
 from simulation import simulate_simulations  # or simulate_scenarios, if unchanged
 
 logging.basicConfig(level=logging.INFO)
+
 
 class JobService:
     def __init__(self):
@@ -67,10 +69,7 @@ class JobService:
                 # Perform your simulation logic
                 # adapt this call to your actual simulation function’s signature
                 aggregate_result = await simulate_simulations(
-                    simulations=simulations,
-                    run_id=run.id,
-                    workflow_id=run.workflowId,
-                    api_key=api_key
+                    simulations=simulations, run_id=run.id, workflow_id=run.workflowId, api_key=api_key
                 )
 
                 # Mark run as completed with the aggregated result
@@ -114,6 +113,7 @@ class JobService:
             logging.info("Service stopped by user.")
         finally:
             loop.close()
+
 
 if __name__ == "__main__":
     service = JobService()

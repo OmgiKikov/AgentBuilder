@@ -1,16 +1,19 @@
 from src.utils.common import common_logger
+
 logger = common_logger
 from .access import get_agent_data_by_name
+
 
 def reset_current_turn(messages):
     # Set all messages' current_turn to False
     for msg in messages:
         msg["current_turn"] = False
-        
+
     # Find most recent user message
     messages[-1]["current_turn"] = True
-            
+
     return messages
+
 
 def reset_current_turn_agent_history(agent_data, agent_names):
     for name in agent_names:
@@ -19,6 +22,7 @@ def reset_current_turn_agent_history(agent_data, agent_names):
             for msg in data["history"]:
                 msg["current_turn"] = False
     return agent_data
+
 
 def add_recent_messages_to_history(recent_messages, last_agent_name, agent_data, messages, parent_has_child_history):
     last_msg = messages[-1]
@@ -37,24 +41,16 @@ def add_recent_messages_to_history(recent_messages, last_agent_name, agent_data,
                     logger.error(f"Parent agent data for {current_agent_data['name']} not found in agent_data")
                     raise ValueError(f"Parent agent data for {current_agent_data['name']} not found in agent_data")
     else:
-        agent_data.append({
-            "name": last_agent_name,
-            "history": [last_msg]
-        })
+        agent_data.append({"name": last_agent_name, "history": [last_msg]})
 
     return agent_data
+
 
 def construct_state_from_response(response, agents):
     agent_data = []
     for agent in agents:
-        agent_data.append({
-            "name": agent.name,
-            "instructions": agent.instructions
-        })
+        agent_data.append({"name": agent.name, "instructions": agent.instructions})
 
-    state = {
-        "last_agent_name": response.agent.name,
-        "agent_data": agent_data
-    }
+    state = {"last_agent_name": response.agent.name, "agent_data": agent_data}
 
     return state

@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 # Define run statuses to include the new "error" status
 RunStatus = Literal["pending", "running", "completed", "cancelled", "failed", "error"]
 
+
 class TestScenario(BaseModel):
     # `_id` in Mongo will be stored as ObjectId; we return it as a string
     id: str
@@ -13,6 +14,7 @@ class TestScenario(BaseModel):
     description: str
     createdAt: datetime
     lastUpdatedAt: datetime
+
 
 class TestSimulation(BaseModel):
     id: str
@@ -24,10 +26,12 @@ class TestSimulation(BaseModel):
     createdAt: datetime
     lastUpdatedAt: datetime
 
+
 class AggregateResults(BaseModel):
     total: int
     passCount: int
     failCount: int
+
 
 class TestRun(BaseModel):
     id: str
@@ -40,6 +44,7 @@ class TestRun(BaseModel):
     completedAt: Optional[datetime] = None
     aggregateResults: Optional[AggregateResults] = None
     lastHeartbeat: Optional[datetime] = None
+
 
 class TestResult(BaseModel):
     projectId: str
