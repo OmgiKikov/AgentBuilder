@@ -4,6 +4,7 @@ import aiohttp
 import jwt
 import hashlib
 from agents import OpenAIChatCompletionsModel, trace, add_trace_processor
+import pprint
 
 # Import helper functions needed for get_agents
 from .helpers.access import (
@@ -102,7 +103,7 @@ async def call_mcp(tool_name: str, args: str, mcp_server_url: str) -> str:
                 await session.initialize()
                 jargs = json.loads(args)
                 response = await session.call_tool(tool_name, arguments=jargs)
-                json_output = json.dumps([item.__dict__ for item in response.content], indent=2)
+                json_output = json.dumps(response.content, default=lambda x: x.__dict__ if hasattr(x, '__dict__') else str(x), indent=2)
 
         return json_output
     except Exception as e:
@@ -112,8 +113,17 @@ async def call_mcp(tool_name: str, args: str, mcp_server_url: str) -> str:
 async def catch_all(ctx: RunContextWrapper[Any], args: str, tool_name: str, tool_config: dict, complete_request: dict) -> str:
     try:
         print(f"Catch all called for tool: {tool_name}")
-        print(f"Args: {args}")
-        print(f"Tool config: {tool_config}")
+        # Pretty print the complete tool call information
+        logging.info("Tool Call Details:\n%s", pprint.pformat({
+            'tool_name': tool_name,
+            'arguments': json.loads(args) if args else {},
+            'config': {
+                'description': tool_config.get('description', ''),
+                'isMcp': tool_config.get('isMcp', False),
+                'mcpServerName': tool_config.get('mcpServerName', ''),
+                'parameters': tool_config.get('parameters', {})
+            }
+        }, indent=2))
 
         # Create event loop for async operations
         try:
@@ -214,28 +224,41 @@ def get_agents(agent_configs, tool_configs, complete_request):
         new_tools = []
 
         for tool_name in agent_config["tools"]:
-
             tool_config = get_tool_config_by_name(tool_configs, tool_name)
 
             if tool_config:
+                # Preserve all JSON Schema properties in the tool parameters
+                tool_params = tool_config.get("parameters", {})
+                if isinstance(tool_params, dict):
+                    # Ensure we keep all properties from the schema
+                    json_schema_properties = [
+                        "enum", "default", "minimum", "maximum", "items", "format",
+                        "pattern", "minLength", "maxLength", "minItems", "maxItems",
+                        "uniqueItems", "multipleOf", "examples"
+                    ]
+                    for prop_name, prop_schema in tool_params.get("properties", {}).items():
+                        # Copy all existing JSON Schema properties
+                        for schema_prop in json_schema_properties:
+                            if schema_prop in prop_schema:
+                                prop_schema[schema_prop] = prop_schema[schema_prop]
+
                 external_tools.append({
                     "type": "function",
                     "function": tool_config
                 })
+
                 if tool_name == "web_search":
                     tool = WebSearchTool()
-
                 elif tool_name == "rag_search":
                     tool = get_rag_tool(agent_config, complete_request)
-
                 else:
                     tool = FunctionTool(
                         name=tool_name,
                         description=tool_config["description"],
-                        params_json_schema=tool_config["parameters"],
+                        params_json_schema=tool_params,  # Use the enriched parameters
                         strict_json_schema=False,
-                    on_invoke_tool=lambda ctx, args, _tool_name=tool_name, _tool_config=tool_config, _complete_request=complete_request:
-                        catch_all(ctx, args, _tool_name, _tool_config, _complete_request)
+                        on_invoke_tool=lambda ctx, args, _tool_name=tool_name, _tool_config=tool_config, _complete_request=complete_request:
+                            catch_all(ctx, args, _tool_name, _tool_config, _complete_request)
                     )
                 if tool:
                     new_tools.append(tool)
