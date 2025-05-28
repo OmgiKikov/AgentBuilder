@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { SlidePanel } from '@/components/ui/slide-panel';
-import { Info, RefreshCw, RefreshCcw, Lock } from 'lucide-react';
+import { Info, RefreshCw, RefreshCcw, Lock, Wrench } from 'lucide-react';
 import { clsx } from 'clsx';
 import { MCPServer, McpTool } from '@/app/lib/types/types';
 import type { z } from 'zod';
@@ -294,7 +294,7 @@ export function ServerCard({
               className="text-xs shrink-0"
             >
               <div className="inline-flex items-center">
-                <Info className="h-3.5 w-3.5" />
+                <Wrench className="h-3.5 w-3.5" />
                 <span className="ml-1.5">{isEligible ? 'Tools' : 'Tools'}</span>
               </div>
             </Button>
