@@ -8,7 +8,7 @@ import { AgentConfig } from "../entities/agent_config";
 import { ToolConfig } from "../entities/tool_config";
 import { App as ChatApp } from "../playground/app";
 import { z } from "zod";
-import { Button, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Spinner, Tooltip } from "@heroui/react";
+import { Button, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Spinner, Tooltip, DropdownSection } from "@heroui/react";
 import { PromptConfig } from "../entities/prompt_config";
 import { EditableField } from "../../../lib/components/editable-field";
 import { RelativeTime } from "@primer/react";
@@ -28,13 +28,15 @@ import { CopyIcon, ImportIcon, Layers2Icon, RadioIcon, RedoIcon, ServerIcon, Spa
 import { EntityList } from "./entity_list";
 import { ProductTour } from "@/components/common/product-tour";
 import { getMcpToolsFromProject } from "@/app/actions/mcp_actions";
+import clsx from "clsx";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
+import { Settings2Icon, PlusCircleIcon, UsersIcon, WrenchIcon, FileTextIcon } from "lucide-react";
 
 enablePatches();
 
 const PANEL_RATIOS = {
-    entityList: 25,    // Left panel
-    chatApp: 40,       // Middle panel
-    copilot: 35        // Right panel
+    chatApp: 70,       // Main panel for Playground
+    copilot: 30        // Right panel for Copilot
 } as const;
 
 interface StateItem {
@@ -609,6 +611,8 @@ export function WorkflowEditor({
     const [isInitialState, setIsInitialState] = useState(true);
     const [showTour, setShowTour] = useState(true);
     const copilotRef = useRef<{ handleUserMessage: (message: string) => void }>(null);
+    const [showEntityModal, setShowEntityModal] = useState(false);
+    const [entityModalTab, setEntityModalTab] = useState<'agents' | 'tools' | 'prompts'>('agents');
 
     // Load agent order from localStorage on mount
     useEffect(() => {
@@ -977,39 +981,60 @@ export function WorkflowEditor({
                     >
                         {showCopilot ? "Скрыть Copilot" : "Copilot"}
                     </Button>
+                    <Dropdown>
+                        <DropdownTrigger>
+                            <Button
+                                variant="solid"
+                                size="md"
+                                className="gap-2 px-4 bg-gray-600 hover:bg-gray-700 text-white font-semibold text-sm"
+                                startContent={<Settings2Icon size={16} />}
+                            >
+                                Конфигурация
+                            </Button>
+                        </DropdownTrigger>
+                        <DropdownMenu
+                            onAction={(key) => {
+                                if (key === 'agents' || key === 'tools' || key === 'prompts') {
+                                    setEntityModalTab(key as 'agents' | 'tools' | 'prompts');
+                                    setShowEntityModal(true);
+                                }
+                            }}
+                        >
+                            <DropdownSection title="Управление сущностями">
+                                <DropdownItem
+                                    key="agents"
+                                    startContent={<UsersIcon size={16} className="text-blue-500" />}
+                                    description={`${state.present.workflow.agents.length} агентов`}
+                                    className="gap-x-2"
+                                >
+                                    Агенты
+                                </DropdownItem>
+                                <DropdownItem
+                                    key="tools"
+                                    startContent={<WrenchIcon size={16} className="text-green-500" />}
+                                    description={`${state.present.workflow.tools.length + projectTools.length} инструментов`}
+                                    className="gap-x-2"
+                                >
+                                    Инструменты
+                                </DropdownItem>
+                                <DropdownItem
+                                    key="prompts"
+                                    startContent={<FileTextIcon size={16} className="text-purple-500" />}
+                                    description={`${state.present.workflow.prompts.length} промптов`}
+                                    className="gap-x-2"
+                                >
+                                    Промпты
+                                </DropdownItem>
+                            </DropdownSection>
+                        </DropdownMenu>
+                    </Dropdown>
                 </>}
             </div>
         </div>
         <ResizablePanelGroup direction="horizontal" className="grow flex overflow-auto gap-1">
-            <ResizablePanel minSize={10} defaultSize={PANEL_RATIOS.entityList}>
-                <div className="flex flex-col h-full">
-                    <EntityList
-                        agents={state.present.workflow.agents}
-                        tools={state.present.workflow.tools}
-                        projectTools={projectTools}
-                        prompts={state.present.workflow.prompts}
-                        selectedEntity={state.present.selection}
-                        startAgentName={state.present.workflow.startAgent}
-                        onSelectAgent={handleSelectAgent}
-                        onSelectTool={handleSelectTool}
-                        onSelectPrompt={handleSelectPrompt}
-                        onAddAgent={handleAddAgent}
-                        onAddTool={handleAddTool}
-                        onAddPrompt={handleAddPrompt}
-                        onToggleAgent={handleToggleAgent}
-                        onSetMainAgent={handleSetMainAgent}
-                        onDeleteAgent={handleDeleteAgent}
-                        onDeleteTool={handleDeleteTool}
-                        onDeletePrompt={handleDeletePrompt}
-                        projectId={state.present.workflow.projectId}
-                        onReorderAgents={handleReorderAgents}
-                    />
-                </div>
-            </ResizablePanel>
-            <ResizableHandle withHandle className="w-[3px] bg-transparent" />
             <ResizablePanel
-                minSize={20}
-                defaultSize={showCopilot ? PANEL_RATIOS.chatApp : PANEL_RATIOS.chatApp + PANEL_RATIOS.copilot}
+                minSize={30} // Adjusted minSize
+                defaultSize={showCopilot ? PANEL_RATIOS.chatApp : 100} // Occupy full width if copilot is hidden
                 className="overflow-auto"
             >
                 <ChatApp
@@ -1021,9 +1046,18 @@ export function WorkflowEditor({
                     mcpServerUrls={mcpServerUrls}
                     toolWebhookUrl={toolWebhookUrl}
                     isInitialState={isInitialState}
-                    onPanelClick={handlePlaygroundClick}
+                    onPanelClick={() => {
+                        // If we need to unselect agent/tool/prompt when clicking playground
+                        if (state.present.selection) {
+                            if (state.present.selection.type === 'agent') handleUnselectAgent();
+                            if (state.present.selection.type === 'tool') handleUnselectTool();
+                            if (state.present.selection.type === 'prompt') handleUnselectPrompt();
+                        }
+                        handlePlaygroundClick();
+                    }}
                     projectTools={projectTools}
                 />
+                {/* Conditional rendering of AgentConfig, ToolConfig, PromptConfig can be moved to a modal or an "Advanced" section later */}
                 {state.present.selection?.type === "agent" && <AgentConfig
                     key={state.present.selection.name}
                     projectId={state.present.workflow.projectId}
@@ -1072,7 +1106,7 @@ export function WorkflowEditor({
                 <>
                     <ResizableHandle withHandle className="w-[3px] bg-transparent" />
                     <ResizablePanel
-                        minSize={10}
+                        minSize={20} // Adjusted minSize
                         defaultSize={PANEL_RATIOS.copilot}
                         onResize={(size) => setCopilotWidth(size)}
                     >
@@ -1082,12 +1116,11 @@ export function WorkflowEditor({
                             workflow={state.present.workflow}
                             dispatch={dispatch}
                             chatContext={
-                                state.present.selection ? {
-                                    type: state.present.selection.type,
-                                    name: state.present.selection.name
-                                } : chatMessages.length > 0 ? {
+                                // chatMessages are now for the main ChatApp, Copilot context might need adjustment
+                                // For now, let's keep it simple, or remove if it's too coupled with EntityList selection
+                                chatMessages.length > 0 ? { 
                                     type: 'chat',
-                                    messages: chatMessages
+                                    messages: chatMessages // This might need to be Copilot specific messages
                                 } : undefined
                             }
                             isInitialState={isInitialState}
@@ -1103,5 +1136,137 @@ export function WorkflowEditor({
                 onComplete={() => setShowTour(false)}
             />
         )}
+        <Modal 
+            isOpen={showEntityModal} 
+            onClose={() => setShowEntityModal(false)}
+            size="4xl"
+            className="max-h-[90vh]"
+        >
+            <ModalContent>
+                {(onClose) => (
+                    <>
+                        <ModalHeader className="flex flex-col gap-1">
+                            <div className="flex items-center justify-between w-full">
+                                <h3 className="text-lg font-semibold">Конфигурация рабочего процесса</h3>
+                                <div className="flex items-center gap-2">
+                                    {entityModalTab === 'agents' && (
+                                        <Button
+                                            size="sm"
+                                            variant="flat"
+                                            onPress={() => {
+                                                handleAddAgent({});
+                                                onClose();
+                                            }}
+                                            startContent={<PlusCircleIcon size={16} />}
+                                            className="bg-blue-100 hover:bg-blue-200 text-blue-700"
+                                        >
+                                            Добавить агента
+                                        </Button>
+                                    )}
+                                    {entityModalTab === 'tools' && (
+                                        <Button
+                                            size="sm"
+                                            variant="flat"
+                                            onPress={() => {
+                                                handleAddTool({});
+                                                onClose();
+                                            }}
+                                            startContent={<PlusCircleIcon size={16} />}
+                                            className="bg-green-100 hover:bg-green-200 text-green-700"
+                                        >
+                                            Добавить инструмент
+                                        </Button>
+                                    )}
+                                    {entityModalTab === 'prompts' && (
+                                        <Button
+                                            size="sm"
+                                            variant="flat"
+                                            onPress={() => {
+                                                handleAddPrompt({});
+                                                onClose();
+                                            }}
+                                            startContent={<PlusCircleIcon size={16} />}
+                                            className="bg-purple-100 hover:bg-purple-200 text-purple-700"
+                                        >
+                                            Добавить промпт
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex gap-2 mt-2">
+                                <Button
+                                    size="sm"
+                                    variant={entityModalTab === 'agents' ? 'solid' : 'light'}
+                                    onPress={() => setEntityModalTab('agents')}
+                                    startContent={<UsersIcon size={16} />}
+                                    className={entityModalTab === 'agents' ? 'bg-blue-600 text-white' : ''}
+                                >
+                                    Агенты ({state.present.workflow.agents.length})
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant={entityModalTab === 'tools' ? 'solid' : 'light'}
+                                    onPress={() => setEntityModalTab('tools')}
+                                    startContent={<WrenchIcon size={16} />}
+                                    className={entityModalTab === 'tools' ? 'bg-green-600 text-white' : ''}
+                                >
+                                    Инструменты ({state.present.workflow.tools.length + projectTools.length})
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant={entityModalTab === 'prompts' ? 'solid' : 'light'}
+                                    onPress={() => setEntityModalTab('prompts')}
+                                    startContent={<FileTextIcon size={16} />}
+                                    className={entityModalTab === 'prompts' ? 'bg-purple-600 text-white' : ''}
+                                >
+                                    Промпты ({state.present.workflow.prompts.length})
+                                </Button>
+                            </div>
+                        </ModalHeader>
+                        <ModalBody className="px-4 py-2">
+                            <div className="h-[60vh] overflow-hidden">
+                                <EntityList
+                                    agents={state.present.workflow.agents}
+                                    tools={state.present.workflow.tools}
+                                    projectTools={projectTools}
+                                    prompts={state.present.workflow.prompts}
+                                    selectedEntity={state.present.selection}
+                                    startAgentName={state.present.workflow.startAgent}
+                                    onSelectAgent={(name) => {
+                                        handleSelectAgent(name);
+                                        onClose();
+                                    }}
+                                    onSelectTool={(name) => {
+                                        handleSelectTool(name);
+                                        onClose();
+                                    }}
+                                    onSelectPrompt={(name) => {
+                                        handleSelectPrompt(name);
+                                        onClose();
+                                    }}
+                                    onAddAgent={handleAddAgent}
+                                    onAddTool={handleAddTool}
+                                    onAddPrompt={handleAddPrompt}
+                                    onToggleAgent={handleToggleAgent}
+                                    onSetMainAgent={handleSetMainAgent}
+                                    onDeleteAgent={handleDeleteAgent}
+                                    onDeleteTool={handleDeleteTool}
+                                    onDeletePrompt={handleDeletePrompt}
+                                    projectId={state.present.workflow.projectId}
+                                    onReorderAgents={handleReorderAgents}
+                                    mode="modal"
+                                    activeTab={entityModalTab}
+                                />
+                            </div>
+                        </ModalBody>
+                        <ModalFooter>
+                            <Button variant="light" onPress={onClose}>
+                                Закрыть
+                            </Button>
+                        </ModalFooter>
+                    </>
+                )}
+            </ModalContent>
+        </Modal>
     </div>;
 }

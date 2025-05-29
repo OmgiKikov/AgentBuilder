@@ -225,9 +225,13 @@ export function EntityList({
     onDeletePrompt,
     projectId,
     onReorderAgents,
+    mode = 'default',
+    activeTab = 'agents',
 }: EntityListProps & { 
     projectId: string,
-    onReorderAgents: (agents: z.infer<typeof WorkflowAgent>[]) => void 
+    onReorderAgents: (agents: z.infer<typeof WorkflowAgent>[]) => void,
+    mode?: 'default' | 'modal',
+    activeTab?: 'agents' | 'tools' | 'prompts'
 }) {
     // Merge workflow tools with project tools
     const mergedTools = [...tools, ...projectTools];
@@ -325,6 +329,143 @@ export function EntityList({
         }
     };
 
+    // In modal mode, render only the active tab content
+    if (mode === 'modal') {
+        return (
+            <div className="h-full overflow-y-auto">
+                {activeTab === 'agents' && (
+                    <div className="p-4">
+                        {agents.length > 0 ? (
+                            <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleDragEnd}
+                            >
+                                <SortableContext
+                                    items={agents.map(a => a.name)}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    <div className="space-y-2">
+                                        {agents.map((agent) => (
+                                            <SortableAgentItem
+                                                key={agent.name}
+                                                agent={agent}
+                                                isSelected={selectedEntity?.type === "agent" && selectedEntity.name === agent.name}
+                                                onClick={() => onSelectAgent(agent.name)}
+                                                selectedRef={selectedEntity?.type === "agent" && selectedEntity.name === agent.name ? selectedRef : undefined}
+                                                statusLabel={startAgentName === agent.name ? <StartLabel /> : null}
+                                                onToggle={onToggleAgent}
+                                                onSetMainAgent={onSetMainAgent}
+                                                onDelete={onDeleteAgent}
+                                                isStartAgent={startAgentName === agent.name}
+                                            />
+                                        ))}
+                                    </div>
+                                </SortableContext>
+                            </DndContext>
+                        ) : (
+                            <EmptyState entity="agents" hasFilteredItems={false} />
+                        )}
+                    </div>
+                )}
+                {activeTab === 'tools' && (
+                    <div className="p-4">
+                        {mergedTools.length > 0 ? (
+                            <div className="space-y-2">
+                                {/* Group tools by server */}
+                                {(() => {
+                                    // Get custom tools (non-MCP tools)
+                                    const customTools = mergedTools.filter(tool => !tool.isMcp);
+                                    
+                                    // Group MCP tools by server
+                                    const serverTools = mergedTools.reduce((acc, tool) => {
+                                        if (tool.isMcp && tool.mcpServerName) {
+                                            if (!acc[tool.mcpServerName]) {
+                                                acc[tool.mcpServerName] = [];
+                                            }
+                                            acc[tool.mcpServerName].push(tool);
+                                        }
+                                        return acc;
+                                    }, {} as Record<string, typeof mergedTools>);
+
+                                    return (
+                                        <>
+                                            {/* Show MCP server cards first */}
+                                            {Object.entries(serverTools).map(([serverName, tools]) => (
+                                                <ServerCard
+                                                    key={serverName}
+                                                    serverName={serverName}
+                                                    tools={tools}
+                                                    selectedEntity={selectedEntity}
+                                                    onSelectTool={handleToolSelection}
+                                                    onDeleteTool={onDeleteTool}
+                                                    selectedRef={selectedRef}
+                                                />
+                                            ))}
+
+                                            {/* Show custom tools */}
+                                            {customTools.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400 px-2">Custom Tools</div>
+                                                    {customTools.map((tool, index) => (
+                                                        <ListItemWithMenu
+                                                            key={`tool-${index}`}
+                                                            name={tool.name}
+                                                            isSelected={selectedEntity?.type === "tool" && selectedEntity.name === tool.name}
+                                                            onClick={() => handleToolSelection(tool.name)}
+                                                            selectedRef={selectedEntity?.type === "tool" && selectedEntity.name === tool.name ? selectedRef : undefined}
+                                                            icon={tool.isLibrary ? <Library className="w-4 h-4 text-purple-600 dark:text-purple-500" /> : <Component className="w-4 h-4 text-green-600 dark:text-green-500" />}
+                                                            menuContent={
+                                                                <EntityDropdown 
+                                                                    name={tool.name} 
+                                                                    onDelete={onDeleteTool}
+                                                                    isLocked={tool.isMcp || tool.isLibrary}
+                                                                />
+                                                            }
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                        ) : (
+                            <EmptyState entity="tools" hasFilteredItems={false} />
+                        )}
+                    </div>
+                )}
+                {activeTab === 'prompts' && (
+                    <div className="p-4">
+                        {prompts.length > 0 ? (
+                            <div className="space-y-2">
+                                {prompts.map((prompt, index) => (
+                                    <ListItemWithMenu
+                                        key={`prompt-${index}`}
+                                        name={prompt.name}
+                                        isSelected={selectedEntity?.type === "prompt" && selectedEntity.name === prompt.name}
+                                        onClick={() => onSelectPrompt(prompt.name)}
+                                        selectedRef={selectedEntity?.type === "prompt" && selectedEntity.name === prompt.name ? selectedRef : undefined}
+                                        icon={<ScrollText className="w-4 h-4 text-purple-600 dark:text-purple-500" />}
+                                        menuContent={
+                                            <EntityDropdown 
+                                                name={prompt.name} 
+                                                onDelete={onDeletePrompt}
+                                            />
+                                        }
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <EmptyState entity="prompts" hasFilteredItems={false} />
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Default mode with resizable panels
     return (
         <div ref={containerRef} className="flex flex-col h-full">
             <ResizablePanelGroup 
