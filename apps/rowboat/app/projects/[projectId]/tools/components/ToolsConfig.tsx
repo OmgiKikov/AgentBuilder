@@ -23,7 +23,7 @@ export function ToolsConfig() {
         className="w-full"
         fullWidth
       >
-        <Tab key="hosted" title="Tools Library">
+        <Tab key="hosted" title="Библиотека инструментов">
           <div className="mt-4 p-6">
             <HostedServers />
           </div>

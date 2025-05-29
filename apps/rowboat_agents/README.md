@@ -1,15 +1,15 @@
 # 🤖 Agents
 
 ## 📝 Overview  
-- RowBoat Agents is a multi-agent framework that powers conversations using agentic workflows.  
-- Built on top of [OpenAI Swarm](https://github.com/openai/swarm) with custom enhancements and improvements. Check the [NOTICE](https://github.com/rowboatlabs/rowboat/blob/main/apps/agents/NOTICE.md) for attribution and licensing details (MIT license).  
+- AgentBuilder Agents is a multi-agent framework that powers conversations using agentic workflows.  
+- Built on top of [OpenAI Swarm](https://github.com/openai/swarm) with custom enhancements and improvements. Check the [NOTICE](https://github.com/AgentBuilderlabs/AgentBuilder/blob/main/apps/agents/NOTICE.md) for attribution and licensing details (MIT license).  
 
 ---
 
 ## 🕸️ Graph-based Framework  
 - Multi-agent systems are represented as graphs, where each agent is a node in the graph.  
-- RowBoat Agents accepts Directed Acyclic Graph (DAG) workflows, which define agents, tools, and their connections.
-- Configure workflows using the RowBoat Studio (UI) with the help of an AI copilot. Setup instructions can be found in the [main README](https://github.com/rowboatlabs/rowboat).  
+- AgentBuilder Agents accepts Directed Acyclic Graph (DAG) workflows, which define agents, tools, and their connections.
+- Configure workflows using the AgentBuilder Studio (UI) with the help of an AI copilot. Setup instructions can be found in the [main README](https://github.com/AgentBuilderlabs/AgentBuilder).  
 - The framework is stateless, meaning that it requires the upstream service to pass in the current `state` and `messages` in every turn.
 - At each conversation turn:  
   - The agents are initialized using the current `state`.
@@ -94,7 +94,7 @@ Copy `.env.example` to `.env` and add your API keys
   - `src/app/`: Contains Flask app which exposes the framework as a service
   - `src/graph/`: Contains logic to run every turn of the conversation
     - `src/graph/core.py`: Core graph implementation which parses the workflow config, creates agents from it and runs the turn of conversation (through the `run_turn` function)
-  - `src/swarm/`: RowBoat's custom implementation of OpenAI Swarm, which is used by `src/graph/core.py`
+  - `src/swarm/`: AgentBuilder's custom implementation of OpenAI Swarm, which is used by `src/graph/core.py`
 - `tests/`: Contains sample requests, an interactive client and a test client which mocks an upstream service
 - `configs/`: Contains graph configurations (changed infrequently)
 - `tests/sample_requests/`: Contains sample request files for the agents app
@@ -110,5 +110,5 @@ Copy `.env.example` to `.env` and add your API keys
 - Does not support streaming currently.
 - Cannot respond with multiple user-facing messages in the same turn.
 
-# RowBoat Labs  
-🌐 Visit [RowBoat Labs](https://www.rowboatlabs.com) to learn more!  
+# AgentBuilder Labs  
+🌐 Visit [AgentBuilder Labs](https://www.AgentBuilderlabs.com) to learn more!  

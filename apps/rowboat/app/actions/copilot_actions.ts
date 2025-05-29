@@ -15,7 +15,8 @@ import { check_query_limit } from "../lib/rate_limiting";
 import { QueryLimitError, validateConfigChanges } from "../lib/client_utils";
 import { projectAuthCheck } from "./project_actions";
 import { redisClient } from "../lib/redis";
-import { getMcpToolsFromProject, mergeMcpTools } from "./mcp_actions";
+import { fetchProjectMcpTools } from "../lib/project_tools";
+import { mergeProjectTools } from "../lib/types/project_types";
 
 export async function getCopilotResponse(
     projectId: string,
@@ -34,12 +35,12 @@ export async function getCopilotResponse(
     }
 
     // Get MCP tools from project and merge with workflow tools
-    const mcpTools = await getMcpToolsFromProject(projectId);
+    const mcpTools = await fetchProjectMcpTools(projectId);
     
     // Convert workflow to copilot format with both workflow and project tools
     const copilotWorkflow = convertToCopilotWorkflow({
         ...current_workflow_config,
-        tools: await mergeMcpTools(current_workflow_config.tools, mcpTools)
+        tools: await mergeProjectTools(current_workflow_config.tools, mcpTools)
     });
 
     // prepare request
@@ -138,12 +139,12 @@ export async function getCopilotResponseStream(
     }
 
     // Get MCP tools from project and merge with workflow tools
-    const mcpTools = await getMcpToolsFromProject(projectId);
+    const mcpTools = await fetchProjectMcpTools(projectId);
     
     // Convert workflow to copilot format with both workflow and project tools
     const copilotWorkflow = convertToCopilotWorkflow({
         ...current_workflow_config,
-        tools: await mergeMcpTools(current_workflow_config.tools, mcpTools)
+        tools: await mergeProjectTools(current_workflow_config.tools, mcpTools)
     });
 
     // prepare request
@@ -183,12 +184,12 @@ export async function getCopilotAgentInstructions(
     }
 
     // Get MCP tools from project and merge with workflow tools
-    const mcpTools = await getMcpToolsFromProject(projectId);
+    const mcpTools = await fetchProjectMcpTools(projectId);
     
     // Convert workflow to copilot format with both workflow and project tools
     const copilotWorkflow = convertToCopilotWorkflow({
         ...current_workflow_config,
-        tools: await mergeMcpTools(current_workflow_config.tools, mcpTools)
+        tools: await mergeProjectTools(current_workflow_config.tools, mcpTools)
     });
 
     // prepare request

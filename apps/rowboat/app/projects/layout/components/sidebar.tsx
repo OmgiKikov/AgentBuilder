@@ -58,7 +58,7 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
   const navItems = [
     {
       href: 'workflow',
-      label: 'Построить',
+      label: 'Создать агентов',
       icon: WorkflowIcon,
       requiresProject: true
     },

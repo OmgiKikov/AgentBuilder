@@ -51,7 +51,7 @@ const TOUR_STEPS: TourStep[] = [
     },
     {
         target: 'tour-button',
-        content: 'Вернитесь сюда в любое время, чтобы перезапустить тур.\nВсё ещё есть вопросы? Смотрите нашу <a href="https://docs.AgentBuilderlabs.com/" target="_blank" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">документацию</a> или обращайтесь к нам в <a href="https://discord.gg/gtbGcqF4" target="_blank" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">Discord</a>.',
+        content: 'Вернитесь сюда в любое время, чтобы перезапустить тур.\nВсё ещё есть вопросы? Смотрите нашу <a href="https://docs.AgentBuilderlabs.com/" target="_blank" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">документацию</a> или обращайтесь к нам по email',
         title: 'Шаг 9/9'
     }
 ];

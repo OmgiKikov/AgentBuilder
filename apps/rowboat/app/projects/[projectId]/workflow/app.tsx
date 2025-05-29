@@ -9,7 +9,7 @@ import { WorkflowSelector } from "./workflow_selector";
 import { Spinner } from "@heroui/react";
 import { cloneWorkflow, createWorkflow, fetchPublishedWorkflowId, fetchWorkflow } from "../../../actions/workflow_actions";
 import { listDataSources } from "../../../actions/datasource_actions";
-import { listMcpServers, listProjectTools } from "@/app/actions/mcp_actions";
+import { listMcpServers, listProjectMcpTools } from "@/app/actions/mcp_actions";
 import { getProjectConfig } from "@/app/actions/project_actions";
 import { WorkflowTool } from "@/app/lib/types/workflow_types";
 
@@ -39,7 +39,7 @@ export function App({
         const dataSources = await listDataSources(projectId);
         const mcpServers = await listMcpServers(projectId);
         const projectConfig = await getProjectConfig(projectId);
-        const projectTools = await listProjectTools(projectId);
+        const projectTools = await listProjectMcpTools(projectId);
         // Store the selected workflow ID in local storage
         localStorage.setItem(`lastWorkflowId_${projectId}`, workflowId);
         setWorkflow(workflow);

@@ -4,7 +4,7 @@
 
 1. Once you are set up, you should be able to login to the Studio via Auth0's login options (Gmail, Github etc.). 
 - For the open source installation, the URL for Studio is [http://localhost:3000](http://localhost:3000)
-- To use our hosted app, the URL for Studio is [https://app.rowboatlabs.com](https://app.rowboatlabs.com/)
+- To use our hosted app, the URL for Studio is [https://app.AgentBuilderlabs.com](https://app.AgentBuilderlabs.com/)
 <br>
 
 2. Once in Studio, create a new blank project or browse through one of the example projects:
@@ -26,7 +26,7 @@
 ### Testing the Chat API
 
 - For the open source installation, the `<HOST>` is [http://localhost:3000](http://localhost:3000)
-- When using the hosted app, the `<HOST>` is [https://app.rowboatlabs.com](https://app.rowboatlabs.com)
+- When using the hosted app, the `<HOST>` is [https://app.AgentBuilderlabs.com](https://app.AgentBuilderlabs.com)
 - `<PROJECT_ID>` is available in the URL of the project page
 - API Key can be generated from the project config page at `<HOST>/projects/<PROJECT_ID>/config`
 
@@ -106,18 +106,18 @@ The last message in `messages` is either a user-facing response or a tool call b
 ### Testing the Python Chat SDK
 
 - For the open source installation, the `<HOST>` is [http://localhost:3000](http://localhost:3000)
-- When using the hosted app, the `<HOST>` is [https://app.rowboatlabs.com](https://app.rowboatlabs.com)
+- When using the hosted app, the `<HOST>` is [https://app.AgentBuilderlabs.com](https://app.AgentBuilderlabs.com)
 - `<PROJECT_ID>` is available in the URL of the project page
 - API Key can be generated from the project config page at `<HOST>/projects/<PROJECT_ID>/config`
 
 ```bash
-pip install rowboat
+pip install AgentBuilder
 ```
 
 Modify the user message in `messages`, based on your example project.
 
 ```python
-from rowboat import Client
+from AgentBuilder import Client
 
 client = Client(
     host="<HOST>",

@@ -1022,6 +1022,7 @@ export function WorkflowEditor({
                     toolWebhookUrl={toolWebhookUrl}
                     isInitialState={isInitialState}
                     onPanelClick={handlePlaygroundClick}
+                    projectTools={projectTools}
                 />
                 {state.present.selection?.type === "agent" && <AgentConfig
                     key={state.present.selection.name}

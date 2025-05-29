@@ -74,6 +74,14 @@ export function Action({
                     prompt: changes
                 });
                 break;
+            case 'workflow':
+                if (field === 'startAgent') {
+                    dispatch({
+                        type: 'set_main_agent',
+                        name: changes[field]
+                    });
+                }
+                break;
         }
 
         setAppliedChanges(prev => ({
@@ -135,6 +143,17 @@ export function Action({
                         type: 'update_prompt',
                         name: action.name,
                         prompt: action.config_changes
+                    });
+                    break;
+                case 'workflow':
+                    // Handle workflow changes
+                    Object.entries(action.config_changes).forEach(([field, value]) => {
+                        if (field === 'startAgent') {
+                            dispatch({
+                                type: 'set_main_agent',
+                                name: value as string
+                            });
+                        }
                     });
                     break;
             }
@@ -328,7 +347,7 @@ export function StreamingAction({
 }: {
     action: {
         action?: 'create_new' | 'edit';
-        config_type?: 'tool' | 'agent' | 'prompt';
+        config_type?: 'tool' | 'agent' | 'prompt' | 'workflow';
         name?: string;
     };
     loading: boolean;
@@ -341,7 +360,7 @@ export function StreamingAction({
             {action.action == 'create_new' && <PlusIcon size={16} />}
             {action.action == 'edit' && <PencilIcon size={16} />}
             <div className="text-sm truncate">
-                {action.config_type && `${action.action === 'create_new' ? 'Создать' : 'Изменить'} ${action.config_type === 'tool' ? 'инструмент' : action.config_type === 'agent' ? 'агент' : 'промт'}`}
+                {action.config_type && `${action.action === 'create_new' ? 'Создать' : 'Изменить'} ${action.config_type === 'tool' ? 'инструмент' : action.config_type === 'agent' ? 'агент' : action.config_type === 'prompt' ? 'промт' : 'workflow'}`}
                 {action.name && <span className="font-medium ml-1">{action.name}</span>}
             </div>
         </div>

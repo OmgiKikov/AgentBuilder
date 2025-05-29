@@ -53,7 +53,6 @@ async function createBaseProject(name: string, user: any) {
         secret,
         nextWorkflowNumber: 1,
         testRunCounter: 0,
-        mcpServers: [],
     });
 
     // Add user to project
