@@ -3,7 +3,7 @@ from bson import ObjectId
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from apps.experimental.simulation_runner.scenario_types import (
+from .scenario_types import (
     TestRun,
     TestScenario,
     TestSimulation,

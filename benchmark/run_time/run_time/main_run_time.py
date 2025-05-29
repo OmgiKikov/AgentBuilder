@@ -105,10 +105,12 @@ async def run_single_simulation(simulation_data: dict, workflow_id: str, max_dia
             print(f"   Успешно: {results.get('passCount', 0)}")
             print(f"   Неудачно: {results.get('failCount', 0)}")
     
+    last_result = None
     if test_results:
-        for i, result in enumerate(test_results, 1):
-            print(f"   Результат {i}: {result.get('result', 'unknown')}")
-            print(f"   Детали: {result.get('details', 'нет деталей')[:100]}...")
+        for i, test_result in enumerate(test_results, 1):
+            print(f"   Результат {i}: {test_result.get('result', 'unknown')}")
+            print(f"   Детали: {test_result.get('details', 'нет деталей')[:100]}...")
+            last_result = test_result
     else:
         print("   ⚠️  Результаты отсутствуют")
     
@@ -118,7 +120,7 @@ async def run_single_simulation(simulation_data: dict, workflow_id: str, max_dia
         "run_id": run_id,
         "status": final_run['status'] if final_run else "unknown",
         "results_count": len(test_results),
-        "result": result
+        "result": last_result
     }
 
 def get_project_workflow_mapping():
@@ -201,6 +203,15 @@ async def run_batch_simulations():
         print(f"✅ {result['simulation_name']}: {result['status']} ({result['results_count']} результатов)")
     
     print(f"\n🎉 Обработано симуляций: {len(batch_results)}/{len(simulation_pairs)}")
+
+    for item in batch_results:
+        transcript_str = item.get("result", {}).get("transcript")
+        if transcript_str and isinstance(transcript_str, str):
+            try:
+                item["result"]["transcript"] = json.loads(transcript_str)
+            except json.JSONDecodeError:
+                # Если вдруг невалидный JSON — можно залогировать или оставить как есть
+                pass
     
     with open("benchmark/run_time/run_time_result.json", 'w', encoding='utf-8') as f:
         json.dump(batch_results, f, ensure_ascii=False, indent=4, default=json_serializer)

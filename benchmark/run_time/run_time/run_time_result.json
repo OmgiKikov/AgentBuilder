@@ -1,0 +1,68 @@
+[
+    {
+        "simulation_name": "Тест работа калькулятора",
+        "run_id": "6836d7332403eadefcebdd5f",
+        "status": "completed",
+        "results_count": 1,
+        "result": {
+            "_id": "6836d73d2403eadefcebdd6c",
+            "projectId": "3bae620b-7c49-4aea-ba3e-272a43be8dc8",
+            "runId": "6836d7332403eadefcebdd5f",
+            "simulationId": "6835b1433c57388a8037c278",
+            "result": "pass",
+            "details": "The bot correctly provided the answer 1.6666666666666667 to the user's question about the division of 5 by 3, which matches the expected result.",
+            "transcript": [
+                {
+                    "role": "user",
+                    "content": "Сколько будет 5/3?"
+                },
+                {
+                    "role": "assistant",
+                    "content": "Агент 'Калькулятор' вызывает инструмент: calculator({\"question\":\"5/3\"})\nРезультат recommendation: [\n  {\n    \"type\": \"text\",\n    \"text\": \"1.6666666666666667\",\n    \"annotations\": null\n  }\n]Агент 'Калькулятор' (внешний ответ): Sender agent: Калькулятор\nContent: Результат: 1.6666666666666667\n"
+                },
+                {
+                    "role": "user",
+                    "content": "Спасибо! Это то, что я хотел узнать."
+                },
+                {
+                    "role": "assistant",
+                    "content": "Sender agent: Калькулятор\nContent: Пожалуйста! Рад был помочь. Если у вас будут ещё вопросы по вычислениям или gigachat — обращайтесь!"
+                },
+                {
+                    "role": "user",
+                    "content": "Обязательно обращусь, спасибо! Хорошего дня!"
+                },
+                {
+                    "role": "assistant",
+                    "content": "Sender agent: Калькулятор\nContent: Спасибо! Вам тоже отличного дня! Если понадобятся вычисления или информация о gigachat — всегда рад помочь."
+                }
+            ]
+        },
+        "scenario_name": "Реальный тест - 1"
+    },
+    {
+        "simulation_name": "Тест",
+        "run_id": "6836d7452403eadefcebdd73",
+        "status": "completed",
+        "results_count": 1,
+        "result": {
+            "_id": "6836d74a2403eadefcebdd7d",
+            "projectId": "3bae620b-7c49-4aea-ba3e-272a43be8dc8",
+            "runId": "6836d7452403eadefcebdd73",
+            "simulationId": "6835b1433c57388a8037c27e",
+            "result": "pass",
+            "details": "The assistant correctly responded to the user's question by stating its capabilities, which include performing arithmetic calculations and answering questions about gigachat based on a specific data source.",
+            "transcript": [
+                {
+                    "role": "user",
+                    "content": "Привет! Что ты умеешь?"
+                },
+                {
+                    "role": "assistant",
+                    "content": "Агент 'Калькулятор' (внешний ответ): Sender agent: Калькулятор\nContent: Привет! Я могу выполнять арифметические вычисления (например, сложение, вычитание, умножение, деление) и отвечать на вопросы о gigachat и его моделях на основе специального источника данных. \n\nЕсли у тебя есть выражение для вычисления или вопрос о gigachat — просто напиши его!\n"
+                }
+            ]
+        },
+        "scenario_name": "Реальный тест - 2"
+    }
+]

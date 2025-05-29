@@ -24,6 +24,7 @@ class MockGPTAgent:
         copilot_api_key: str = None,
         rowboat_base_url: str = "http://localhost:3000",
         openai_model: str = "gpt-4o-mini",
+        openai_model_eval: str = "gpt-4o",
         openai_api_key: str = None
     ):
         """
@@ -44,6 +45,7 @@ class MockGPTAgent:
         
         self.openai_client = OpenAI(api_key=openai_api_key)
         self.openai_model = openai_model
+        self.openai_model_eval = openai_model_eval
         
     def check_services(self) -> bool:
         """Проверяет доступность сервисов"""
@@ -62,7 +64,7 @@ class MockGPTAgent:
         agent_prompt: str,
         max_iterations: int = 5,
         initial_message: str = None,
-        pass_criteria: str = None,
+        pass_criteria: list = None,
         temperature: float = 0.7
     ) -> Dict[str, Any]:
         """
@@ -188,15 +190,20 @@ class MockGPTAgent:
         # Если заданы критерии оценки, проводим оценку
         if pass_criteria:
             print("\n📊 Проводим оценку разговора...")
-            try:
-                evaluation_result = await self._evaluate_conversation(
-                    conversation_history, pass_criteria, loop
-                )
-                result.update(evaluation_result)
-            except Exception as e:
-                print(f"❌ Ошибка при оценке: {e}")
-                result["evaluation_error"] = str(e)
-        
+            result_evaluation = []
+            for test_criterias in pass_criteria:
+                test_pass = test_criterias["passCriteria"]
+                try:
+                    evaluation_result = await self._evaluate_conversation(
+                        conversation_history, test_pass, loop
+                    )
+                    eval_result = evaluation_result["evaluation"]
+                    eval_result["test_name"] = test_criterias["test_name"]
+                    result_evaluation.append(eval_result)
+                except Exception as e:
+                    print(f"❌ Ошибка при оценке: {e}")
+                    result["evaluation_error"] = str(e)
+            result["evaluation"] = result_evaluation
         print(f"\n✅ Симуляция завершена! Итераций: {result['total_iterations']}")
         return result
     
@@ -239,7 +246,7 @@ class MockGPTAgent:
         eval_response = await loop.run_in_executor(
             None,
             lambda: self.openai_client.chat.completions.create(
-                model=self.openai_model,
+                model=self.openai_model_eval,
                 messages=evaluation_prompt,
                 temperature=0.0,
                 response_format={"type": "json_object"}
@@ -307,7 +314,7 @@ async def main():
         
         description = test["scenario_description"]
         agent_prompt = f"You are role playing a customer talking to a chatbot (the user is role playing the chatbot). Have the following chat with the chatbot. Scenario:\n{description}. You are provided no other information. If the chatbot asks you for information that is not in context, go ahead and provide one unless stated otherwise in the scenario. Directly have the chat with the chatbot. Start now with your first message."
-        pass_criteria = test["list_of_passCriteria"][0]["passCriteria"]
+        pass_criteria = test["list_of_passCriteria"]# [0]["passCriteria"]
         
         # Запускаем симуляцию
         result = await agent.simulate_conversation(

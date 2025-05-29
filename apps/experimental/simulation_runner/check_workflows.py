@@ -3,7 +3,7 @@
 Проверка workflow в базе данных
 """
 
-from db import get_collection
+from .db import get_collection
 from bson import ObjectId
 
 def check_workflows():
