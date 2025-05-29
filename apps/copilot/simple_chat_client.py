@@ -127,6 +127,31 @@ class SimpleCopilotClient:
             print(f"Ошибка получения workflows: {e}")
             
         return []
+    
+    def get_datasource(self, project_id: str) -> List[Dict[str, Any]]:
+        """
+        Получает список datasource для проекта из Rowboat API
+        """
+        try:
+            url = f"{self.rowboat_base_url}/api/projects/{project_id}/sources"
+            headers = {
+                'Content-Type': 'application/json'
+            }
+            if self.api_key:
+                headers['Authorization'] = f'Bearer {self.api_key}'
+                
+            req = urllib.request.Request(url, headers=headers)
+            
+            with urllib.request.urlopen(req, timeout=10) as response:
+                if response.status == 200:
+                    data = json.loads(response.read().decode('utf-8'))
+                    return data
+            
+            return DataSource(**response.json())
+        except Exception as e:
+            print(f"Ошибка получения datasources: {e}")
+            
+        return []
 
     def load_workflow_from_project(self, project_id: str, workflow_id: str = None) -> bool:
         """
@@ -159,6 +184,9 @@ class SimpleCopilotClient:
             if not selected_workflow:
                 print(f"Workflow не найден")
                 return False
+            
+            # получаем data source
+            selected_workflow["datasource"] = self.get_datasource(project_id)
             
             # Добавляем MCP инструменты из проекта в workflow
             if current_project and 'mcpServers' in current_project:
@@ -284,6 +312,8 @@ class SimpleCopilotClient:
             
         if data_sources:
             request_data["dataSources"] = [self._datasource_to_dict(ds) for ds in data_sources]
+        else:
+            request_data["dataSources"] = [self._datasource_to_dict(ds) for ds in self.workflow["datasource"]]
 
         # Подготовка запроса
         url = f"{self.base_url}/chat_stream"
@@ -378,11 +408,10 @@ class SimpleCopilotClient:
     def _datasource_to_dict(self, datasource: DataSource) -> Dict[str, Any]:
         """Преобразует источник данных в словарь"""
         return {
-            "_id": datasource.id,
-            "name": datasource.name,
-            "description": datasource.description,
-            "active": datasource.active,
-            "status": datasource.status,
-            "error": datasource.error,
-            "data": datasource.data
+            "_id": datasource["_id"],
+            "name": datasource["name"],
+            "description": datasource["description"],
+            "active": datasource["active"],
+            "status": datasource["status"],
+            "data": datasource["data"]
         }
