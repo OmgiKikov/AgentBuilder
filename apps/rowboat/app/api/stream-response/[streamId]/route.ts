@@ -1,18 +1,8 @@
 import { redisClient } from "@/app/lib/redis";
 
-interface RouteParams {
-  params: {
-    streamId: string;
-  };
-}
-
-export async function GET(
-  request: Request,
-  { params }: RouteParams
-) {
+export async function GET(request: Request, { params }: { params: { streamId: string } }) {
   // get the payload from redis
-  const streamId = params.streamId;
-  const payload = await redisClient.get(`chat-stream-${streamId}`);
+  const payload = await redisClient.get(`chat-stream-${params.streamId}`);
   if (!payload) {
     return new Response("Stream not found", { status: 404 });
   }

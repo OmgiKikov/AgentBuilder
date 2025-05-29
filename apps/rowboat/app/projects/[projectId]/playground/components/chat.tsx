@@ -7,7 +7,7 @@ import { MCPServer, PlaygroundChat } from "@/app/lib/types/types";
 import { AgenticAPIChatMessage, convertFromAgenticAPIChatMessages, convertToAgenticAPIChatMessages } from "@/app/lib/types/agents_api_types";
 import { convertWorkflowToAgenticAPI } from "@/app/lib/types/agents_api_types";
 import { AgenticAPIChatRequest } from "@/app/lib/types/agents_api_types";
-import { Workflow } from "@/app/lib/types/workflow_types";
+import { Workflow, WorkflowTool } from "@/app/lib/types/workflow_types";
 import { ComposeBoxPlayground } from "@/components/common/compose-box-playground";
 import { Button } from "@heroui/react";
 import { apiV1 } from "rowboat-shared";
@@ -29,6 +29,7 @@ export function Chat({
     toolWebhookUrl,
     onCopyClick,
     showDebugMessages = true,
+    projectTools,
 }: {
     chat: z.infer<typeof PlaygroundChat>;
     projectId: string;
@@ -42,6 +43,7 @@ export function Chat({
     toolWebhookUrl: string;
     onCopyClick: (fn: () => string) => void;
     showDebugMessages?: boolean;
+    projectTools: z.infer<typeof WorkflowTool>[];
 }) {
     const [messages, setMessages] = useState<z.infer<typeof apiV1.ChatMessage>[]>(chat.messages);
     const [loadingAssistantResponse, setLoadingAssistantResponse] = useState<boolean>(false);
@@ -125,8 +127,7 @@ export function Chat({
             setLastAgenticRequest(null);
             setLastAgenticResponse(null);
             
-            const workflowApi = await convertWorkflowToAgenticAPI(workflow);
-            const { agents, tools, prompts, startAgent } = workflowApi;
+            const { agents, tools, prompts, startAgent } = convertWorkflowToAgenticAPI(workflow, projectTools);
             const request: z.infer<typeof AgenticAPIChatRequest> = {
                 projectId,
                 messages: convertToAgenticAPIChatMessages([{
@@ -263,6 +264,7 @@ export function Chat({
         toolWebhookUrl,
         testProfile,
         fetchResponseError,
+        projectTools,
     ]);
 
     return <div className="relative max-w-3xl mx-auto h-full flex flex-col">
