@@ -16,7 +16,7 @@ const TOUR_STEPS: TourStep[] = [
     },
     {
         target: 'playground',
-        content: 'Тестируйте вашего ассистента на площадке.\nОтлаживайте вызовы инструментов и ответы.',
+        content: 'Тестируйте вашего ассистента.\nОтлаживайте вызовы инструментов и ответы.',
         title: 'Шаг 2/9'
     },
     {
@@ -46,12 +46,12 @@ const TOUR_STEPS: TourStep[] = [
     },
     {
         target: 'deploy',
-        content: 'Разверните версию вашего рабочего процесса, чтобы сделать его активным.\nЭто сделает ваш рабочий процесс доступным для использования через API и SDK.\n\nУзнайте больше:\n• <a href="https://docs.AgentBuilderlabs.com/using_the_api/" target="_blank" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">Использование API</a>\n• <a href="https://docs.AgentBuilderlabs.com/using_the_sdk/" target="_blank" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">Использование SDK</a>',
+        content: 'Разверните версию вашего агента, чтобы сделать его активным.\nЭто сделает ваш агент доступным для использования через API и SDK.',
         title: 'Шаг 8/9'
     },
     {
         target: 'tour-button',
-        content: 'Вернитесь сюда в любое время, чтобы перезапустить тур.\nВсё ещё есть вопросы? Смотрите нашу <a href="https://docs.AgentBuilderlabs.com/" target="_blank" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">документацию</a> или обращайтесь к нам по email',
+        content: 'Вернитесь сюда в любое время, чтобы повторить гайд.',
         title: 'Шаг 9/9'
     }
 ];
@@ -245,7 +245,7 @@ export function ProductTour({
                         onClick={handleSkip}
                         className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                     >
-                        Пропустить тур
+                        Пропустить гайд
                     </button>
                     <button
                         onClick={handleNext}
