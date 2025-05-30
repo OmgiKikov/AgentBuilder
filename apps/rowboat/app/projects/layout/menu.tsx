@@ -53,6 +53,14 @@ export default function Menu({
                 icon={PlayIcon}
                 selected={pathname.startsWith(`/projects/${projectId}/test`)}
             />
+            <NavLink
+                href={`/projects/${projectId}/tools`}
+                label="Tools"
+                collapsed={collapsed}
+                icon={require('lucide-react').Wrench}
+                selected={pathname.startsWith(`/projects/${projectId}/tools`)}
+                data-tour-target="tools-menu"
+            />
             {useRag && (
                 <NavLink
                     href={`/projects/${projectId}/sources`}

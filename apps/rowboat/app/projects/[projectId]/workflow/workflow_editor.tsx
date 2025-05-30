@@ -988,6 +988,7 @@ export function WorkflowEditor({
                                 size="md"
                                 className="gap-2 px-4 bg-gray-600 hover:bg-gray-700 text-white font-semibold text-sm"
                                 startContent={<Settings2Icon size={16} />}
+                                data-tour-target="config-modal"
                             >
                                 Конфигурация
                             </Button>
