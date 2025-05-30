@@ -91,18 +91,16 @@ export function ComposeBoxCopilot({
     return (
         <div className="relative group">
             {/* Keyboard shortcut hint */}
-            <div className="absolute -top-6 right-0 text-xs text-gray-500 dark:text-gray-400 opacity-0 
-                          group-hover:opacity-100 transition-opacity">
-                Press ⌘ + Enter to send
+            <div className="absolute -top-6 right-0 text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Нажмите ⌘ + Enter для отправки сообщения или используйте голосовой ввод */}
             </div>
 
-            {/* Outer container with padding */}
-            <div className="rounded-2xl border-[1.5px] border-gray-200 dark:border-[#2a2d31] p-3 relative 
-                          bg-white dark:bg-[#1e2023] flex items-end gap-2">
-                {/* Audio input button */}
+            {/* Новый современный контейнер */}
+            <div className="flex items-center gap-3 min-h-[52px] p-3 rounded-2xl border border-gray-200 dark:border-[#2a2d31] bg-white dark:bg-[#1e2023]">
+                {/* Микрофон */}
                 <AudioInputButton onTextReceived={handleAudioText} disabled={loading} />
-                
-                {/* Textarea */}
+
+                {/* Текстовое поле */}
                 <div className="flex-1">
                     <Textarea
                         ref={textareaRef}
@@ -112,54 +110,32 @@ export function ComposeBoxCopilot({
                         onFocus={handleFocus}
                         onBlur={() => setIsFocused(false)}
                         disabled={loading}
-                        placeholder="Type a message..."
+                        placeholder="Введите сообщение..."
                         autoResize={true}
                         maxHeight={120}
-                        className={`
-                            !min-h-0
-                            !border-0 !shadow-none !ring-0
-                            bg-transparent
-                            resize-none
-                            overflow-y-auto
-                            [&::-webkit-scrollbar]:w-1
-                            [&::-webkit-scrollbar-track]:bg-transparent
-                            [&::-webkit-scrollbar-thumb]:bg-gray-300
-                            [&::-webkit-scrollbar-thumb]:dark:bg-[#2a2d31]
-                            [&::-webkit-scrollbar-thumb]:rounded-full
-                            placeholder:text-gray-500 dark:placeholder:text-gray-400
-                        `}
+                        className={`!min-h-0 !border-0 !shadow-none !ring-0 bg-transparent resize-none overflow-y-auto text-base placeholder:text-gray-500 dark:placeholder:text-gray-400`}
                     />
                 </div>
 
-                {/* Send button */}
-                <Button
-                    size="icon"
+                {/* Кнопка отправки или стоп */}
+                <button
+                    type="button"
                     disabled={!loading && !input.trim()}
                     onClick={loading ? onCancel : handleInput}
-                    className={`
-                        transition-all duration-200
+                    className={`w-10 h-10 min-w-0 min-h-0 p-0 rounded-full flex items-center justify-center border border-gray-200 dark:border-[#2a2d31] bg-white dark:bg-[#23262b] shadow-sm transition
                         ${loading 
-                            ? 'bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/50 dark:hover:bg-red-800/60 dark:text-red-300'
+                            ? 'text-red-600 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-900/30' 
                             : input.trim() 
-                                ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:hover:bg-indigo-800/60 dark:text-indigo-300' 
-                                : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'
-                        }
-                        scale-100 hover:scale-105 active:scale-95
-                        disabled:opacity-50 disabled:scale-95
-                        hover:shadow-md dark:hover:shadow-indigo-950/10
-                        mb-0.5
-                        w-9 h-9 p-1.5
-                    `}
+                                ? 'text-indigo-500 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-900/30' 
+                                : 'text-gray-400 dark:text-gray-500'}
+                        active:scale-95 disabled:opacity-50`}
                 >
                     {loading ? (
-                        <StopIcon size={16} />
+                        <svg width={20} height={20} viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="1" /></svg>
                     ) : (
-                        <SendIcon 
-                            size={16} 
-                            className={`transform transition-transform ${isFocused ? 'translate-x-0.5' : ''}`}
-                        />
+                        <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" /></svg>
                     )}
-                </Button>
+                </button>
             </div>
         </div>
     );
