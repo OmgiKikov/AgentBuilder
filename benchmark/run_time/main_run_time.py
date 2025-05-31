@@ -205,13 +205,16 @@ async def run_batch_simulations():
     print(f"\n🎉 Обработано симуляций: {len(batch_results)}/{len(simulation_pairs)}")
 
     for item in batch_results:
-        transcript_str = item.get("result", {}).get("transcript")
-        if transcript_str and isinstance(transcript_str, str):
-            try:
-                item["result"]["transcript"] = json.loads(transcript_str)
-            except json.JSONDecodeError:
-                # Если вдруг невалидный JSON — можно залогировать или оставить как есть
-                pass
+        try:
+            transcript_str = item.get("result", {}).get("transcript")
+            if transcript_str and isinstance(transcript_str, str):
+                try:
+                    item["result"]["transcript"] = json.loads(transcript_str)
+                except json.JSONDecodeError:
+                    # Если вдруг невалидный JSON — можно залогировать или оставить как есть
+                    pass
+        except:
+            pass
     
     with open("benchmark/run_time/run_time_result.json", 'w', encoding='utf-8') as f:
         json.dump(batch_results, f, ensure_ascii=False, indent=4, default=json_serializer)
