@@ -65,11 +65,16 @@ def check_internal_visibility(current_agent):
     return current_agent.output_visibility == outputVisibility.INTERNAL.value
 
 
+def add_sender_details_to_message(message, sender_agent_name):
+    message["content"] = f"Agent `{sender_agent_name}` finished processing the request.\nResponse: {message.get('content')}"
+    return message
+
+
 def add_sender_details_to_messages(messages):
     for msg in messages:
         msg["sender"] = msg.get("sender", None)
         if msg.get("sender"):
-            msg["content"] = f"Sender agent: {msg.get('sender')}\nContent: {msg.get('content')}"
+            add_sender_details_to_message(message=msg, sender_agent_name=msg["sender"])
     return messages
 
 
@@ -215,8 +220,8 @@ async def run_turn_streamed(
                             print("-" * 100)
                             yield ("message", message)
                             if message.get("role") != "tool":
-                                message["content"] = (
-                                    f"Sender agent: {current_agent.name}\nContent: {message['content']}"
+                                message = add_sender_details_to_message(
+                                    message=message, sender_agent_name=current_agent.name
                                 )
                                 accumulated_messages.append(message)
                         continue
@@ -298,8 +303,8 @@ async def run_turn_streamed(
                                     print("-" * 100)
                                     yield ("message", message)
                                     if message.get("role") != "tool":
-                                        message["content"] = (
-                                            f"Sender agent: {current_agent.name}\nContent: {message['content']}"
+                                        message = add_sender_details_to_message(
+                                            message=message, sender_agent_name=current_agent.name
                                         )
                                         accumulated_messages.append(message)
                                 continue
@@ -327,7 +332,9 @@ async def run_turn_streamed(
                             print(f"Yielding message: {message}")
                             print("-" * 100)
                             yield ("message", message)
-                            message["content"] = f"Sender agent: {current_agent.name}\nContent: {message['content']}"
+                            message = add_sender_details_to_message(
+                                message=message, sender_agent_name=current_agent.name
+                            )
                             accumulated_messages.append(message)
 
                         elif event.item.type == "tool_call_output_item":
@@ -423,7 +430,9 @@ async def run_turn_streamed(
                             print(f"Yielding message: {message}")
                             print("-" * 100)
                             yield ("message", message)
-                            message["content"] = f"Sender agent: {current_agent.name}\nContent: {message['content']}"
+                            message = add_sender_details_to_message(
+                                message=message, sender_agent_name=current_agent.name
+                            )
                             accumulated_messages.append(message)
                             # Return to parent or end turn
                             if is_internal and parent_stack:
