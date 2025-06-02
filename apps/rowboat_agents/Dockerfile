@@ -16,6 +16,9 @@ RUN poetry config virtualenvs.create false
 # Install dependencies
 RUN poetry install --no-interaction --no-ansi
 
+# Дополнительно устанавливаем недостающие пакеты
+RUN pip install gigachat langchain-community
+
 # Copy project files
 COPY . .
 
@@ -23,6 +26,8 @@ COPY . .
 ENV QUART_APP=src.app.main
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
+ENV ACCESS_TOKEN=dummy_token
+ENV PROVIDER_API_KEY=dummy_key
 
 # Command to run Flask development server
 CMD ["quart", "run", "--host=0.0.0.0", "--port=3001"]

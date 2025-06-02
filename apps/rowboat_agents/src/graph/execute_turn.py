@@ -5,6 +5,7 @@ import jwt
 import hashlib
 from agents import OpenAIChatCompletionsModel, trace, add_trace_processor
 import pprint
+from .helpers.gigachat_provider import GigaChatProvider
 
 # Import helper functions needed for get_agents
 from .helpers.access import (
@@ -205,116 +206,82 @@ def get_agents(agent_configs, tool_configs, complete_request):
     new_agents = []
     new_agent_to_children = {}
     new_agent_name_to_index = {}
+
     # Create Agent objects from config
     for agent_config in agent_configs:
         print("="*100)
         print(f"Processing config for agent: {agent_config['name']}")
 
-        # If hasRagSources, append the RAG tool to the agent's tools
-        if agent_config.get("hasRagSources", False):
-            rag_tool_name = get_tool_config_by_type(tool_configs, "rag").get("name", "")
-            agent_config["tools"].append(rag_tool_name)
-            agent_config = add_rag_instructions_to_agent(agent_config, rag_tool_name)
+        # Create agent tools
+        agent_tools = []
+        
+        # Add RAG tool if configured
+        rag_tool = get_rag_tool(agent_config, complete_request)
+        if rag_tool:
+            agent_tools.append(rag_tool)
+            add_rag_instructions_to_agent(agent_config)
 
-        # Prepare tool lists for this agent
-        external_tools = []
+        # Add web search tool if configured
+        if agent_config.get("webSearch", False):
+            agent_tools.append(WebSearchTool())
 
-        print(f"Agent {agent_config['name']} has {len(agent_config['tools'])} configured tools")
-
-        new_tools = []
-
-        for tool_name in agent_config["tools"]:
+        # Add other tools
+        for tool_name in agent_config.get("tools", []):
             tool_config = get_tool_config_by_name(tool_configs, tool_name)
-
             if tool_config:
-                # Preserve all JSON Schema properties in the tool parameters
-                tool_params = tool_config.get("parameters", {})
-                if isinstance(tool_params, dict):
-                    # Ensure we keep all properties from the schema
-                    json_schema_properties = [
-                        "enum", "default", "minimum", "maximum", "items", "format",
-                        "pattern", "minLength", "maxLength", "minItems", "maxItems",
-                        "uniqueItems", "multipleOf", "examples"
-                    ]
-                    for prop_name, prop_schema in tool_params.get("properties", {}).items():
-                        # Copy all existing JSON Schema properties
-                        for schema_prop in json_schema_properties:
-                            if schema_prop in prop_schema:
-                                prop_schema[schema_prop] = prop_schema[schema_prop]
-
-                external_tools.append({
-                    "type": "function",
-                    "function": tool_config
-                })
-
-                if tool_name == "web_search":
-                    tool = WebSearchTool()
-                elif tool_name == "rag_search":
-                    tool = get_rag_tool(agent_config, complete_request)
-                else:
-                    tool = FunctionTool(
-                        name=tool_name,
-                        description=tool_config["description"],
-                        params_json_schema=tool_params,  # Use the enriched parameters
-                        strict_json_schema=False,
-                        on_invoke_tool=lambda ctx, args, _tool_name=tool_name, _tool_config=tool_config, _complete_request=complete_request:
-                            catch_all(ctx, args, _tool_name, _tool_config, _complete_request)
-                    )
-                if tool:
-                    new_tools.append(tool)
-                    print(f"Added tool {tool_name} to agent {agent_config['name']}")
+                params = tool_config.get("parameters", {})
+                tool = FunctionTool(
+                    name=tool_name,
+                    description=tool_config.get("description", ""),
+                    params_json_schema=params,
+                    on_invoke_tool=lambda ctx, args, tn=tool_name, tc=tool_config: catch_all(ctx, args, tn, tc, complete_request)
+                )
+                agent_tools.append(tool)
+                print(f"Added tool {tool_name} to agent {agent_config['name']}")
             else:
                 print(f"WARNING: Tool {tool_name} not found in tool_configs")
 
-        # Create the agent object
-        print(f"Creating Agent object for {agent_config['name']}")
-
+        # Create agent with GigaChat model
+        model = GigaChatProvider()
+        
         # add the name and description to the agent instructions
-        agent_instructions = f"## Your Name\n{agent_config['name']}\n\n## Description\n{agent_config['description']}\n\n## Instructions\n{agent_config['instructions']}"
-        try:
-            # Identify the model
-            model_name = agent_config["model"] if agent_config["model"] else PROVIDER_DEFAULT_MODEL
-            print(f"Using model: {model_name}")
-            model=OpenAIChatCompletionsModel(model=model_name, openai_client=client) if client else agent_config["model"]
+        agent_instructions = f"## Your Name\n{agent_config['name']}\n\n## Description\n{agent_config.get('description', '')}\n\n## Instructions\n{agent_config.get('instructions', '')}"
+        
+        new_agent = NewAgent(
+            name=agent_config["name"],
+            instructions=agent_instructions,
+            handoff_description=agent_config.get("description", ""),
+            model=model,
+            tools=agent_tools,
+            model_settings=ModelSettings(
+                temperature=agent_config.get("temperature", 0),
+                max_tokens=agent_config.get("maxTokens", None),
+                top_p=agent_config.get("topP", None),
+                frequency_penalty=agent_config.get("frequencyPenalty", None),
+                presence_penalty=agent_config.get("presencePenalty", None)
+            ),
+            output_visibility=agent_config.get("outputVisibility", outputVisibility.EXTERNAL.value)
+        )
 
-            # Create the agent object
-            new_agent = NewAgent(
-                name=agent_config["name"],
-                instructions=agent_instructions,
-                handoff_description=agent_config["description"],
-                tools=new_tools,
-                model = model,
-                model_settings=ModelSettings(temperature=0.0)
-            )
+        # Set the max calls per parent agent
+        new_agent.max_calls_per_parent_agent = agent_config.get("maxCallsPerParentAgent", DEFAULT_MAX_CALLS_PER_PARENT_AGENT)
+        if not agent_config.get("maxCallsPerParentAgent", None):
+            print(f"WARNING: Max calls per parent agent not received for agent {new_agent.name}. Using rowboat_agents default of {DEFAULT_MAX_CALLS_PER_PARENT_AGENT}")
+        else:
+            print(f"Max calls per parent agent for agent {new_agent.name}: {new_agent.max_calls_per_parent_agent}")
 
-            # Set the max calls per parent agent
-            new_agent.max_calls_per_parent_agent = agent_config.get("maxCallsPerParentAgent", DEFAULT_MAX_CALLS_PER_PARENT_AGENT)
-            if not agent_config.get("maxCallsPerParentAgent", None):
-                print(f"WARNING: Max calls per parent agent not received for agent {new_agent.name}. Using rowboat_agents default of {DEFAULT_MAX_CALLS_PER_PARENT_AGENT}")
-            else:
-                print(f"Max calls per parent agent for agent {new_agent.name}: {new_agent.max_calls_per_parent_agent}")
+        # Handle the connected agents
+        new_agent_to_children[agent_config["name"]] = agent_config.get("connectedAgents", [])
+        new_agent_name_to_index[agent_config["name"]] = len(new_agents)
+        new_agents.append(new_agent)
+        print(f"Successfully created agent: {agent_config['name']}")
 
-            # Set output visibility
-            new_agent.output_visibility = agent_config.get("outputVisibility", outputVisibility.EXTERNAL.value)
-            if not agent_config.get("outputVisibility", None):
-                print(f"WARNING: Output visibility not received for agent {new_agent.name}. Using rowboat_agents default of {new_agent.output_visibility}")
-            else:
-                print(f"Output visibility for agent {new_agent.name}: {new_agent.output_visibility}")
-
-            # Handle the connected agents
-            new_agent_to_children[agent_config["name"]] = agent_config.get("connectedAgents", [])
-            new_agent_name_to_index[agent_config["name"]] = len(new_agents)
-            new_agents.append(new_agent)
-            print(f"Successfully created agent: {agent_config['name']}")
-        except Exception as e:
-            print(f"ERROR: Failed to create agent {agent_config['name']}: {str(e)}")
-            raise
-
+    # Set up agent connections
     for new_agent in new_agents:
         # Initialize the handoffs attribute if it doesn't exist
         if not hasattr(new_agent, 'handoffs'):
             new_agent.handoffs = []
-        # Look up the agent's children from the old agent and create a list called handoffs in new_agent with pointers to the children in new_agents
+        # Look up the agent's children and create handoffs
         new_agent.handoffs = [new_agents[new_agent_name_to_index[child]] for child in new_agent_to_children[new_agent.name]]
     
     print("Returning created agents")

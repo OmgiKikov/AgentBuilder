@@ -83,6 +83,7 @@ services:
       - PROVIDER_DEFAULT_MODEL=${PROVIDER_DEFAULT_MODEL}
       - MAX_CALLS_PER_CHILD_AGENT=${MAX_CALLS_PER_CHILD_AGENT}
       - ENABLE_TRACING=${ENABLE_TRACING}
+      - ACCESS_TOKEN=${ACCESS_TOKEN}
     restart: unless-stopped
 
   copilot:
@@ -98,6 +99,7 @@ services:
       - PROVIDER_API_KEY=${PROVIDER_API_KEY}
       - PROVIDER_DEFAULT_MODEL=${PROVIDER_DEFAULT_MODEL}
       - PROVIDER_COPILOT_MODEL=${PROVIDER_COPILOT_MODEL}
+      - ACCESS_TOKEN=${ACCESS_TOKEN}
     restart: unless-stopped
 
   # tools_webhook:

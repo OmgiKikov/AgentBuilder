@@ -15,12 +15,17 @@ COPY requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Дополнительно устанавливаем недостающие пакеты
+RUN pip install --no-cache-dir gigachat langchain-community
+
 # Copy project files
 COPY . .
 
 # Expose port if your app needs it (adjust as needed)
 ENV PORT=3002
 ENV PYTHONUNBUFFERED=1
+ENV ACCESS_TOKEN=dummy_token
+ENV PROVIDER_API_KEY=dummy_key
 
 EXPOSE $PORT
 

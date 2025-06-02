@@ -98,11 +98,12 @@ User: {last_message.content}
         message.model_dump() for message in messages
     ]
 
-    response = completions_client.chat.completions.create(
-        model=PROVIDER_COPILOT_MODEL,
-        messages=updated_msgs,
-        temperature=0.0,
-        response_format={"type": "json_object"}
-    )
-
-    return response.choices[0].message.content
+    # Используем GigaChat для получения ответа
+    response = completions_client.chat_completion(updated_msgs)
+    
+    # Пытаемся преобразовать ответ в JSON, если не получается - возвращаем как есть
+    try:
+        json_response = json.loads(response)
+        return json.dumps(json_response)
+    except json.JSONDecodeError:
+        return response
