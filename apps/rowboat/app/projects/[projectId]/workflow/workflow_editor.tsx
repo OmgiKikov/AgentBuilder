@@ -922,9 +922,7 @@ export function WorkflowEditor({
                         size="md"
                         onPress={() => setShowCopilot(!showCopilot)}
                         className="gap-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
-                        startContent={showCopilot ? null : <Sparkles size={16} />}
                     >
-                        {showCopilot ? "Скрыть Copilot" : "Copilot"}
                     </Button>
                 </div>}
                 {!isLive && <div className="text-xs text-gray-400">
@@ -962,15 +960,6 @@ export function WorkflowEditor({
                         data-tour-target="deploy"
                     >
                         Развернуть
-                    </Button>
-                    <Button
-                        variant="solid"
-                        size="md"
-                        onPress={() => setShowCopilot(!showCopilot)}
-                        className="gap-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
-                        startContent={showCopilot ? null : <Sparkles size={16} />}
-                    >
-                        {showCopilot ? "Скрыть Copilot" : "Copilot"}
                     </Button>
                     <Dropdown>
                         <DropdownTrigger>
