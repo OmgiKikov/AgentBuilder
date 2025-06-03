@@ -106,6 +106,14 @@ export function Chat({
         });
     }, [workflow]);
 
+    // reset state when chat changes (new chat button clicked)
+    useEffect(() => {
+        setMessages(chat.messages);
+        setAgenticState(chat.agenticState || {
+            last_agent_name: workflow.startAgent,
+        });
+    }, [chat, workflow.startAgent]);
+
     // publish messages to subscriber
     useEffect(() => {
         if (messageSubscriber) {

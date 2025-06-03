@@ -12,7 +12,7 @@ from .helpers.access import (
 )
 from .helpers.library_tools import handle_web_search_event
 from .helpers.control import get_last_agent_name
-from .execute_turn import run_streamed as swarm_run_streamed, get_agents
+from .execute_turn_giga import run_streamed as swarm_run_streamed, get_agents
 from .helpers.instructions import add_child_transfer_related_instructions
 from .types import PromptType, outputVisibility, ResponseType
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX

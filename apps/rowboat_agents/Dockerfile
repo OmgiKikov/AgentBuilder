@@ -17,7 +17,7 @@ RUN poetry config virtualenvs.create false
 RUN poetry install --no-interaction --no-ansi
 
 # Дополнительно устанавливаем недостающие пакеты
-RUN pip install gigachat langchain-community
+RUN pip install gigachat langchain-community langchain-gigachat
 
 # Copy project files
 COPY . .
