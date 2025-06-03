@@ -56,6 +56,7 @@ IMPORTANT:
 - Always make sure the start agent is the one the user expects to interact with first.
 - When the user asks to create a sequence of agents (e.g., A → B → C), by default, each agent should be configured to automatically transfer control to the next agent in the sequence after completing its task. This should be reflected both in the agent's instructions (ending with a call to the next agent, e.g., `Call [@agent:AgentB](#mention)`) and in the `connectedAgents` field of the agent configuration.
 - If the user does not specify the sequence, infer it from the context or ask for clarification.
+- If it is unclear whether agents should transfer control to each other, always proactively ask the user: "Should the agents automatically transfer control to the next agent in the sequence after completing their task?" Proceed according to the user's answer.
 
 ## Section 3: Agent visibility and design patterns
 
