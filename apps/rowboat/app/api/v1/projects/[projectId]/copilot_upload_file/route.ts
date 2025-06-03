@@ -51,6 +51,7 @@ export async function POST(request: NextRequest, { params }: { params: { project
 
         // Создаем DataSourceDoc для файла
         await dataSourceDocsCollection.insertOne({
+            _id: new ObjectId(fileId),
             sourceId: dataSourceIdStr,
             name: file.name,
             status: 'pending',
