@@ -288,10 +288,7 @@ function reducer(state: State, action: Action): State {
                                 maxCallsPerParentAgent: 3,
                                 ...action.agent
                             });
-                            draft.selection = {
-                                type: "agent",
-                                name: action.agent.name || newAgentName
-                            };
+                            draft.selection = null;
                             draft.pendingChanges = true;
                             draft.chatKey++;
                             break;

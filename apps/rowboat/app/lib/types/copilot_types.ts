@@ -61,7 +61,18 @@ export const CopilotAssistantMessage = z.object({
     role: z.literal('assistant'),
     content: z.string(),
 });
-export const CopilotMessage = z.union([CopilotUserMessage, CopilotAssistantMessage]);
+
+// New type for System Messages
+export const CopilotSystemMessage = z.object({
+    role: z.literal('system'),
+    content: z.string(),
+});
+
+export const CopilotMessage = z.union([
+    CopilotUserMessage, 
+    CopilotAssistantMessage,
+    CopilotSystemMessage // Add system message to the union
+]);
 
 export const CopilotApiMessage = z.object({
     role: z.union([z.literal('assistant'), z.literal('user')]),
@@ -143,6 +154,9 @@ export function convertToCopilotApiChatContext(context: z.infer<typeof CopilotCh
     }
 }
 export function convertToCopilotApiMessage(message: z.infer<typeof CopilotMessage>): z.infer<typeof CopilotApiMessage> {
+    if (message.role === 'system') {
+        throw new Error('System messages cannot be converted to CopilotApiMessage');
+    }
     return {
         role: message.role,
         content: JSON.stringify(message.content),

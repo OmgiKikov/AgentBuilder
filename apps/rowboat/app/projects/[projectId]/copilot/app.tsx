@@ -13,6 +13,7 @@ import { ComposeBoxCopilot } from "@/components/common/compose-box-copilot";
 import { Messages } from "./components/messages";
 import { CopyIcon, CheckIcon, PlusIcon, XIcon, InfoIcon } from "lucide-react";
 import { useCopilot } from "./use-copilot";
+import { getDataSource, listDataSources } from '@/app/actions/datasource_actions';
 
 const CopilotContext = createContext<{
     workflow: z.infer<typeof Workflow> | null;
@@ -45,17 +46,22 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
     dataSources,
 }, ref) {
     const [messages, setMessages] = useState<z.infer<typeof CopilotMessage>[]>([]);
+    const [isFileUploading, setIsFileUploading] = useState(false);
     const [discardContext, setDiscardContext] = useState(false);
     const [isLastInteracted, setIsLastInteracted] = useState(isInitialState);
     const workflowRef = useRef(workflow);
     const startRef = useRef<any>(null);
     const cancelRef = useRef<any>(null);
+    const [pendingSource, setPendingSource] = useState<{ sourceId: string, name: string } | null>(null);
+    const [dataSourcesState, setDataSourcesState] = useState<z.infer<typeof DataSource>[]>(dataSources || []);
 
     // Keep workflow ref up to date
     workflowRef.current = workflow;
 
     // Get the effective context based on user preference
     const effectiveContext = discardContext ? null : chatContext;
+
+    console.log("dataSourcesState before useCopilot", dataSourcesState); // DEBUG
 
     const {
         streamingResponse,
@@ -67,7 +73,7 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
         projectId,
         workflow: workflowRef.current,
         context: effectiveContext,
-        dataSources: dataSources
+        dataSources: dataSourcesState
     });
 
     // Store latest start/cancel functions in refs
@@ -118,7 +124,60 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
         setDiscardContext(false);
     }, [chatContext]);
 
+    function isValidUrl(str: string) {
+        try {
+            new URL(str);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    function extractUrls(text: string): string[] {
+        // Простая регулярка для поиска ссылок
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        return text.match(urlRegex) || [];
+    }
+
+    async function refreshDataSources() {
+        const updated = await listDataSources(projectId);
+        setDataSourcesState(updated);
+    }
+
     function handleUserMessage(prompt: string) {
+        const urls = extractUrls(prompt);
+        if (urls.length > 0) {
+            setPendingSource(null);
+            (async () => {
+                try {
+                    const response = await fetch(`/api/v1/projects/${projectId}/copilot_upload_url`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ urls }),
+                    });
+                    if (!response.ok) {
+                        setMessages(prev => prev.map(msg =>
+                            msg.content === `Загрузка ссылок: ${urls.join(', ')}...`
+                            ? { ...msg, content: `Ошибка при загрузке ссылок: ${urls.join(', ')}` }
+                            : msg
+                        ));
+                        throw new Error('URL upload failed');
+                    }
+                    const result = await response.json();
+                    if (result.dataSourceId) {
+                        setPendingSource({ sourceId: result.dataSourceId, name: urls.join(', ') });
+                        await refreshDataSources();
+                    }
+                } catch (error) {
+                    setMessages(prev => prev.map(msg =>
+                        msg.content === `Загрузка ссылок: ${urls.join(', ')}...`
+                        ? { ...msg, content: `Ошибка при загрузке ссылок: ${urls.join(', ')}` }
+                        : msg
+                    ));
+                }
+            })();
+            return;
+        }
         setMessages(currentMessages => [...currentMessages, {
             role: 'user',
             content: prompt
@@ -144,7 +203,7 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
         });
 
         return () => currentCancel();
-    }, [messages]); // Only depend on messages
+    }, [messages, dataSourcesState]); // <--- добавили dataSourcesState
 
     const handleCopyChat = useCallback(() => {
         if (onCopyJson) {
@@ -154,6 +213,63 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
         }
     }, [messages, onCopyJson]);
 
+    // Handler for file upload from ComposeBoxCopilot
+    async function handleFileUploadInCopilot(file: File) {
+        if (!projectId) {
+            console.error("Project ID is not available for file upload.");
+            setMessages(prev => [...prev, {
+                role: 'system',
+                content: "Ошибка: Не удалось загрузить файл. ID проекта не найден."
+            }]);
+            return;
+        }
+
+        console.log("File to upload in copilot:", file.name, "for project:", projectId);
+        setIsFileUploading(true);
+        setMessages(prev => [...prev, {
+            role: 'system',
+            content: `Загрузка файла: ${file.name}...`
+        }]);
+
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            const response = await fetch(`/api/v1/projects/${projectId}/copilot_upload_file`, {
+                method: 'POST',
+                body: formData,
+            });
+            if (!response.ok) {
+                setMessages(prev => prev.map(msg => 
+                    msg.content === `Загрузка файла: ${file.name}...` 
+                    ? { ...msg, content: `Ошибка при загрузке файла ${file.name}.` } 
+                    : msg
+                ));
+                throw new Error('File upload failed');
+            }
+            const result = await response.json();
+            console.log('File upload success:', result);
+
+            setMessages(prev => prev.map(msg => 
+                msg.content === `Загрузка файла: ${file.name}...` 
+                ? { ...msg, content: `Файл ${file.name} успешно загружен и обрабатывается.` } 
+                : msg
+            ));
+            if (result.dataSourceId) {
+                setPendingSource({ sourceId: result.dataSourceId, name: file.name });
+                await refreshDataSources();
+            }
+        } catch (error) {
+            console.error("File upload error:", error);
+            setMessages(prev => prev.map(msg => 
+                msg.content === `Загрузка файла: ${file.name}...` 
+                ? { ...msg, content: `Ошибка при загрузке файла ${file.name}.` } 
+                : msg
+            ));
+        } finally {
+            setIsFileUploading(false);
+        }
+    }
+
     useImperativeHandle(ref, () => ({
         handleCopyChat,
         handleUserMessage
@@ -162,6 +278,18 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
     return (
         <CopilotContext.Provider value={{ workflow: workflowRef.current, dispatch }}>
             <div className="h-full flex flex-col">
+                {/* Карточка статуса источника — всегда сверху */}
+                {pendingSource && (
+                    <CopilotSourceStatus
+                        projectId={projectId}
+                        sourceId={pendingSource.sourceId}
+                        fileOrUrlName={pendingSource.name}
+                        onReady={() => {
+                            // Обновить карточку (статус станет ready), затем скрыть через 2.5 сек
+                            setTimeout(() => setPendingSource(null), 2500);
+                        }}
+                    />
+                )}
                 <div className="flex-1 overflow-auto">
                     <Messages
                         messages={messages}
@@ -203,13 +331,14 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
                         </div>
                     </div>}
                     <ComposeBoxCopilot
-                        handleUserMessage={handleUserMessage}
                         messages={messages}
-                        loading={loadingResponse}
+                        loading={loadingResponse || isFileUploading}
+                        handleUserMessage={handleUserMessage}
+                        handleFileUpload={handleFileUploadInCopilot}
+                        onCancel={cancel}
                         initialFocus={isInitialState}
                         shouldAutoFocus={isLastInteracted}
                         onFocus={() => setIsLastInteracted(true)}
-                        onCancel={cancel}
                     />
                 </div>
             </div>
@@ -330,4 +459,78 @@ export const Copilot = forwardRef<{ handleUserMessage: (message: string) => void
 });
 
 Copilot.displayName = 'Copilot';
+
+function CopilotSourceStatus({ projectId, sourceId, fileOrUrlName, onReady }: { projectId: string, sourceId: string, fileOrUrlName: string, onReady?: () => void }) {
+    const [status, setStatus] = useState<'pending' | 'ready' | 'error' | 'deleted'>('pending');
+    const [error, setError] = useState<string | null>(null);
+    const [show, setShow] = useState(true);
+    useEffect(() => {
+        let ignore = false;
+        let timeoutId: NodeJS.Timeout | null = null;
+        async function check() {
+            if (ignore) return;
+            try {
+                const source = await getDataSource(projectId, sourceId);
+                setStatus((source.status as ('pending' | 'ready' | 'error' | 'deleted')) || 'pending');
+                if (source.status === 'error') setError(source.error || '');
+                if (source.status === 'ready' && onReady) onReady();
+                if (source.status === 'pending') timeoutId = setTimeout(check, 5000);
+            } catch (e) {
+                setError('Ошибка при получении статуса источника');
+            }
+        }
+        check();
+        return () => {
+            ignore = true;
+            if (timeoutId) clearTimeout(timeoutId);
+        };
+    }, [projectId, sourceId, onReady]);
+    if (!show) return null;
+    let cardColor = '';
+    let icon = null;
+    let title = '';
+    let subtitle = '';
+    if (status === 'pending') {
+        cardColor = 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700';
+        icon = <svg className="w-8 h-8 text-blue-400 animate-spin" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><circle cx="12" cy="16" r="1" /></svg>;
+        title = 'Идёт индексация источника';
+        subtitle = `${fileOrUrlName} — источник обрабатывается, это может занять несколько минут.`;
+    } else if (status === 'ready') {
+        cardColor = 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700';
+        icon = <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M9 12l2 2l4-4" /></svg>;
+        title = 'Источник готов к использованию!';
+        subtitle = `${fileOrUrlName} успешно проиндексирован.`;
+    } else if (status === 'error') {
+        cardColor = 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700';
+        icon = <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><circle cx="12" cy="16" r="1" /></svg>;
+        title = 'Ошибка при индексации источника';
+        subtitle = `${fileOrUrlName}. ${error}`;
+    }
+    return (
+        <div className={`w-full flex justify-center fade-in`} style={{animation: 'fadeIn 0.5s'}}>
+            <div className={`relative max-w-md w-full rounded-xl border p-5 shadow-lg flex items-center gap-4 ${cardColor}`}>
+                <div className="flex-shrink-0">{icon}</div>
+                <div className="flex flex-col gap-1">
+                    <div className="font-semibold text-base">{title}</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-300">{subtitle}</div>
+                </div>
+                {(status === 'ready' || status === 'error') && (
+                    <button
+                        className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition"
+                        onClick={() => setShow(false)}
+                        aria-label="Закрыть"
+                    >
+                        <XIcon size={18} />
+                    </button>
+                )}
+            </div>
+            <style jsx>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
+        </div>
+    );
+}
 
