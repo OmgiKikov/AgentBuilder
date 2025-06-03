@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button, Spinner } from "@heroui/react";
+import { AudioInputButton } from "./audio-input-button";
 
 interface ComposeBoxPlaygroundProps {
     handleUserMessage: (message: string) => void;
@@ -53,6 +54,14 @@ export function ComposeBoxPlayground({
         onFocus?.();
     };
 
+    function handleAudioText(text: string) {
+        if (text.trim()) {
+            setInput(text);
+            // Если нужно автоматически отправлять распознанный текст, раскомментируйте следующую строку
+            // handleUserMessage(text);
+        }
+    }
+
     return (
         <div className="relative group">
             {/* Keyboard shortcut hint */}
@@ -64,6 +73,8 @@ export function ComposeBoxPlayground({
             {/* Outer container with padding */}
             <div className="rounded-2xl border-[1.5px] border-gray-200 dark:border-[#2a2d31] p-3 relative 
                           bg-white dark:bg-[#1e2023] flex items-end gap-2">
+                {/* Кнопка микрофона */}
+                <AudioInputButton onTextReceived={handleAudioText} disabled={disabled || loading} />
                 {/* Textarea */}
                 <div className="flex-1">
                     <Textarea
