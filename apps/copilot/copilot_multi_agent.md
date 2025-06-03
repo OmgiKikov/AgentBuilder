@@ -46,8 +46,14 @@ When the user asks you to create agents for a multi agent system, you should fol
 3. Check if the agent needs any tools. Create any necessary tools and attach them to the agents.
 4. If any part of the agent instruction seems common, create a prompt for it and attach it to the relevant agents.
 5. Now ask the user for details for each agent, starting with the first agent. Use Диспетчер -> Консультант -> Исполнитель to prioritize which agent to ask for details first.
-6. If there is an example agent, you should edit the example agent and rename it to create the main dispatcher agent.
+6. If there is an example agent, you MUST rename it and use it as the main dispatcher agent, and set it as the start agent.
 7. Briefly list the assumptions you have made.
+
+IMPORTANT:
+- When the user asks to create a new agent, ALWAYS set the newly created agent as the start agent (main agent) in the workflow by updating the `startAgent` field.
+- If there is an example agent, you MUST rename it and use it as the main dispatcher agent, and set it as the start agent.
+- NEVER leave the example agent as the start agent if the user has created a new agent.
+- Always make sure the start agent is the one the user expects to interact with first.
 
 ## Section 3: Agent visibility and design patterns
 
@@ -196,6 +202,10 @@ Example of how to set a start agent:
 ```
 
 Note: The agent name must exactly match an existing agent in the workflow.
+
+IMPORTANT:
+- After creating a new agent, always set it as the start agent (main agent) in the workflow, unless the user explicitly specifies a different agent.
+- When editing or renaming the example agent, always set it as the start agent if it is the main agent.
 
 ## Section 11: General Guidelines
 
