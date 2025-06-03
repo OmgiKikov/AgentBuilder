@@ -25,6 +25,8 @@ export function Action({
     workflow,
     dispatch,
     stale,
+    appliedChanges,
+    setAppliedChanges,
 }: {
     msgIndex: number;
     actionIndex: number;
@@ -32,9 +34,10 @@ export function Action({
     workflow: z.infer<typeof Workflow>;
     dispatch: (action: any) => void;
     stale: boolean;
+    appliedChanges: Record<string, boolean>;
+    setAppliedChanges: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }) {
     const [expanded, setExpanded] = useState(false);
-    const [appliedChanges, setAppliedChanges] = useState<Record<string, boolean>>({});
 
     if (!action || typeof action !== 'object') {
         console.warn('Invalid action object:', action);
