@@ -224,13 +224,9 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
             return;
         }
 
-        console.log("File to upload in copilot:", file.name, "for project:", projectId);
+        // Показываем карточку сразу
+        setPendingSource(null); // сбрасываем предыдущий статус
         setIsFileUploading(true);
-        setMessages(prev => [...prev, {
-            role: 'system',
-            content: `Загрузка файла: ${file.name}...`
-        }]);
-
         try {
             const formData = new FormData();
             formData.append("file", file);
@@ -247,13 +243,7 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
                 throw new Error('File upload failed');
             }
             const result = await response.json();
-            console.log('File upload success:', result);
-
-            setMessages(prev => prev.map(msg => 
-                msg.content === `Загрузка файла: ${file.name}...` 
-                ? { ...msg, content: `Файл ${file.name} успешно загружен и обрабатывается.` } 
-                : msg
-            ));
+            // Показываем карточку статуса сразу после успешного ответа
             if (result.dataSourceId) {
                 setPendingSource({ sourceId: result.dataSourceId, name: file.name });
                 await refreshDataSources();

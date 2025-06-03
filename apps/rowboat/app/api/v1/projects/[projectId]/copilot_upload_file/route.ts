@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { dataSourcesCollection, dataSourceDocsCollection, agentWorkflowsCollection } from '@/app/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { recrawlWebDataSource } from '@/app/actions/datasource_actions';
 
 const UPLOADS_DIR = process.env.RAG_UPLOADS_DIR || '/uploads';
 
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest, { params }: { params: { project
             lastUpdatedAt: now,
             attempts: 0,
             version: 1,
+            status: 'pending' as const,
             data: {
                 type: 'files_local' as const,
             },
@@ -56,7 +58,7 @@ export async function POST(request: NextRequest, { params }: { params: { project
             version: 1,
             data: {
                 type: 'file_local',
-                name: file.name,
+                name: fileId,
                 size: file.size,
                 mimeType: file.type,
             },
