@@ -164,6 +164,7 @@ def get_access_token(oauth_url):
         'scope': f"{os.getenv('SCOPE')}",
     }
     response = requests.post(oauth_url, headers=headers, data=data, verify=False)
+    print(response)
     access_token = response.json()['access_token']
     return access_token
 
@@ -204,7 +205,8 @@ def chat_with_gigachat(giga, system_prompt, user_message, max_retries=3, retry_d
         
 def init_model():
     logger.info("Инициализация модели гигачат")
-    token = get_access_token(oauth_url=os.getenv('OAUTH_URL'))
+    token = get_access_token(oauth_url="https://ngw.devices.sberbank.ru:9443/api/v2/oauth")
+    print(token)
     os.environ["ACCESS_TOKEN"] = token
 
     url = os.getenv("AIGATEWAY_URL") + "/models"

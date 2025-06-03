@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify, Response, stream_with_context
 from pydantic import BaseModel, ValidationError, Field
 from typing import List, Dict, Any, Literal, Optional
 import json
+import re
 from lib import AgentContext, PromptContext, ToolContext, ChatContext
 from client import PROVIDER_COPILOT_MODEL, PROVIDER_DEFAULT_MODEL
 from client import completions_client
@@ -45,6 +46,87 @@ streaming_instructions = "\n\n".join([
     copilot_multi_agent_example1,
     current_workflow_prompt
 ])
+
+def format_gigachat_response(content: str) -> str:
+    """
+    Автоматически форматирует ответы от GigaChat, исправляя copilot_change блоки
+    """
+    # Паттерн для поиска блоков copilot_change (включая неправильно отформатированные)
+    pattern = r'```copilot_change([^`]*?)```'
+    
+    def fix_copilot_block(match):
+        block_content = match.group(1).strip()
+        
+        # Если блок уже правильно отформатирован, не трогаем
+        lines = block_content.split('\n')
+        if len(lines) > 10:  # Много строк = вероятно уже отформатирован
+            return match.group(0)
+        
+        try:
+            # Ищем JSON объект
+            json_start = block_content.find('{')
+            
+            if json_start >= 0:
+                # Разделяем на комментарии и JSON
+                comments_part = block_content[:json_start].strip()
+                json_part = block_content[json_start:].strip()
+                
+                # Парсим JSON
+                try:
+                    parsed_json = json.loads(json_part)
+                    
+                    # Форматируем JSON с отступами
+                    formatted_json = json.dumps(parsed_json, ensure_ascii=False, indent=2)
+                    
+                    # Форматируем комментарии
+                    result_lines = []
+                    if comments_part:
+                        # Разбиваем комментарии по ключевым словам
+                        comment_parts = comments_part.split('//')
+                        for part in comment_parts:
+                            part = part.strip()
+                            if part and not part.startswith('//'):
+                                if any(keyword in part for keyword in ['action:', 'config_type:', 'name:']):
+                                    result_lines.append('// ' + part)
+                    
+                    # Собираем результат
+                    result = '\n'.join(result_lines)
+                    if result:
+                        result += '\n'
+                    result += formatted_json
+                    
+                    return f'```copilot_change\n{result}\n```'
+                    
+                except json.JSONDecodeError:
+                    print(f"JSON parse error in copilot_change block: {json_part[:100]}...")
+                    return match.group(0)
+            else:
+                print(f"No JSON found in copilot_change block: {block_content[:100]}...")
+                return match.group(0)
+                
+        except Exception as e:
+            print(f"Error processing copilot_change block: {e}")
+            return match.group(0)
+    
+    # Применяем форматирование
+    formatted_content = re.sub(pattern, fix_copilot_block, content, flags=re.DOTALL)
+    
+    # Логируем результат
+    if '```copilot_change' in content:
+        print(f"Original copilot_change blocks: {content.count('```copilot_change')}")
+        print(f"Applied formatting to copilot_change blocks")
+        if formatted_content != content:
+            print("✅ Formatting was applied!")
+            print("До:")
+            print(content)
+            print("После:")
+            print(formatted_content)
+        else:
+            print("⚠️ No formatting changes made")
+            print("До:")
+            print(content)
+    
+    return formatted_content
 
 def get_streaming_response(
         messages: List[UserMessage | AssistantMessage],
@@ -120,6 +202,7 @@ User: {last_message.content}
         message.model_dump() for message in messages
     ]
     print(f"Input to copilot chat completions: {updated_msgs}")
+    
     return completions_client.chat.completions.create(
         model=PROVIDER_COPILOT_MODEL,
         messages=updated_msgs,
@@ -166,11 +249,18 @@ def create_app():
                     dataSources=dataSources
                 )
 
+                # Для GigaChat собираем полный ответ и форматируем его
+                full_content = ""
                 for chunk in stream:
                     if chunk.choices[0].delta.content:
                         content = chunk.choices[0].delta.content
-                        yield f"data: {json.dumps({'content': content})}\n\n"
+                        full_content += content
 
+                # Применяем форматирование к полному ответу
+                formatted_content = format_gigachat_response(full_content)
+                
+                # Отправляем отформатированный ответ как один чанк
+                yield f"data: {json.dumps({'content': formatted_content})}\n\n"
                 yield "event: done\ndata: {}\n\n"
 
             return Response(

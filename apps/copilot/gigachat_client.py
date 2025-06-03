@@ -32,8 +32,61 @@ class Chat:
 
 class GigaChatClient:
     def __init__(self):
+        # Инициализируем правильную модель если она еще не задана
+        if not os.getenv("GIGA_MODEL") or os.getenv("GIGA_MODEL") != "GigaChat-2-Max":
+            self._init_best_model()
+            
         self.access_token = os.getenv("ACCESS_TOKEN")  # Используем готовый токен
         self.chat = Chat(self)
+    
+    def _init_best_model(self):
+        """Инициализация лучшей доступной модели"""
+        try:
+            # Инициализируем access_token если его еще нет
+            self.access_token = os.getenv("ACCESS_TOKEN")
+            
+            # Получаем токен если его еще нет
+            if not self.access_token:
+                self._get_access_token()
+            
+            token = self.access_token
+            if not token:
+                return  # Если токена нет, используем дефолтную модель
+            
+            # Получаем список доступных моделей
+            url = "https://gigachat.devices.sberbank.ru/api/v1/models"
+            response = requests.get(
+                url, 
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}, 
+                verify=False
+            )
+            
+            if response.status_code == 200:
+                models_data = response.json()
+                models_list = [model["id"] for model in models_data["data"]]
+                
+                # Выбираем лучшую модель (приоритет: 2-Max -> 2-Pro -> Pro -> Max -> Plus -> 2 -> обычный)
+                if "GigaChat-2-Max" in models_list:
+                    os.environ["GIGA_MODEL"] = "GigaChat-2-Max"
+                elif "GigaChat-2-Pro" in models_list:
+                    os.environ["GIGA_MODEL"] = "GigaChat-2-Pro"
+                elif "GigaChat-Pro" in models_list:
+                    os.environ["GIGA_MODEL"] = "GigaChat-Pro"
+                elif "GigaChat-Max" in models_list:
+                    os.environ["GIGA_MODEL"] = "GigaChat-Max"
+                elif "GigaChat-Plus" in models_list:
+                    os.environ["GIGA_MODEL"] = "GigaChat-Plus"
+                elif "GigaChat-2" in models_list:
+                    os.environ["GIGA_MODEL"] = "GigaChat-2"
+                elif "GigaChat" in models_list:
+                    os.environ["GIGA_MODEL"] = "GigaChat"
+                
+                print(f"🔧 Copilot использует модель: {os.environ.get('GIGA_MODEL', 'GigaChat')}")
+        except Exception as e:
+            print(f"⚠️ Не удалось инициализировать модель в copilot: {e}")
+            # Используем дефолтную модель
+            if not os.getenv("GIGA_MODEL"):
+                os.environ["GIGA_MODEL"] = "GigaChat"
     
     def _get_access_token(self):
         """Получение токена доступа"""
@@ -43,7 +96,7 @@ class GigaChatClient:
             
         oauth_url = os.getenv('OAUTH_URL')
         secret_key = os.getenv('SECRET_KEY')
-        scope = os.getenv('SCOPE', 'GIGACHAT_API_PERS')
+        scope = os.getenv('SCOPE', 'GIGACHAT_API_CORP')
         
         headers = {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -59,6 +112,7 @@ class GigaChatClient:
         response = requests.post(oauth_url, headers=headers, data=data, verify=False)
         if response.status_code == 200:
             self.access_token = response.json()['access_token']
+            print("new:", self.access_token)
         else:
             raise Exception(f"Failed to get access token: {response.status_code} {response.text}")
     

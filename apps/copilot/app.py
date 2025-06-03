@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, Response, stream_with_context
 from pydantic import BaseModel, ValidationError, Field
 from typing import List, Optional
 from copilot import UserMessage, AssistantMessage, get_response
-from streaming import get_streaming_response
+from streaming import get_streaming_response, format_gigachat_response
 from lib import AgentContext, PromptContext, ToolContext, ChatContext
 import os
 from functools import wraps
@@ -82,11 +82,18 @@ def chat_stream():
                 dataSources=request_data.dataSources
             )
 
+            # Для GigaChat собираем полный ответ и форматируем его
+            full_content = ""
             for chunk in stream:
                 if chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
-                    yield f"data: {json.dumps({'content': content})}\n\n"
+                    full_content += content
 
+            # Применяем форматирование к полному ответу
+            formatted_content = format_gigachat_response(full_content)
+            
+            # Отправляем отформатированный ответ как один чанк
+            yield f"data: {json.dumps({'content': formatted_content})}\n\n"
             yield "event: done\ndata: {}\n\n"
 
         return Response(

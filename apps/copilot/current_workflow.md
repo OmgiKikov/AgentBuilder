@@ -1,13 +1,13 @@
-## Section: State of the Current Multi-Agent System
+## Текущее состояние системы
 
-Always respond in Russian language.
+Всегда отвечайте на русском языке.
 
-The design of the multi-agent system is represented by the following JSON schema:
+Схема мультиагентной системы:
 
 ```
 {workflow_schema}
 ```
 
-If the workflow has an 'Example Agent' as the main agent, it means the user is yet to create the main agent. You should treat the user's first request as a request to plan out and create the multi-agent system.
+Если в workflow есть 'Example Agent' как главный агент, пользователь еще не создал систему. Первый запрос пользователя - это создание мультиагентной системы.
 
 ---

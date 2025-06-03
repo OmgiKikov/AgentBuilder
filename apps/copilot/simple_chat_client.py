@@ -3,6 +3,7 @@ import urllib.request
 import urllib.parse
 import urllib.error
 import os
+import re
 from typing import List, Optional, Dict, Any, Generator
 from openai import OpenAI
 import asyncio
@@ -312,8 +313,10 @@ class SimpleCopilotClient:
             
         if data_sources:
             request_data["dataSources"] = [self._datasource_to_dict(ds) for ds in data_sources]
-        else:
+        elif self.workflow and "datasource" in self.workflow and self.workflow["datasource"]:
             request_data["dataSources"] = [self._datasource_to_dict(ds) for ds in self.workflow["datasource"]]
+        else:
+            request_data["dataSources"] = []
 
         # Подготовка запроса
         url = f"{self.base_url}/chat_stream"
@@ -369,6 +372,59 @@ class SimpleCopilotClient:
         messages = [UserMessage(content=user_message)]
         yield from self.chat_stream(messages, workflow_schema, current_workflow_config)
 
+    def format_copilot_response(self, response: str) -> str:
+        """
+        Форматирует ответ от copilot, заменяя экранированные \n на настоящие переводы строк
+        в блоках copilot_change
+        """
+        # Паттерн для поиска блоков copilot_change
+        pattern = r'```copilot_change(.*?)```'
+        
+        def format_json_block(match):
+            content = match.group(1)
+            # Заменяем \n на настоящие переводы строк
+            formatted_content = content.replace('\\n', '\n')
+            
+            try:
+                # Ищем JSON объект в содержимом
+                # JSON может начинаться сразу после комментариев или на той же строке
+                
+                # Найдем позицию первой открывающей скобки
+                json_start_pos = formatted_content.find('{')
+                
+                if json_start_pos >= 0:
+                    # Разделяем на комментарии и JSON
+                    comments_part = formatted_content[:json_start_pos].strip()
+                    json_part = formatted_content[json_start_pos:].strip()
+                    
+                    try:
+                        # Парсим и форматируем JSON
+                        parsed_json = json.loads(json_part)
+                        formatted_json = json.dumps(parsed_json, ensure_ascii=False, indent=2)
+                        
+                        # Собираем результат
+                        result = ''
+                        if comments_part:
+                            result = comments_part + '\n'
+                        result += formatted_json
+                        
+                        return f'```copilot_change\n{result}\n```'
+                    except json.JSONDecodeError:
+                        # Если JSON не валидный, просто заменяем \n
+                        return f'```copilot_change\n{formatted_content}\n```'
+                else:
+                    # JSON не найден, просто заменяем \n
+                    return f'```copilot_change\n{formatted_content}\n```'
+                    
+            except Exception:
+                # В случае любой ошибки просто заменяем \n
+                return f'```copilot_change\n{formatted_content}\n```'
+        
+        # Заменяем все блоки copilot_change
+        formatted_response = re.sub(pattern, format_json_block, response, flags=re.DOTALL)
+        
+        return formatted_response
+
     def get_full_response(
         self,
         messages: List[UserMessage | AssistantMessage],
@@ -383,7 +439,9 @@ class SimpleCopilotClient:
         full_response = ""
         for chunk in self.chat_stream(messages, workflow_schema, current_workflow_config, context, data_sources):
             full_response += chunk
-        return full_response
+        
+        # Форматируем ответ для правильного отображения JSON
+        return self.format_copilot_response(full_response)
 
     def health_check(self) -> bool:
         """
@@ -415,3 +473,23 @@ class SimpleCopilotClient:
             "status": datasource["status"],
             "data": datasource["data"]
         }
+
+    def chat_stream_formatted(
+        self,
+        messages: List[UserMessage | AssistantMessage],
+        workflow_schema: str = None,
+        current_workflow_config: str = None,
+        context: Optional[Dict[str, Any]] = None,
+        data_sources: Optional[List[DataSource]] = None
+    ) -> Generator[str, None, None]:
+        """
+        Потоковый ответ с форматированием copilot_change блоков
+        """
+        # Собираем полный ответ
+        full_response = ""
+        for chunk in self.chat_stream(messages, workflow_schema, current_workflow_config, context, data_sources):
+            full_response += chunk
+        
+        # Форматируем и возвращаем как единый чанк
+        formatted_response = self.format_copilot_response(full_response)
+        yield formatted_response

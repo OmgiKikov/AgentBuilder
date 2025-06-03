@@ -2,7 +2,7 @@ import { WorkflowTemplate } from "./types/workflow_types";
 import { z } from 'zod';
 import { LIBRARY_TOOLS } from './constants/library_tools';
 
-const DEFAULT_MODEL = process.env.PROVIDER_DEFAULT_MODEL || "gpt-4.1";
+const DEFAULT_MODEL = process.env.PROVIDER_DEFAULT_MODEL || "gigachat";
 
 export const templates: { [key: string]: z.infer<typeof WorkflowTemplate> } = {
     // Default template

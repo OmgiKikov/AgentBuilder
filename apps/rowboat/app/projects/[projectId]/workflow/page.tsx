@@ -3,7 +3,7 @@ import { App } from "./app";
 import { USE_RAG } from "@/app/lib/feature_flags";
 import { projectsCollection } from "@/app/lib/mongodb";
 import { notFound } from "next/navigation";
-const DEFAULT_MODEL = process.env.PROVIDER_DEFAULT_MODEL || "gpt-4.1";
+const DEFAULT_MODEL = process.env.PROVIDER_DEFAULT_MODEL || "gigachat";
 
 export const metadata: Metadata = {
     title: "Workflow"
