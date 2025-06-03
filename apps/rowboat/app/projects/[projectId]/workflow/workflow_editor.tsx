@@ -413,18 +413,12 @@ function reducer(state: State, action: Action): State {
 
                                 // update the selection pointer if this is the selected agent
                                 if (draft.selection?.type === "agent" && draft.selection.name === action.name) {
-                                    draft.selection = {
-                                        type: "agent",
-                                        name: action.agent.name
-                                    };
+                                    draft.selection = null;
                                 }
                             }
 
-                            // select this agent
-                            draft.selection = {
-                                type: "agent",
-                                name: action.agent.name || action.name,
-                            };
+                            // Не выбираем агента после обновления
+                            draft.selection = null;
                             draft.pendingChanges = true;
                             draft.chatKey++;
                             break;
