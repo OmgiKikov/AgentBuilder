@@ -98,14 +98,6 @@ export function Chat({
         setIsLastInteracted(true);
     }
 
-    // reset state when workflow changes
-    useEffect(() => {
-        setMessages([]);
-        setAgenticState({
-            last_agent_name: workflow.startAgent,
-        });
-    }, [workflow]);
-
     // publish messages to subscriber
     useEffect(() => {
         if (messageSubscriber) {
@@ -122,11 +114,11 @@ export function Chat({
         async function process() {
             setLoadingAssistantResponse(true);
             setFetchResponseError(null);
-            
+
             // Reset request/response state before making new request
             setLastAgenticRequest(null);
             setLastAgenticResponse(null);
-            
+
             const { agents, tools, prompts, startAgent } = convertWorkflowToAgenticAPI(workflow, projectTools);
             const request: z.infer<typeof AgenticAPIChatRequest> = {
                 projectId,
@@ -150,7 +142,7 @@ export function Chat({
                 toolWebhookUrl: toolWebhookUrl,
                 testProfile: testProfile ?? undefined,
             };
-            
+
             // Store the full request object
             setLastAgenticRequest(request);
 
@@ -199,13 +191,13 @@ export function Chat({
 
                 const parsed = JSON.parse(event.data);
                 setAgenticState(parsed.state);
-                
+
                 // Combine state and collected messages in the response
                 setLastAgenticResponse({
                     ...parsed,
                     messages: msgs
                 });
-                
+
                 setMessages([...messages, ...msgs]);
                 setLoadingAssistantResponse(false);
             });
@@ -277,8 +269,8 @@ export function Chat({
                 />
             )}
         </div>
-        
-        <div className="flex-1 overflow-auto pr-1 
+
+        <div className="flex-1 overflow-auto pr-1
             [&::-webkit-scrollbar]{width:4px}
             [&::-webkit-scrollbar-track]{background:transparent}
             [&::-webkit-scrollbar-thumb]{background-color:rgb(156 163 175)}
@@ -301,7 +293,7 @@ export function Chat({
 
         <div className="sticky bottom-0 bg-white dark:bg-zinc-900 pt-4 pb-2">
             {fetchResponseError && (
-                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800
                               rounded-lg flex gap-2 justify-between items-center">
                     <p className="text-red-600 dark:text-red-400 text-sm">{fetchResponseError}</p>
                     <Button
@@ -313,7 +305,7 @@ export function Chat({
                     </Button>
                 </div>
             )}
-            
+
             <ComposeBoxPlayground
                 handleUserMessage={handleUserMessage}
                 messages={messages.filter(msg => msg.content !== undefined) as any}

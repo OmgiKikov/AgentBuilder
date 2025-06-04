@@ -17,6 +17,17 @@ import { clsx } from "clsx";
 
 const defaultSystemMessage = '';
 
+function loadChat(projectId: string) {
+    const savedChat = localStorage.getItem(`playground_chat_${projectId}`);
+    if (savedChat) {
+        try {
+            return JSON.parse(savedChat);
+        } catch (error) {
+            console.error('Ошибка при загрузке истории сообщений:', error);
+        }
+    }
+}
+
 export function App({
     hidden = false,
     projectId,
@@ -40,9 +51,9 @@ export function App({
 }) {
     const [counter, setCounter] = useState<number>(0);
     const [testProfile, setTestProfile] = useState<WithStringId<z.infer<typeof TestProfile>> | null>(null);
-    const [systemMessage, setSystemMessage] = useState<string>(defaultSystemMessage);
+    const [systemMessage, setSystemMessage] = useState<string>(loadChat(projectId)?.systemMessage || defaultSystemMessage);
     const [showDebugMessages, setShowDebugMessages] = useState<boolean>(true);
-    const [chat, setChat] = useState<z.infer<typeof PlaygroundChat>>({
+    const [chat, setChat] = useState<z.infer<typeof PlaygroundChat>>(loadChat(projectId) || {
         projectId,
         createdAt: new Date().toISOString(),
         messages: [],
@@ -52,37 +63,37 @@ export function App({
     const [isProfileSelectorOpen, setIsProfileSelectorOpen] = useState(false);
     const [showCopySuccess, setShowCopySuccess] = useState(false);
     const getCopyContentRef = useRef<(() => string) | null>(null);
-    
+
     // Загрузка сохраненных сообщений при инициализации
     useEffect(() => {
-        const workflowKey = workflow.projectId + '_' + counter;
-        const savedChat = localStorage.getItem(`playground_chat_${projectId}_${workflowKey}`);
-        if (savedChat) {
-            try {
-                const parsedChat = JSON.parse(savedChat);
-                setChat(parsedChat);
-                if (parsedChat.systemMessage) {
-                    setSystemMessage(parsedChat.systemMessage);
-                }
-            } catch (error) {
-                console.error('Ошибка при загрузке истории сообщений:', error);
+        const loadedChat = loadChat(projectId);
+        if (loadedChat) {
+            setChat(loadedChat)
+            if (loadedChat.systemMessage) {
+                setSystemMessage(loadedChat.systemMessage)
             }
         }
-    }, [projectId, workflow.projectId, counter]);
-    
+    }, [projectId, counter]);
+
     // Сохранение сообщений при их изменении
-    const savedChatRef = useRef(chat);
     useEffect(() => {
-        const workflowKey = workflow.projectId + '_' + counter;
-        if (chat.messages.length > 0 && 
-            JSON.stringify(savedChatRef.current) !== JSON.stringify(chat)) {
-            savedChatRef.current = chat;
-            localStorage.setItem(`playground_chat_${projectId}_${workflowKey}`, JSON.stringify({
+        if (chat.messages.length > 0) {
+            localStorage.setItem(`playground_chat_${projectId}`, JSON.stringify({
                 ...chat,
                 systemMessage
             }));
         }
-    }, [chat, projectId, workflow.projectId, counter, systemMessage]);
+    }, [chat.messages, projectId, systemMessage, counter]);
+
+    function onUpdateChatMessages(messages: z.infer<typeof apiV1.ChatMessage>[]) {
+        setChat(prevChat => ({
+            ...prevChat,
+            messages: messages
+        }));
+        if (messageSubscriber) {
+            messageSubscriber(messages)
+        }
+    }
 
     function handleSystemMessageChange(message: string) {
         setSystemMessage(message);
@@ -104,10 +115,9 @@ export function App({
             systemMessage: defaultSystemMessage,
         });
         setSystemMessage(defaultSystemMessage);
-        
+
         // Очистка сохраненной истории сообщений
-        const workflowKey = workflow.projectId + '_' + counter;
-        localStorage.removeItem(`playground_chat_${projectId}_${workflowKey}`);
+        localStorage.removeItem(`playground_chat_${projectId}`);
     }
 
     const handleCopyJson = useCallback(() => {
@@ -131,7 +141,7 @@ export function App({
 
     return (
         <>
-            <Panel 
+            <Panel
                 variant="playground"
                 tourTarget="playground"
                 title={
@@ -214,7 +224,7 @@ export function App({
                         projectId={projectId}
                         workflow={workflow}
                         testProfile={testProfile}
-                        messageSubscriber={messageSubscriber}
+                        messageSubscriber={onUpdateChatMessages}
                         onTestProfileChange={handleTestProfileChange}
                         systemMessage={systemMessage}
                         onSystemMessageChange={handleSystemMessageChange}
