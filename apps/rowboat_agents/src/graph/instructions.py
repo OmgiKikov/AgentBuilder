@@ -75,6 +75,15 @@ SYSTEM_MESSAGE = f"""
 CHILD_TRANSFER_RELATED_INSTRUCTIONS = f"""
 # Critical Rules for Agent Transfers and Handoffs
 
+- UNIVERSAL TRANSFER COMMENTING RULE:
+  - Any agent (not just the main/dispatcher), when transferring the user to another agent, MUST NOT write any comments, explanations, or transfer announcements (e.g., "I will now transfer you...", "Proceeding to the next stage", etc.).
+  - The agent must simply perform the transfer using the appropriate tool call, with no accompanying messages or explanations.
+  - This rule is mandatory for all agents, regardless of their role.
+  - Examples:
+    - **Incorrect:** "I will now transfer you to the next agent."
+    - **Incorrect:** "Proceeding to the next stage."
+    - **Correct:** (No comments, just the tool call for transfer)
+
 - SEQUENTIAL TRANSFERS AND RESPONSES:
   1. BEFORE transferring to any agent:
      - Plan your complete sequence of needed transfers
@@ -101,5 +110,30 @@ CHILD_TRANSFER_RELATED_INSTRUCTIONS = f"""
     2. Then retry the transfer as next in sequence
     3. Continue until all required responses are collected
 
+- MANDATORY HANDOFF RULE:
+  - If you are about to hand off to another agent (for example, you write "I will now hand you over to the next agent" or "Starting the next stage"), you MUST include the actual transfer tool call (e.g., `transfer_to_agent`) in the SAME message.
+  - It is NOT enough to just mention the handoff in text — you must always perform the real transfer tool call in the same output.
+  - If you do not include the transfer tool call, the handoff is considered NOT performed, even if you wrote about it in text.
+
+- MAIN AGENT COMMENTING RESTRICTION:
+  - As the main (dispatcher) agent, you MUST NOT comment on your own actions (for example, do NOT write "Now I will transfer you to another agent", "Starting the next stage", etc.).
+  - You should EITHER ask clarifying questions to the user OR directly invoke tool calls (including transfer functions), but NOT comment on your process or intentions.
+  - All process explanations, stage announcements, or meta-comments about what you are about to do are strictly forbidden.
+
+- EXAMPLES:
+  - **Incorrect:** "I will now hand you over to the next agent." (any comment about your process or intentions is forbidden)
+  - **Incorrect:** "Starting the next stage." (any meta-comment is forbidden)
+  - **Incorrect:** "Now I will transfer you to AgentA." (forbidden)
+  - **Correct:** (No comment, just invoke the tool call to transfer)
+  - **Correct:** (Ask a clarifying question to the user, if needed)
+
 - EXAMPLE: Suppose your instructions ask you to transfer to @agent:AgentA, @agent:AgentB and @agent:AgentC, first transfer to AgentA, wait for its response. Then transfer to AgentB, wait for its response. Then transfer to AgentC, wait for its response. Only after all 3 agents have responded, you should return the final response to the user.
+
+- USER-FACING CHILD RETURN RULE:
+  - If a user_facing child agent completes its task, it MUST ALWAYS return the result to the main agent (dispatcher) using the appropriate tool call (e.g., Call [@agent:Dispatcher](#mention)).
+  - The child agent must NOT end the dialog on its own.
+  - The dispatcher should be listed as the next agent in the child agent's connectedAgents field.
+  - Example:
+    - **Correct:** (After completing the task — tool call to return to dispatcher)
+    - **Incorrect:** (Agent ends the dialog itself)
 """
