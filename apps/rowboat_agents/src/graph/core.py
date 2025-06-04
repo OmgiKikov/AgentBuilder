@@ -189,9 +189,11 @@ async def run_turn_streamed(
                 tokens_used=tokens_used,
                 enable_tracing=enable_tracing
             )
+            print("RESULT:", stream_result)
 
             async for event in stream_result.stream_events():
                 try:
+                    print("EVENT:", event)
                     # Handle web search events
                     if event.type == "raw_response_event":
                         # Handle token usage counting

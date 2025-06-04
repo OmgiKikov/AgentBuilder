@@ -155,18 +155,45 @@ def numerate_str2list(text: str, count: int) -> list[str]:
 
 
 def get_access_token(oauth_url):
-    headers = {
-        'Authorization': f"Bearer {os.getenv('SECRET_KEY')}",
-        'RqUID': str(uuid.uuid1()),
-        'Content-Type': 'application/x-www-form-urlencoded',
-    }
-    data = {
-        'scope': f"{os.getenv('SCOPE')}",
-    }
-    response = requests.post(oauth_url, headers=headers, data=data, verify=False)
-    print(response)
-    access_token = response.json()['access_token']
-    return access_token
+    try:
+        headers = {
+            'Authorization': f"Bearer ZDFhY2IzYmMtNDU5OC00OThiLWFmM2UtZDg4MmU0Mjg3MTAzOjQxZDdkNTFkLTZiMzItNDU4MC05MjNhLTQ4MDgxZGZmYTBhOA==",
+            'RqUID': str(uuid.uuid1()),
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+        
+        data = {
+            'scope': "GIGACHAT_API_CORP",
+        }
+        
+        print(f"Тестируем scope: GIGACHAT_API_CORP")
+        response = requests.post(oauth_url, headers=headers, data=data, verify=False)
+        
+        print(f"Статус ответа: {response.status_code}")
+        
+        if response.status_code != 200:
+            print(f"Ошибка HTTP: {response.status_code}")
+            print(f"Текст ответа: {response.text}")
+            return None
+            
+        try:
+            response_data = response.json()
+            # print(f"Ответ JSON: {response_data}")
+        except ValueError as e:
+            print(f"Ошибка парсинга JSON: {e}")
+            print(f"Текст ответа: {response.text}")
+            return None
+            
+        if 'access_token' not in response_data:
+            print("Ошибка: access_token не найден в ответе")
+            print(f"Доступные ключи: {list(response_data.keys())}")
+            return None
+            
+        access_token = response_data['access_token']
+        print("Access token успешно получен!")
+        return access_token
+    except:
+        return None
 
 from typing import Union
 
@@ -206,7 +233,6 @@ def chat_with_gigachat(giga, system_prompt, user_message, max_retries=3, retry_d
 def init_model():
     logger.info("Инициализация модели гигачат")
     token = get_access_token(oauth_url="https://ngw.devices.sberbank.ru:9443/api/v2/oauth")
-    print(token)
     os.environ["ACCESS_TOKEN"] = token
 
     url = os.getenv("AIGATEWAY_URL") + "/models"
@@ -215,16 +241,24 @@ def init_model():
 
     models_list = list()
     models = res["data"]
-    print(models)
     for model in models:
         models_list.append(model["id"])
 
     logger.info(f"Список моделей: {models_list}")
 
-    if "GigaChat-Pro" in models_list:
+    if "GigaChat-2-Max" in models_list:
+        os.environ["GIGA_MODEL"] = "GigaChat-2-Max"
+    elif "GigaChat-2-Pro" in models_list:
+        os.environ["GIGA_MODEL"] = "GigaChat-2-Pro"
+    elif "GigaChat-Pro" in models_list:
         os.environ["GIGA_MODEL"] = "GigaChat-Pro"
+    elif "GigaChat-Max" in models_list:
+        os.environ["GIGA_MODEL"] = "GigaChat-Max"
     elif "GigaChat-Plus" in models_list:
         os.environ["GIGA_MODEL"] = "GigaChat-Plus"
+        logger.info(f"Используемая модель: {os.environ['GIGA_MODEL']}")
+    elif "GigaChat-2" in models_list:
+        os.environ["GIGA_MODEL"] = "GigaChat-2"
         logger.info(f"Используемая модель: {os.environ['GIGA_MODEL']}")
     elif "GigaChat" in models_list:
         os.environ["GIGA_MODEL"] = "GigaChat"

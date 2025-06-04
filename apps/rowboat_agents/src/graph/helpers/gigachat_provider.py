@@ -9,6 +9,8 @@ import json
 import requests
 import uuid
 import urllib3
+import re
+import asyncio
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from collections.abc import AsyncIterator
@@ -28,7 +30,18 @@ from openai.types.responses import (
     ResponseOutputMessage,
     ResponseOutputText,
     ResponseFunctionToolCall,
+    ResponseCreatedEvent,
+    ResponseOutputItemAddedEvent,
+    ResponseContentPartAddedEvent, 
+    ResponseTextDeltaEvent,
+    ResponseContentPartDoneEvent,
+    ResponseOutputItemDoneEvent,
+    ResponseCompletedEvent,
+    ResponseFunctionCallArgumentsDeltaEvent,
+    Response,
+    ResponseUsage
 )
+from openai.types.responses.response_usage import InputTokensDetails, OutputTokensDetails
 from agents.models.fake_id import FAKE_RESPONSES_ID
 
 # Для стриминга
@@ -38,6 +51,14 @@ if TYPE_CHECKING:
 
 # Отключаем SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Импорт для MCP интеграции
+try:
+    from ..execute_turn_giga import call_mcp
+except ImportError:
+    # Fallback если импорт не работает
+    async def call_mcp(tool_name: str, args: str, mcp_server_url: str) -> str:
+        return f"MCP call to {tool_name} with args {args} (fallback implementation)"
 
 
 @dataclass
@@ -149,7 +170,7 @@ def init_gigachat_environment():
 
 
 class GigaChatModel(Model):
-    """GigaChat model implementation for the agents framework."""
+    """GigaChat model implementation for the agents framework with tool calling support."""
     
     def __init__(self, credentials: str | None = None, auto_init: bool = True):
         if auto_init:
@@ -175,6 +196,133 @@ class GigaChatModel(Model):
         
         print(f"✅ GigaChatModel инициализирован с моделью {self.model_name}")
     
+    def _format_tools_for_gigachat(self, tools: list[Tool]) -> str:
+        """Форматирует инструменты для включения в системный промпт GigaChat."""
+        if not tools:
+            return ""
+        
+        tools_prompt = "\n\n# ВАЖНО: У тебя есть доступные инструменты!\n\n"
+        
+        for tool in tools:
+            tools_prompt += f"**{tool.name}**: {tool.description}\n"
+            
+            # Добавляем параметры если они есть
+            if hasattr(tool, 'params_json_schema') and tool.params_json_schema:
+                schema = tool.params_json_schema
+                if 'properties' in schema:
+                    tools_prompt += "Параметры:\n"
+                    for param_name, param_info in schema['properties'].items():
+                        param_type = param_info.get('type', 'string')
+                        param_desc = param_info.get('description', '')
+                        required = param_name in schema.get('required', [])
+                        req_text = " (обязательный)" if required else " (опциональный)"
+                        tools_prompt += f"  - {param_name} ({param_type}){req_text}: {param_desc}\n"
+            
+            tools_prompt += "\n"
+        
+        tools_prompt += """## ОБЯЗАТЕЛЬНО: Как использовать инструменты
+
+КОГДА пользователь просит использовать инструмент или когда тебе нужно выполнить действие, ты ДОЛЖЕН использовать следующий ТОЧНЫЙ формат:
+
+**TOOL_CALL_START**
+tool_name: название_инструмента
+parameters: {{"параметр1": "значение1", "параметр2": "значение2"}}
+**TOOL_CALL_END**
+
+ПРИМЕРЫ:
+
+Если пользователь говорит "Используй greeting_tool":
+**TOOL_CALL_START**
+tool_name: greeting_tool
+parameters: {{}}
+**TOOL_CALL_END**
+
+Если пользователь говорит "Вычисли 10+5":
+**TOOL_CALL_START**
+tool_name: calculator_tool
+parameters: {{"expression": "10+5"}}
+**TOOL_CALL_END**
+
+КРИТИЧЕСКИ ВАЖНО:
+- Используй ТОЧНО этот формат с **TOOL_CALL_START** и **TOOL_CALL_END**
+- НЕ добавляй лишний текст между маркерами
+- НЕ отвечай обычным текстом если пользователь просит использовать инструмент
+- ВСЕГДА используй инструменты когда пользователь явно их просит
+- Параметры должны быть в правильном JSON формате
+
+"""
+        return tools_prompt
+    
+    def _parse_tool_calls_from_response(self, response_content: str, tools: list[Tool]) -> tuple[str, list[dict]]:
+        """Парсит tool calls из ответа GigaChat и возвращает очищенный текст + список вызовов."""
+        
+        # Паттерн для поиска tool calls
+        tool_call_pattern = r'\*\*TOOL_CALL_START\*\*(.*?)\*\*TOOL_CALL_END\*\*'
+        tool_calls_found = re.findall(tool_call_pattern, response_content, re.DOTALL)
+        
+        tool_calls_data = []
+        
+        for tool_call_text in tool_calls_found:
+            # Извлекаем tool_name
+            tool_name_match = re.search(r'tool_name:\s*(\w+)', tool_call_text)
+            if not tool_name_match:
+                continue
+            
+            tool_name = tool_name_match.group(1)
+            
+            # Проверяем что такой инструмент существует
+            tool_exists = any(tool.name == tool_name for tool in tools)
+            if not tool_exists:
+                continue
+            
+            # Извлекаем parameters
+            params_match = re.search(r'parameters:\s*({.*?})', tool_call_text, re.DOTALL)
+            if params_match:
+                try:
+                    parameters = json.loads(params_match.group(1))
+                except json.JSONDecodeError:
+                    parameters = {}
+            else:
+                parameters = {}
+            
+            tool_calls_data.append({
+                'name': tool_name,
+                'arguments': parameters,
+                'id': f"call_{uuid.uuid4().hex[:8]}"
+            })
+        
+        # Удаляем tool calls из текста ответа
+        cleaned_response = re.sub(tool_call_pattern, '', response_content, flags=re.DOTALL)
+        cleaned_response = cleaned_response.strip()
+        
+        return cleaned_response, tool_calls_data
+    
+    async def _execute_tool_call(self, tool_call: dict, tools: list[Tool]) -> str:
+        """Выполняет вызов инструмента и возвращает результат."""
+        tool_name = tool_call['name']
+        arguments = tool_call['arguments']
+        
+        # Находим инструмент
+        tool = next((t for t in tools if t.name == tool_name), None)
+        if not tool:
+            return f"Ошибка: инструмент {tool_name} не найден"
+        
+        try:
+            # Выполняем инструмент
+            if hasattr(tool, 'on_invoke_tool') and tool.on_invoke_tool:
+                # Создаем mock context
+                class MockContext:
+                    pass
+                
+                ctx = MockContext()
+                result = await tool.on_invoke_tool(ctx, arguments)
+                return str(result)
+            else:
+                return f"Ошибка: инструмент {tool_name} не имеет реализации"
+                
+        except Exception as e:
+            return f"Ошибка выполнения инструмента {tool_name}: {str(e)}"
+    
     async def get_response(
         self,
         system_instructions: str | None,
@@ -187,27 +335,43 @@ class GigaChatModel(Model):
         *,
         previous_response_id: str | None,
     ) -> ModelResponse:
-        """Get a response from GigaChat model."""
-        
-        # Отключаем tracing для GigaChat чтобы избежать ошибок OpenAI
-        tracing._disabled = True
+        """Get a response from GigaChat model with tool calling support."""
         
         # Конвертируем входные данные в сообщения
         system_prompt, user_message = self._convert_input_to_prompts(system_instructions, input)
+        
+        # Добавляем инструменты в системный промпт
+        if tools:
+            tools_prompt = self._format_tools_for_gigachat(tools)
+            system_prompt = system_prompt + tools_prompt
         
         # Отправляем запрос в GigaChat
         try:
             response_content = self._chat_with_gigachat(system_prompt, user_message)
             
+            # Парсим tool calls из ответа
+            cleaned_response, tool_calls_data = self._parse_tool_calls_from_response(response_content, tools)
+            
+            # Выполняем tool calls если они есть
+            final_response_parts = []
+            if cleaned_response.strip():
+                final_response_parts.append(cleaned_response.strip())
+            
+            for tool_call in tool_calls_data:
+                tool_result = await self._execute_tool_call(tool_call, tools)
+                final_response_parts.append(f"\n🔧 Результат {tool_call['name']}: {tool_result}")
+            
+            final_response = "\n".join(final_response_parts)
+            
             # Создаем объект ответа в формате agents
-            output_items = self._create_output_items(response_content)
+            output_items = self._create_output_items(final_response)
             
             # Создаем usage с оценочными значениями
             usage = Usage(
                 requests=1,
                 input_tokens=self._estimate_tokens(system_prompt + user_message),
-                output_tokens=self._estimate_tokens(response_content),
-                total_tokens=self._estimate_tokens(system_prompt + user_message + response_content),
+                output_tokens=self._estimate_tokens(final_response),
+                total_tokens=self._estimate_tokens(system_prompt + user_message + final_response),
             )
             
             return ModelResponse(
@@ -231,186 +395,254 @@ class GigaChatModel(Model):
         *,
         previous_response_id: str | None,
     ) -> AsyncIterator[TResponseStreamEvent]:
-        """Stream a response from GigaChat model."""
+        """Stream a response from GigaChat model with proper tool calling events."""
         
-        # Отключаем tracing для GigaChat чтобы избежать ошибок OpenAI
-        tracing._disabled = True
+        # Конвертируем входные данные в сообщения
+        system_prompt, user_message = self._convert_input_to_prompts(system_instructions, input)
         
-        # Получаем полный ответ
-        model_response = await self.get_response(
-            system_instructions,
-            input,
-            model_settings,
-            tools,
-            output_schema,
-            handoffs,
-            tracing,
-            previous_response_id=previous_response_id,
-        )
+        # Добавляем инструменты в системный промпт
+        if tools:
+            tools_prompt = self._format_tools_for_gigachat(tools)
+            system_prompt = system_prompt + tools_prompt
         
-        # Эмулируем правильную последовательность событий стрима
-        from openai.types.responses import (
-            ResponseCreatedEvent,
-            ResponseOutputItemAddedEvent,
-            ResponseContentPartAddedEvent, 
-            ResponseTextDeltaEvent,
-            ResponseContentPartDoneEvent,
-            ResponseOutputItemDoneEvent,
-            ResponseCompletedEvent,
-            ResponseOutputText,
-            ResponseOutputMessage,
-            Response,
-            ResponseUsage
-        )
-        from openai.types.responses.response_usage import InputTokensDetails, OutputTokensDetails
         import time
-        
         sequence_number = 0
         
-        # Извлекаем текст из ответа модели
-        response_text = ""
-        if model_response.output and len(model_response.output) > 0:
-            output_item = model_response.output[0]
-            if hasattr(output_item, 'content') and output_item.content:
-                for content_part in output_item.content:
-                    if hasattr(content_part, 'text'):
-                        response_text = content_part.text
-                        break
-        
-        # 1. Response Created Event
-        initial_response = Response(
-            id=FAKE_RESPONSES_ID,
-            created_at=time.time(),
-            model="gigachat",
-            object="response",
-            output=[],
-            tool_choice="auto",
-            top_p=model_settings.top_p,
-            temperature=model_settings.temperature,
-            tools=[],
-            parallel_tool_calls=False,
-            reasoning=None,
-        )
-        
-        yield ResponseCreatedEvent(
-            response=initial_response,
-            type="response.created",
-            sequence_number=sequence_number
-        )
-        sequence_number += 1
-        
-        # 2. Output Item Added (начало сообщения)
-        assistant_item = ResponseOutputMessage(
-            id=FAKE_RESPONSES_ID,
-            content=[],
-            role="assistant",
-            type="message",
-            status="in_progress",
-        )
-        
-        yield ResponseOutputItemAddedEvent(
-            item=assistant_item,
-            output_index=0,
-            type="response.output_item.added",
-            sequence_number=sequence_number
-        )
-        sequence_number += 1
-        
-        # 3. Content Part Added (начало текстового контента)
-        text_part = ResponseOutputText(
-            text="",
-            type="output_text",
-            annotations=[],
-        )
-        
-        yield ResponseContentPartAddedEvent(
-            content_index=0,
-            item_id=FAKE_RESPONSES_ID,
-            output_index=0,
-            part=text_part,
-            type="response.content_part.added",
-            sequence_number=sequence_number
-        )
-        sequence_number += 1
-        
-        # 4. Отправляем текст по кусочкам (имитируем стриминг)
-        if response_text:
-            # Разбиваем текст на слова для имитации стриминга
-            words = response_text.split()
-            current_text = ""
+        try:
+            # Получаем ответ от GigaChat
+            response_content = self._chat_with_gigachat(system_prompt, user_message)
             
-            for word in words:
-                delta = word + " "
-                current_text += delta
+            # Парсим tool calls из ответа
+            cleaned_response, tool_calls_data = self._parse_tool_calls_from_response(response_content, tools)
+            
+            # 1. Response Created Event
+            initial_response = Response(
+                id=FAKE_RESPONSES_ID,
+                created_at=time.time(),
+                model="gigachat",
+                object="response",
+                output=[],
+                tool_choice="auto",
+                top_p=model_settings.top_p,
+                temperature=model_settings.temperature,
+                tools=[],
+                parallel_tool_calls=False,
+                reasoning=None,
+            )
+            
+            yield ResponseCreatedEvent(
+                response=initial_response,
+                type="response.created",
+                sequence_number=sequence_number
+            )
+            sequence_number += 1
+            
+            # 2. Если есть tool calls, эмулируем их как OpenAI
+            if tool_calls_data:
+                for tool_call in tool_calls_data:
+                    # Создаем ResponseFunctionToolCall объект
+                    function_tool_call = ResponseFunctionToolCall(
+                        arguments=json.dumps(tool_call['arguments']),
+                        call_id=tool_call['id'],
+                        name=tool_call['name'],
+                        type='function_call',
+                        id=FAKE_RESPONSES_ID,
+                        status=None
+                    )
+                    
+                    # Output Item Added Event для function call
+                    yield ResponseOutputItemAddedEvent(
+                        item=function_tool_call,
+                        output_index=0,
+                        type="response.output_item.added",
+                        sequence_number=sequence_number
+                    )
+                    sequence_number += 1
+                    
+                    # Function Call Arguments Delta Event
+                    yield ResponseFunctionCallArgumentsDeltaEvent(
+                        delta=json.dumps(tool_call['arguments']),
+                        item_id=FAKE_RESPONSES_ID,
+                        output_index=0,
+                        type="response.function_call_arguments.delta",
+                        sequence_number=sequence_number
+                    )
+                    sequence_number += 1
+                    
+                    # Output Item Done Event для function call
+                    yield ResponseOutputItemDoneEvent(
+                        item=function_tool_call,
+                        output_index=0,
+                        type="response.output_item.done",
+                        sequence_number=sequence_number
+                    )
+                    sequence_number += 1
                 
-                yield ResponseTextDeltaEvent(
-                    content_index=0,
-                    delta=delta,
-                    item_id=FAKE_RESPONSES_ID,
-                    output_index=0,
-                    type="response.output_text.delta",
+                # Response Completed Event после всех tool calls
+                completed_response = Response(
+                    id=FAKE_RESPONSES_ID,
+                    created_at=time.time(),
+                    model="gigachat",
+                    object="response",
+                    output=[ResponseFunctionToolCall(
+                        arguments=json.dumps(tc['arguments']),
+                        call_id=tc['id'],
+                        name=tc['name'],
+                        type='function_call',
+                        id=FAKE_RESPONSES_ID,
+                        status=None
+                    ) for tc in tool_calls_data],
+                    tool_choice="auto",
+                    top_p=model_settings.top_p,
+                    temperature=model_settings.temperature,
+                    tools=[],
+                    parallel_tool_calls=False,
+                    reasoning=None,
+                    usage=ResponseUsage(
+                        input_tokens=self._estimate_tokens(system_prompt + user_message),
+                        output_tokens=10,  # Примерное значение для tool calls
+                        total_tokens=self._estimate_tokens(system_prompt + user_message) + 10,
+                        input_tokens_details=InputTokensDetails(cached_tokens=0),
+                        output_tokens_details=OutputTokensDetails(reasoning_tokens=0)
+                    )
+                )
+                
+                yield ResponseCompletedEvent(
+                    response=completed_response,
+                    type="response.completed",
                     sequence_number=sequence_number
                 )
                 sequence_number += 1
+                
+                # НЕ выполняем tool calls здесь - позволяем фреймворку agents делать это
+                # Это создаст правильные function spans через tracing
+                return
             
-            # Обновляем text_part с полным текстом
-            text_part.text = response_text.strip()
-        
-        # 5. Content Part Done (конец текстового контента)
-        yield ResponseContentPartDoneEvent(
-            content_index=0,
-            item_id=FAKE_RESPONSES_ID,
-            output_index=0,
-            part=text_part,
-            type="response.content_part.done",
-            sequence_number=sequence_number
-        )
-        sequence_number += 1
-        
-        # 6. Output Item Done (конец сообщения)
-        final_assistant_item = ResponseOutputMessage(
-            id=FAKE_RESPONSES_ID,
-            content=[text_part],
-            role="assistant",
-            type="message",
-            status="completed",
-        )
-        
-        yield ResponseOutputItemDoneEvent(
-            item=final_assistant_item,
-            output_index=0,
-            type="response.output_item.done",
-            sequence_number=sequence_number
-        )
-        sequence_number += 1
-        
-        # 7. Response Completed (финальное событие)
-        final_response = Response(
-            id=FAKE_RESPONSES_ID,
-            created_at=time.time(),
-            model="gigachat",
-            object="response",
-            output=[final_assistant_item],
-            tool_choice="auto",
-            top_p=model_settings.top_p,
-            temperature=model_settings.temperature,
-            tools=[],
-            parallel_tool_calls=False,
-            reasoning=None,
-            usage=ResponseUsage(
-                input_tokens=model_response.usage.input_tokens,
-                output_tokens=model_response.usage.output_tokens,
-                total_tokens=model_response.usage.total_tokens,
-                input_tokens_details=InputTokensDetails(cached_tokens=0),
-                output_tokens_details=OutputTokensDetails(reasoning_tokens=0)
-            )
-        )
-        
-        yield ResponseCompletedEvent(
-            response=final_response,
-            type="response.completed",
-            sequence_number=sequence_number
-        )
+            # 3. Если нет tool calls, создаем обычный ответ с текстом
+            if cleaned_response.strip():
+                # Output Item Added (начало сообщения)
+                assistant_item = ResponseOutputMessage(
+                    id=FAKE_RESPONSES_ID,
+                    content=[],
+                    role="assistant",
+                    type="message",
+                    status="in_progress",
+                )
+                
+                yield ResponseOutputItemAddedEvent(
+                    item=assistant_item,
+                    output_index=0,
+                    type="response.output_item.added",
+                    sequence_number=sequence_number
+                )
+                sequence_number += 1
+                
+                # Content Part Added (начало текстового контента)
+                text_part = ResponseOutputText(
+                    text="",
+                    type="output_text",
+                    annotations=[],
+                )
+                
+                yield ResponseContentPartAddedEvent(
+                    content_index=0,
+                    item_id=FAKE_RESPONSES_ID,
+                    output_index=0,
+                    part=text_part,
+                    type="response.content_part.added",
+                    sequence_number=sequence_number
+                )
+                sequence_number += 1
+                
+                # Отправляем текст по кусочкам (имитируем стриминг)
+                words = cleaned_response.strip().split()
+                current_text = ""
+                
+                for word in words:
+                    delta = word + " "
+                    current_text += delta
+                    
+                    yield ResponseTextDeltaEvent(
+                        content_index=0,
+                        delta=delta,
+                        item_id=FAKE_RESPONSES_ID,
+                        output_index=0,
+                        type="response.output_text.delta",
+                        sequence_number=sequence_number
+                    )
+                    sequence_number += 1
+                
+                # Обновляем text_part с полным текстом
+                text_part.text = cleaned_response.strip()
+                
+                # Content Part Done (конец текстового контента)
+                yield ResponseContentPartDoneEvent(
+                    content_index=0,
+                    item_id=FAKE_RESPONSES_ID,
+                    output_index=0,
+                    part=text_part,
+                    type="response.content_part.done",
+                    sequence_number=sequence_number
+                )
+                sequence_number += 1
+                
+                # Output Item Done (конец сообщения)
+                final_assistant_item = ResponseOutputMessage(
+                    id=FAKE_RESPONSES_ID,
+                    content=[text_part],
+                    role="assistant",
+                    type="message",
+                    status="completed",
+                )
+                
+                yield ResponseOutputItemDoneEvent(
+                    item=final_assistant_item,
+                    output_index=0,
+                    type="response.output_item.done",
+                    sequence_number=sequence_number
+                )
+                sequence_number += 1
+                
+                # 4. Response Completed (финальное событие)
+                final_response = Response(
+                    id=FAKE_RESPONSES_ID,
+                    created_at=time.time(),
+                    model="gigachat",
+                    object="response",
+                    output=[ResponseOutputMessage(
+                        id=FAKE_RESPONSES_ID,
+                        content=[ResponseOutputText(
+                            text=cleaned_response.strip(),
+                            type="output_text",
+                            annotations=[]
+                        )],
+                        role="assistant",
+                        type="message",
+                        status="completed",
+                    )],
+                    tool_choice="auto",
+                    top_p=model_settings.top_p,
+                    temperature=model_settings.temperature,
+                    tools=[],
+                    parallel_tool_calls=False,
+                    reasoning=None,
+                    usage=ResponseUsage(
+                        input_tokens=self._estimate_tokens(system_prompt + user_message),
+                        output_tokens=self._estimate_tokens(cleaned_response),
+                        total_tokens=self._estimate_tokens(system_prompt + user_message + cleaned_response),
+                        input_tokens_details=InputTokensDetails(cached_tokens=0),
+                        output_tokens_details=OutputTokensDetails(reasoning_tokens=0)
+                    )
+                )
+                
+                yield ResponseCompletedEvent(
+                    response=final_response,
+                    type="response.completed",
+                    sequence_number=sequence_number
+                )
+            
+        except Exception as e:
+            raise AgentsException(f"GigaChat streaming error: {str(e)}")
     
     def _convert_input_to_prompts(
         self, 
