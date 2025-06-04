@@ -483,8 +483,8 @@ export function AgentConfig({
                                 <CustomDropdown
                                     value={agent.outputVisibility}
                                     options={[
-                                        { key: "user_facing", label: "Conversation агент" },
-                                        { key: "internal", label: "Task агент" }
+                                        { key: "user_facing", label: "Показывать в чате (для пользователя)" },
+                                        { key: "internal", label: "Служебный (только для других агентов)" }
                                     ]}
                                     onChange={(value) => handleUpdate({
                                         ...agent,
