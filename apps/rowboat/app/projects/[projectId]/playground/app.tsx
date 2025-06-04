@@ -85,7 +85,7 @@ export function App({
         }
     }, [chat.messages, projectId, systemMessage, counter]);
 
-    function onUpdateChatMessages(messages: z.infer<typeof apiV1.ChatMessage>[]) {
+    const onUpdateChatMessages = useCallback((messages: z.infer<typeof apiV1.ChatMessage>[]) => {
         setChat(prevChat => ({
             ...prevChat,
             messages: messages
@@ -93,7 +93,7 @@ export function App({
         if (messageSubscriber) {
             messageSubscriber(messages)
         }
-    }
+    }, [messageSubscriber])
 
     function handleSystemMessageChange(message: string) {
         setSystemMessage(message);
