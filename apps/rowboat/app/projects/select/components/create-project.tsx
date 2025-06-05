@@ -132,8 +132,6 @@ interface CreateProjectProps {
 
 export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpen }: CreateProjectProps) {
     const [selectedTab, setSelectedTab] = useState<TabState>(TabType.Describe);
-    const [isExamplesDropdownOpen, setIsExamplesDropdownOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
     const [customPrompt, setCustomPrompt] = useState("");
     const [name, setName] = useState(defaultName);
     const [promptError, setPromptError] = useState<string | null>(null);
@@ -155,26 +153,8 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
         };
     }, []);
 
-    // Add click outside handler
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsExamplesDropdownOpen(false);
-            }
-        }
-
-        if (isExamplesDropdownOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isExamplesDropdownOpen]);
-
     const handleTabChange = (tab: TabState) => {
         setSelectedTab(tab);
-        setIsExamplesDropdownOpen(false);
 
         if (tab === TabType.Blank) {
             setCustomPrompt('');
@@ -188,21 +168,20 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
         handleTabChange(TabType.Blank);
     };
 
-    const handleExampleSelect = (exampleName: string) => {
-        setSelectedTab(TabType.Example);
-        setCustomPrompt(starting_copilot_prompts[exampleName] || '');
-        setIsExamplesDropdownOpen(false);
-    };
-
     async function handleSubmit(formData: FormData) {
         try {
-            if (selectedTab !== TabType.Blank && !customPrompt.trim()) {
-                setPromptError("Описание не может быть пустым");
+            // Если выбрана вкладка Describe и поле пустое, создаём проект с шаблоном 'default'
+            if (selectedTab === TabType.Describe && !customPrompt.trim()) {
+                const newFormData = new FormData();
+                newFormData.append('name', name);
+                newFormData.append('template', 'default');
+                const response: any = await createProject(newFormData);
+                if (!response?.id) throw new Error('Project creation failed');
+                router.push(`/projects/${response.id}/workflow`);
                 return;
             }
 
-            let response;
-            
+            let response: any;
             if (selectedTab === TabType.Blank) {
                 const newFormData = new FormData();
                 newFormData.append('name', name);
@@ -213,7 +192,6 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
                 newFormData.append('name', name);
                 newFormData.append('prompt', customPrompt);
                 response = await createProjectFromPrompt(newFormData);
-                
                 if (response?.id && customPrompt) {
                     localStorage.setItem(`project_prompt_${response.id}`, customPrompt);
                 }
@@ -255,8 +233,9 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
                     <>
                         <div className="px-4 pt-4 pb-6 flex justify-between items-center">
                             <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                                Создать нового ассистента
+                                SberAI Lab
                             </h1>
+                            {/* Маленький текст под заголовком */}
                             {!isProjectPaneOpen && (
                                 <Button
                                     onClick={onOpenProjectPane}
@@ -283,96 +262,21 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
                     onKeyDown={handleKeyDown}
                     className="pt-6 pb-16 space-y-12"
                 >
-                    {/* Tab Section */}
-                    <div>
-                        <div className="mb-5">
-                            <SectionHeading>
-                                ✨ Начало работы
-                            </SectionHeading>
-                        </div>
-
-                        {/* Tab Navigation */}
-                        <div className="flex gap-6 relative">
-                            <Button
-                                variant={selectedTab === TabType.Describe ? 'primary' : 'tertiary'}
-                                size="md"
-                                onClick={() => handleTabChange(TabType.Describe)}
-                                className={selectedTab === TabType.Describe ? selectedTabStyles : unselectedTabStyles}
-                            >
-                                Опишите вашего ассистента
-                            </Button>
-                            <Button
-                                variant={selectedTab === TabType.Blank ? 'primary' : 'tertiary'}
-                                size="md"
-                                onClick={handleBlankTemplateClick}
-                                type="button"
-                                className={selectedTab === TabType.Blank ? selectedTabStyles : unselectedTabStyles}
-                            >
-                                Начать с пустого шаблона
-                            </Button>
-                            <div className="relative" ref={dropdownRef}>
-                                <Button
-                                    variant={selectedTab === TabType.Example ? 'primary' : 'tertiary'}
-                                    size="md"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setIsExamplesDropdownOpen(!isExamplesDropdownOpen);
-                                    }}
-                                    type="button"
-                                    className={selectedTab === TabType.Example ? selectedTabStyles : unselectedTabStyles}
-                                    endContent={
-                                        <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                        </svg>
-                                    }
-                                >
-                                    Использовать пример
-                                </Button>
-                                
-                                {isExamplesDropdownOpen && (
-                                    <div className="absolute z-10 mt-2 min-w-[200px] max-w-[240px] rounded-lg shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                                        <div className="py-1">
-                                            {Object.entries(starting_copilot_prompts)
-                                                .filter(([name]) => name !== 'Blank Template')
-                                                .map(([name]) => (
-                                                    <Button
-                                                        key={name}
-                                                        variant="tertiary"
-                                                        size="sm"
-                                                        className="w-full justify-start text-left text-sm py-1.5"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            handleExampleSelect(name);
-                                                        }}
-                                                        type="button"
-                                                    >
-                                                        {name}
-                                                    </Button>
-                                                ))
-                                            }
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
 
                     {/* Custom Prompt Section - Only show when needed */}
                     {(selectedTab === TabType.Describe || selectedTab === TabType.Example) && (
                         <div className="space-y-4">
                             <div className="flex flex-col gap-4">
                                 <label className={largeSectionHeaderStyles}>
-                                    {selectedTab === TabType.Describe ? '✏️ Что вы хотите создать?' : '✏️ Настройте описание'}
+                                    {selectedTab === TabType.Describe ? '✏️ Какую задачу вы хотите решить?' : ''}
                                 </label>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2"> 
                                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                                        На следующем этапе наш ИИ-копилот создаст для вас агентов с демо-инструментами.
+                                    Опишите задачу — и помощник соберет прототип. 
                                     </p>
-                                    <Tooltip content={<div>Если вы уже знаете, какие конкретные агенты и инструменты вам нужны, упомяните их ниже.<br /><br />Укажите &apos;внутренние агенты&apos; для агентов задач, которые не будут взаимодействовать с пользователем, и &apos;пользовательские агенты&apos; для разговорных агентов, которые будут взаимодействовать с пользователями.</div>} className="max-w-[560px]">
+                                    {/* <Tooltip content={<div>Если вы уже знаете, какие конкретные агенты и инструменты вам нужны, упомяните их ниже.<br /><br />Укажите &apos;внутренние агенты&apos; для агентов задач, которые не будут взаимодействовать с пользователем, и &apos;пользовательские агенты&apos; для разговорных агентов, которые будут взаимодействовать с пользователями.</div>} className="max-w-[560px]">
                                         <InformationCircleIcon className="w-4 h-4 text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 cursor-help" />
-                                    </Tooltip>
+                                    </Tooltip> */}
                                 </div>
                                 <div className="space-y-2">
                                     <Textarea
@@ -381,7 +285,7 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
                                             setCustomPrompt(e.target.value);
                                             setPromptError(null);
                                         }}
-                                        placeholder="Пример: Создайте ассистента службы поддержки клиентов, который может обрабатывать запросы о продуктах и возвратах"
+                                        placeholder="Сделай помощника службы поддержки, который может обрабатывать запросы клиентов о продуктах и возвратах"
                                         className={clsx(
                                             textareaStyles,
                                             "text-base",
@@ -392,7 +296,7 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
                                         style={{ minHeight: "120px" }}
                                         autoFocus
                                         autoResize
-                                        required={isNotBlankTemplate(selectedTab)}
+                                        required={false}
                                     />
                                     {promptError && (
                                         <p className="text-sm text-red-500">
@@ -408,13 +312,14 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
                         <div className="space-y-4">
                             <div className="flex flex-col gap-4">
                                 <p className="text-gray-600 dark:text-gray-400 text-sm">
-                                    👇 Нажмите &ldquo;Создать ассистента&rdquo; ниже, чтобы начать
+                                    👇 Нажмите &ldquo;Создать агента&rdquo; ниже, чтобы начать
                                 </p>
                             </div>
                         </div>
                     )}
 
                     {/* Name Section */}
+                    {/*
                     {USE_MULTIPLE_PROJECTS && (
                         <div className="space-y-4">
                             <div className="flex flex-col gap-4">
@@ -437,6 +342,7 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
                             </div>
                         </div>
                     )}
+                    */}
 
                     {/* Submit Button */}
                     <div className="pt-1 w-full -mt-4">

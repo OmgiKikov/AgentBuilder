@@ -394,9 +394,9 @@ export const Copilot = forwardRef<{ handleUserMessage: (message: string) => void
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            COPILOT
+                            ПОМОЩНИК
                         </div>
-                        <Tooltip content="Спросить copilot помочь вам построить и изменить ваш рабочий процесс">
+                        <Tooltip content="Ставьте задачи помощнику, чтобы получить нужный результат">
                             <InfoIcon className="w-4 h-4 text-gray-400 cursor-help" />
                         </Tooltip>
                     </div>

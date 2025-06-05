@@ -10,7 +10,7 @@
       "createdAt": "2025-05-08T07:06:48.280Z",
       "role": "assistant",
       "content": "Как я могу вам помочь?",
-      "agenticSender": "Example Agent",
+      "agenticSender": "Тестовый Агент",
       "agenticResponseType": "external"
     },
     {
@@ -35,7 +35,7 @@
           "type": "function"
         }
       ],
-      "agenticSender": "Example Agent",
+      "agenticSender": "Тестовый Агент",
       "agenticResponseType": "internal"
     },
     {
@@ -53,7 +53,7 @@
       "createdAt": "2025-05-08T07:06:57.096Z",
       "role": "assistant",
       "content": "Article 1 states: \"This is article 1.\"\n\nIf you need more details or information about another article, please let me know!",
-      "agenticSender": "Example Agent",
+      "agenticSender": "Тестовый Агент",
       "agenticResponseType": "external"
     }
   ],
@@ -71,7 +71,7 @@
       {
         "content": "Как я могу вам помочь?",
         "role": "assistant",
-        "sender": "Example Agent",
+        "sender": "Тестовый Агент",
         "tool_calls": null,
         "tool_call_id": null,
         "tool_name": null,
@@ -87,7 +87,7 @@
       }
     ],
     "state": {
-      "last_agent_name": "Example Agent",
+      "last_agent_name": "Тестовый Агент",
       "tokens": {
         "total": 0,
         "prompt": 0,
@@ -96,9 +96,9 @@
     },
     "agents": [
       {
-        "name": "Example Agent",
+        "name": "Тестовый Агент",
         "type": "conversation",
-        "description": "An example agent that uses the rag_search tool to fetch information for customer support queries.",
+        "description": "An Тестовый Агент that uses the rag_search tool to fetch information for customer support queries.",
         "instructions": "## 🧑‍💼 Role:\nYou are a helpful customer support assistant who fetches information using the rag_search tool.\n\n---\n## ⚙️ Steps to Follow:\n1. Ask the user what they would like help with.\n2. If the user's query requires information or an answer, use the [@tool:rag_search] tool with the user's question as the query.\n3. Provide the user with an answer based on the information retrieved from the tool.\n4. If the user's issue is about follow-up or requires human support, ask for their email address and let them know someone will contact them soon.\n5. If a question is out of scope, politely inform the user and avoid providing an answer.\n\n---\n## 🎯 Scope:\n✅ In Scope:\n- Answering customer support questions using information from articles.\n- Asking the user their issue and getting their email if needed.\n\n❌ Out of Scope:\n- Questions unrelated to customer support.\n- Providing answers without using the rag_search tool when information is needed.\n\n---\n## 📋 Guidelines:\n✔️ Dos:\n- Use [@tool:rag_search](#mention) to fetch accurate information for user queries.\n- Provide clear and concise answers based on the tool's results.\n- Ask for the user's email if the issue requires follow-up.\n\n🚫 Don'ts:\n- Do not provide answers without fetching information when required.\n- Do not ask for details other than the user's email.\n\n# Examples\n- **User** : What is your refund policy?\n - **Agent actions**: Call [@tool:rag_search](#mention)\n - **Agent response**: Our refund policy is as follows: <summary from rag_search results>\n\n- **User** : How can I change my password?\n - **Agent actions**: Call [@tool:rag_search](#mention)\n - **Agent response**: To change your password, follow these steps: <steps from rag_search results>\n\n- **User** : I need help with my order.\n - **Agent actions**: Call [@tool:rag_search](#mention)\n - **Agent response**: Can you please provide more details about your order issue? <additional info from rag_search results if relevant>\n\n- **User** : I want someone to contact me about a billing issue.\n - **Agent response**: Sure, could you please provide your email address so someone from our team can contact you soon?\n\n- **User** : Can you tell me about your subscription plans?\n - **Agent actions**: Call [@tool:rag_search](#mention)\n - **Agent response**: Here are our subscription plans: <details from rag_search results>",
         "model": "gpt-4.1",
         "controlType": "retain",
@@ -145,13 +145,13 @@
       }
     ],
     "prompts": [],
-    "startAgent": "Example Agent",
+    "startAgent": "Тестовый Агент",
     "mcpServers": [],
     "toolWebhookUrl": ""
   },
   "lastResponse": {
     "state": {
-      "last_agent_name": "Example Agent",
+      "last_agent_name": "Тестовый Агент",
       "tokens": {
         "total": 1581,
         "prompt": 1533,
@@ -174,7 +174,7 @@
             "type": "function"
           }
         ],
-        "agenticSender": "Example Agent",
+        "agenticSender": "Тестовый Агент",
         "agenticResponseType": "internal"
       },
       {
@@ -192,7 +192,7 @@
         "createdAt": "2025-05-08T07:06:57.096Z",
         "role": "assistant",
         "content": "Article 1 states: \"This is article 1.\"\n\nIf you need more details or information about another article, please let me know!",
-        "agenticSender": "Example Agent",
+        "agenticSender": "Тестовый Агент",
         "agenticResponseType": "external"
       }
     ]

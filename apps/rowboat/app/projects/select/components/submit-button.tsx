@@ -27,7 +27,7 @@ export function Submit() {
                 isLoading={pending}
                 startContent={<PlusIcon size={16} />}
             >
-                Создать ассистента
+                Создать
             </Button>
         </div>
     );

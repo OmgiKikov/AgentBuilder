@@ -9,12 +9,12 @@ export const templates: { [key: string]: z.infer<typeof WorkflowTemplate> } = {
     'default': {
         name: 'Blank Template',
         description: 'A blank canvas to build your agents.',
-        startAgent: "Example Agent",
+        startAgent: "Тестовый Агент",
         agents: [
             {
-                name: "Example Agent",
+                name: "Тестовый Агент",
                 type: "conversation",
-                description: "An example agent",
+                description: "Тестовый Агент",
                 instructions: "## 🧑‍ Role:\nYou are an helpful customer support assistant\n\n---\n## ⚙️ Steps to Follow:\n1. Ask the user what they would like help with\n2. Ask the user for their email address and let them know someone will contact them soon.\n\n---\n## 🎯 Scope:\n✅ In Scope:\n- Asking the user their issue\n- Getting their email\n\n❌ Out of Scope:\n- Questions unrelated to customer support\n- If a question is out of scope, politely inform the user and avoid providing an answer.\n\n---\n## 📋 Guidelines:\n✔️ Dos:\n- ask user their issue\n\n❌ Don'ts:\n- don't ask user any other detail than email",
                 model: DEFAULT_MODEL,
                 toggleAble: true,

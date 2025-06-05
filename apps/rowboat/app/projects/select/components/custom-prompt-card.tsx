@@ -19,7 +19,7 @@ export function CustomPromptCard({
     onCustomPromptChange,
     placeholder
 }: CustomPromptCardProps) {
-    const DEFAULT_PROMPT = "Create a customer support assistant with one example agent";
+    const DEFAULT_PROMPT = "Create a customer support assistant with one Тестовый Агент";
 
     // When unselected, show default text. When selected, show editable customPrompt
     const displayText = selected ? customPrompt : DEFAULT_PROMPT;

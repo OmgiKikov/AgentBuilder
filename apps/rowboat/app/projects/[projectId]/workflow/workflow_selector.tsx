@@ -4,13 +4,35 @@ import { Workflow } from "../../../lib/types/workflow_types";
 import { z } from "zod";
 import { useEffect, useState, useCallback } from "react";
 import { PublishedBadge } from "./published_badge";
-import { RelativeTime } from "@primer/react";
 import { listWorkflows } from "../../../actions/workflow_actions";
 import { Button, Divider, Pagination } from "@heroui/react";
 import { WorkflowIcon } from "../../../lib/components/icons";
 import { PlusIcon } from "lucide-react";
 
 const pageSize = 5;
+
+function pluralize(n: number, one: string, few: string, many: string) {
+    if (n % 10 === 1 && n % 100 !== 11) return one;
+    if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return few;
+    return many;
+}
+
+function getRelativeTime(date: Date) {
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - date.getTime()) / 1000); // разница в секундах
+
+    if (diff < 60) return 'только что';
+    if (diff < 3600) {
+        const mins = Math.floor(diff / 60);
+        return mins + ' ' + pluralize(mins, 'минуту', 'минуты', 'минут') + ' назад';
+    }
+    if (diff < 86400) {
+        const hours = Math.floor(diff / 3600);
+        return hours + ' ' + pluralize(hours, 'час', 'часа', 'часов') + ' назад';
+    }
+    const days = Math.floor(diff / 86400);
+    return days + ' ' + pluralize(days, 'день', 'дня', 'дней') + ' назад';
+}
 
 function WorkflowCard({
     workflow,
@@ -29,7 +51,7 @@ function WorkflowCard({
                 {live && <PublishedBadge />}
             </div>
             <div className="text-xs text-gray-400">
-                обновлено <RelativeTime date={new Date(workflow.lastUpdatedAt)} />
+                обновлено {getRelativeTime(new Date(workflow.lastUpdatedAt))}
             </div>
         </div>
     </button>;

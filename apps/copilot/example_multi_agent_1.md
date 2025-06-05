@@ -97,12 +97,12 @@ I'm creating the 2FA Troubleshooting agent to assist users in resolving issues w
 }
 ```
 
-I'm creating the dispatcher agent 2FA Диспетчер by modifying the Example Agent to manage and direct 2FA-related queries to specific agents:
+I'm creating the dispatcher agent 2FA Диспетчер by modifying the Тестовый Агент to manage and direct 2FA-related queries to specific agents:
 
 ```copilot_change
 // action: edit
 // config_type: agent
-// name: Example Agent
+// name: Тестовый Агент
 {
   "change_description": "Created a dispatcher agent for 2FA-related queries to manage directing queries to specific agents, with updated fallback actions and clarifying instructions.",
   "config_changes": {
