@@ -322,11 +322,6 @@ async def catch_all(ctx: RunContextWrapper[Any], args: str, tool_name: str, tool
                     print(f"Returning no query result: {no_query_result}")
                     return no_query_result
             
-            elif tool_name == "rag_search":
-                # RAG search should be handled elsewhere, but just in case
-                print("Handling rag_search library tool")
-                return "RAG поиск выполнен."
-            
             else:
                 print(f"Handling unknown library tool: {tool_name}")
                 return f"Библиотечный инструмент {tool_name} выполнен."
@@ -449,6 +444,11 @@ def get_agents(agent_configs, tool_configs, complete_request):
 
         # Add other tools
         for tool_name in agent_config.get("tools", []):
+            # Skip rag_search if it was already added as a RAG tool
+            if tool_name == "rag_search" and rag_tool is not None:
+                print(f"Skipping {tool_name} - already added as RAG tool")
+                continue
+                
             tool_config = get_tool_config_by_name(tool_configs, tool_name)
             if tool_config:
                 params = tool_config.get("parameters", {})

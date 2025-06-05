@@ -52,15 +52,12 @@ def format_gigachat_response(content: str) -> str:
     Автоматически форматирует ответы от GigaChat, исправляя copilot_change блоки
     """
     # Паттерн для поиска блоков copilot_change (включая неправильно отформатированные)
-    pattern = r'```copilot_change([^`]*?)```'
+    # Ищем как полные блоки с закрывающими кавычками, так и незакрытые блоки
+    pattern_complete = r'```copilot_change([^`]*?)```'
+    pattern_incomplete = r'copilot_change\s*([^`]*?)(?=\n\n|\Z)'
     
     def fix_copilot_block(match):
         block_content = match.group(1).strip()
-        
-        # Если блок уже правильно отформатирован, не трогаем
-        lines = block_content.split('\n')
-        if len(lines) > 10:  # Много строк = вероятно уже отформатирован
-            return match.group(0)
         
         try:
             # Ищем JSON объект
@@ -71,23 +68,79 @@ def format_gigachat_response(content: str) -> str:
                 comments_part = block_content[:json_start].strip()
                 json_part = block_content[json_start:].strip()
                 
+                # Пытаемся найти конец JSON объекта
+                brace_count = 0
+                json_end = -1
+                in_string = False
+                escape_next = False
+                
+                for i, char in enumerate(json_part):
+                    if escape_next:
+                        escape_next = False
+                        continue
+                    
+                    if char == '\\':
+                        escape_next = True
+                        continue
+                    
+                    if char == '"' and not escape_next:
+                        in_string = not in_string
+                        continue
+                    
+                    if not in_string:
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                json_end = i + 1
+                                break
+                
+                if json_end > 0:
+                    json_part = json_part[:json_end]
+                
                 # Парсим JSON
                 try:
                     parsed_json = json.loads(json_part)
                     
-                    # Форматируем JSON с отступами
+                    # Всегда форматируем JSON с отступами для единообразия
                     formatted_json = json.dumps(parsed_json, ensure_ascii=False, indent=2)
                     
                     # Форматируем комментарии
                     result_lines = []
                     if comments_part:
-                        # Разбиваем комментарии по ключевым словам
-                        comment_parts = comments_part.split('//')
-                        for part in comment_parts:
-                            part = part.strip()
-                            if part and not part.startswith('//'):
-                                if any(keyword in part for keyword in ['action:', 'config_type:', 'name:']):
-                                    result_lines.append('// ' + part)
+                        # Ищем комментарии в разных форматах - исправлено для имен с пробелами
+                        comment_patterns = [
+                            r'//\s*action:\s*([^\n/]+?)(?:\s*//|\s*$)',
+                            r'//\s*config_type:\s*([^\n/]+?)(?:\s*//|\s*$)', 
+                            r'//\s*name:\s*([^\n/]+?)(?:\s*//|\s*$)',
+                            r'action:\s*([^\n/]+?)(?:\s*//|\s*$)',
+                            r'config_type:\s*([^\n/]+?)(?:\s*//|\s*$)',
+                            r'name:\s*([^\n/]+?)(?:\s*//|\s*$)'
+                        ]
+                        
+                        # Извлекаем значения
+                        action = None
+                        config_type = None
+                        name = None
+                        
+                        for pattern_regex in comment_patterns:
+                            matches = re.findall(pattern_regex, comments_part, re.IGNORECASE)
+                            if matches:
+                                if 'action' in pattern_regex:
+                                    action = matches[0].strip()
+                                elif 'config_type' in pattern_regex:
+                                    config_type = matches[0].strip()
+                                elif 'name' in pattern_regex:
+                                    name = matches[0].strip()
+                        
+                        # Добавляем отформатированные комментарии
+                        if action:
+                            result_lines.append(f'// action: {action}')
+                        if config_type:
+                            result_lines.append(f'// config_type: {config_type}')
+                        if name:
+                            result_lines.append(f'// name: {name}')
                     
                     # Собираем результат
                     result = '\n'.join(result_lines)
@@ -97,8 +150,82 @@ def format_gigachat_response(content: str) -> str:
                     
                     return f'```copilot_change\n{result}\n```'
                     
-                except json.JSONDecodeError:
-                    print(f"JSON parse error in copilot_change block: {json_part[:100]}...")
+                except json.JSONDecodeError as e:
+                    print(f"JSON parse error in copilot_change block: {e}")
+                    print(f"Problematic JSON: {json_part[:200]}...")
+                    
+                    # Попытка исправить незавершенный JSON
+                    if 'Unterminated string' in str(e):
+                        # Пытаемся найти и закрыть незавершенную строку
+                        lines = json_part.split('\n')
+                        fixed_lines = []
+                        for line in lines:
+                            if line.strip().endswith('"') and line.count('"') % 2 == 0:
+                                fixed_lines.append(line)
+                            elif line.strip() and not line.strip().endswith('"') and '"' in line:
+                                # Добавляем закрывающую кавычку если строка не закрыта
+                                if line.count('"') % 2 == 1:
+                                    fixed_lines.append(line + '"')
+                                else:
+                                    fixed_lines.append(line)
+                            else:
+                                fixed_lines.append(line)
+                        
+                        # Добавляем недостающие закрывающие скобки
+                        fixed_json = '\n'.join(fixed_lines)
+                        open_braces = fixed_json.count('{') - fixed_json.count('}')
+                        if open_braces > 0:
+                            fixed_json += '\n' + '  ' * (open_braces - 1) + '}\n' * open_braces
+                        
+                        try:
+                            parsed_json = json.loads(fixed_json)
+                            formatted_json = json.dumps(parsed_json, ensure_ascii=False, indent=2)
+                            
+                            # Форматируем комментарии как выше
+                            result_lines = []
+                            if comments_part:
+                                comment_patterns = [
+                                    r'//\s*action:\s*([^\n/]+?)(?:\s*//|\s*$)',
+                                    r'//\s*config_type:\s*([^\n/]+?)(?:\s*//|\s*$)', 
+                                    r'//\s*name:\s*([^\n/]+?)(?:\s*//|\s*$)',
+                                    r'action:\s*([^\n/]+?)(?:\s*//|\s*$)',
+                                    r'config_type:\s*([^\n/]+?)(?:\s*//|\s*$)',
+                                    r'name:\s*([^\n/]+?)(?:\s*//|\s*$)'
+                                ]
+                                
+                                action = None
+                                config_type = None
+                                name = None
+                                
+                                for pattern_regex in comment_patterns:
+                                    matches = re.findall(pattern_regex, comments_part, re.IGNORECASE)
+                                    if matches:
+                                        if 'action' in pattern_regex:
+                                            action = matches[0].strip()
+                                        elif 'config_type' in pattern_regex:
+                                            config_type = matches[0].strip()
+                                        elif 'name' in pattern_regex:
+                                            name = matches[0].strip()
+                                
+                                if action:
+                                    result_lines.append(f'// action: {action}')
+                                if config_type:
+                                    result_lines.append(f'// config_type: {config_type}')
+                                if name:
+                                    result_lines.append(f'// name: {name}')
+                            
+                            result = '\n'.join(result_lines)
+                            if result:
+                                result += '\n'
+                            result += formatted_json
+                            
+                            print("✅ Successfully fixed malformed JSON!")
+                            return f'```copilot_change\n{result}\n```'
+                            
+                        except json.JSONDecodeError:
+                            print("❌ Could not fix malformed JSON")
+                            return match.group(0)
+                    
                     return match.group(0)
             else:
                 print(f"No JSON found in copilot_change block: {block_content[:100]}...")
@@ -108,22 +235,27 @@ def format_gigachat_response(content: str) -> str:
             print(f"Error processing copilot_change block: {e}")
             return match.group(0)
     
-    # Применяем форматирование
-    formatted_content = re.sub(pattern, fix_copilot_block, content, flags=re.DOTALL)
+    # Сначала обрабатываем полные блоки
+    formatted_content = re.sub(pattern_complete, fix_copilot_block, content, flags=re.DOTALL)
+    
+    # Затем обрабатываем незакрытые блоки
+    formatted_content = re.sub(pattern_incomplete, fix_copilot_block, formatted_content, flags=re.DOTALL)
     
     # Логируем результат
-    if '```copilot_change' in content:
-        print(f"Original copilot_change blocks: {content.count('```copilot_change')}")
+    if '```copilot_change' in content or 'copilot_change' in content:
+        total_blocks = content.count('```copilot_change') + len(re.findall(r'copilot_change(?!\s*```)', content))
+        print(f"Original copilot_change blocks: {total_blocks}")
         print(f"Applied formatting to copilot_change blocks")
         if formatted_content != content:
             print("✅ Formatting was applied!")
-            print("До:")
+            # Логируем только первые 500 символов для читаемости
+            print("До (первые 500 символов):")
             print(content)
-            print("После:")
+            print("После (первые 500 символов):")
             print(formatted_content)
         else:
             print("⚠️ No formatting changes made")
-            print("До:")
+            print("Контент (первые 500 символов):")
             print(content)
     
     return formatted_content
