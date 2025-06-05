@@ -233,7 +233,7 @@ export function CreateProject({ defaultName, onOpenProjectPane, isProjectPaneOpe
                     <>
                         <div className="px-4 pt-4 pb-6 flex justify-between items-center">
                             <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                                SberAI Lab
+                                AgentBuilder
                             </h1>
                             {/* Маленький текст под заголовком */}
                             {!isProjectPaneOpen && (

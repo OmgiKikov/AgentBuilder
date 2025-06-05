@@ -304,7 +304,7 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
                             </Button>
                         </div>
                     )}
-                    {effectiveContext && <div className="flex items-start mb-2">
+                    {/* {effectiveContext && <div className="flex items-start mb-2">
                         <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 text-sm px-2 py-1 rounded-sm shadow-sm">
                             <div>
                                 {effectiveContext.type === 'chat' && "Chat"}
@@ -319,7 +319,7 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
                                 <XIcon size={16} />
                             </button>
                         </div>
-                    </div>}
+                    </div>} */}
                     <ComposeBoxCopilot
                         messages={messages}
                         loading={loadingResponse || isFileUploading}
