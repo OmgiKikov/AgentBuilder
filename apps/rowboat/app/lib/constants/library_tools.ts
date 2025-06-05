@@ -20,11 +20,16 @@ export const LIBRARY_TOOLS: z.infer<typeof WorkflowTool>[] = [
     },
     {
         name: "web_search",
-        description: "Fetch information from the web based on chat context",
+        description: "Search the web for current information and provide detailed answers based on the results. Use this tool to find up-to-date information about any topic, then analyze the results and provide a comprehensive answer to the user's question.",
         parameters: {
             type: "object",
-            properties: {},
-            required: []
+            properties: {
+                query: {
+                    type: "string",
+                    description: "The search query to find information about"
+                }
+            },
+            required: ["query"]
         },
         isLibrary: true
     }

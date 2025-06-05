@@ -3,6 +3,7 @@ import requests
 import json
 import time
 from typing import List, Dict, Any, Iterator, Optional
+from get_access_token import get_access_token
 
 class ChatCompletionChunk:
     def __init__(self, content: str):
@@ -36,18 +37,16 @@ class GigaChatClient:
         if not os.getenv("GIGA_MODEL") or os.getenv("GIGA_MODEL") != "GigaChat-2-Max":
             self._init_best_model()
             
-        self.access_token = os.getenv("ACCESS_TOKEN")  # Используем готовый токен
+        # Получаем токен через функцию get_access_token вместо переменной окружения
+        self.access_token = get_access_token()
         self.chat = Chat(self)
     
     def _init_best_model(self):
         """Инициализация лучшей доступной модели"""
         try:
-            # Инициализируем access_token если его еще нет
-            self.access_token = os.getenv("ACCESS_TOKEN")
-            
-            # Получаем токен если его еще нет
+            # Получаем токен через функцию get_access_token
             if not self.access_token:
-                self._get_access_token()
+                self.access_token = get_access_token()
             
             token = self.access_token
             if not token:
@@ -89,32 +88,11 @@ class GigaChatClient:
                 os.environ["GIGA_MODEL"] = "GigaChat"
     
     def _get_access_token(self):
-        """Получение токена доступа"""
-        # Если токен уже есть, используем его
-        if self.access_token:
-            return
-            
-        oauth_url = os.getenv('OAUTH_URL')
-        secret_key = os.getenv('SECRET_KEY')
-        scope = os.getenv('SCOPE', 'GIGACHAT_API_CORP')
-        
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Accept": "application/json",
-            "RqUID": "6f0b1291-c7f3-43c6-bb2e-9f3efb2dc98e",
-            "Authorization": f"Bearer {secret_key}"
-        }
-        
-        data = {
-            "scope": scope
-        }
-        
-        response = requests.post(oauth_url, headers=headers, data=data, verify=False)
-        if response.status_code == 200:
-            self.access_token = response.json()['access_token']
-            print("new:", self.access_token)
-        else:
-            raise Exception(f"Failed to get access token: {response.status_code} {response.text}")
+        """Получение токена доступа через функцию get_access_token"""
+        # Используем функцию get_access_token вместо переменных окружения
+        self.access_token = get_access_token()
+        if not self.access_token:
+            raise Exception("Failed to get access token using get_access_token function")
     
     def chat_completion(self, messages: List[Dict[str, Any]]) -> str:
         """Отправка запроса в GigaChat"""

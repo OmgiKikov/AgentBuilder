@@ -338,8 +338,14 @@ async def run_turn_streamed(
                                 if 'name' in event.item.raw_item:
                                     tool_name = event.item.raw_item['name']
                                 elif 'type' in event.item.raw_item and event.item.raw_item['type'] == 'function_call_output':
-                                    # For function call outputs, try to infer from context
-                                    tool_name = 'recommendation'  # Default for function calls
+                                    # For function call outputs, try to get from accumulated messages
+                                    # Look for the most recent tool call to get the correct tool name
+                                    for msg in reversed(accumulated_messages):
+                                        if msg.get('tool_calls') and msg['tool_calls'][0].get('id') == tool_call_id:
+                                            tool_name = msg['tool_calls'][0]['function']['name']
+                                            break
+                                    if not tool_name:
+                                        tool_name = 'unknown_tool'  # Fallback instead of hardcoded 'recommendation'
 
                             # Fallback to event item if available
                             if not tool_name and hasattr(event.item, 'tool_name'):

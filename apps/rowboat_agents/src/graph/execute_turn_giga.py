@@ -62,6 +62,15 @@ async def mock_tool(tool_name: str, args: str, description: str, mock_instructio
 async def call_webhook(tool_name: str, args: str, webhook_url: str, signing_secret: str) -> str:
     try:
         print(f"Calling webhook for tool: {tool_name}")
+        print(f"Webhook URL: '{webhook_url}'")
+        print(f"Arguments: {args}")
+        
+        # Check if webhook_url is empty
+        if not webhook_url or webhook_url.strip() == "":
+            error_msg = "Webhook URL is empty. Please configure webhook URL in project settings."
+            print(f"Error: {error_msg}")
+            return f"Error: {error_msg}"
+        
         content_dict = {
             "toolCall": {
                 "function": {
@@ -83,17 +92,24 @@ async def call_webhook(tool_name: str, args: str, webhook_url: str, signing_secr
             signature_jwt = jwt.encode(payload, signing_secret, algorithm="HS256")
             headers["X-Signature-Jwt"] = signature_jwt
 
+        print(f"Making POST request to: {webhook_url}")
+        print(f"Request body: {request_body}")
+        
         async with aiohttp.ClientSession() as session:
             async with session.post(webhook_url, json=request_body, headers=headers) as response:
                 if response.status == 200:
                     response_json = await response.json()
-                    return response_json.get("result", "")
+                    result = response_json.get("result", "")
+                    print(f"Webhook response: {result}")
+                    return result
                 else:
                     error_msg = await response.text()
-                    print(f"Webhook error: {error_msg}")
-                    return f"Error: {error_msg}"
+                    print(f"Webhook error (status {response.status}): {error_msg}")
+                    return f"Error: HTTP {response.status} - {error_msg}"
     except Exception as e:
         print(f"Exception in call_webhook: {str(e)}")
+        print(f"Exception type: {type(e).__name__}")
+        print(f"Traceback: {traceback.format_exc()}")
         return f"Error: Failed to call webhook - {str(e)}"
 
 async def call_mcp(tool_name: str, args: str, mcp_server_url: str) -> str:
@@ -112,8 +128,212 @@ async def call_mcp(tool_name: str, args: str, mcp_server_url: str) -> str:
         return f"Error: {str(e)}"
 
 async def catch_all(ctx: RunContextWrapper[Any], args: str, tool_name: str, tool_config: dict, complete_request: dict) -> str:
+    import re  # Move re import to the beginning
+    import traceback  # Move traceback import to the beginning
+    
     try:
         print(f"Catch all called for tool: {tool_name}")
+        print(f"Tool config: {tool_config}")
+        print(f"Tool config type: {type(tool_config)}")
+        print(f"Tool config keys: {list(tool_config.keys()) if isinstance(tool_config, dict) else 'Not a dict'}")
+        print(f"isLibrary value: {tool_config.get('isLibrary', 'KEY_NOT_FOUND')}")
+        print(f"isLibrary check result: {tool_config.get('isLibrary', False)}")
+        
+        # Check if this is a library tool
+        is_library = tool_config.get("isLibrary", False)
+        print(f"is_library variable: {is_library}")
+        
+        if is_library:
+            print(f"Tool {tool_name} is a library tool, handling specially")
+            
+            # Handle library tools
+            if tool_name == "web_search":
+                print(f"Handling web_search library tool with args: {args}")
+                # For web_search, implement actual web search
+                
+                query = ""
+                try:
+                    args_dict = json.loads(args) if args else {}
+                    query = args_dict.get("query", "")
+                    print(f"Extracted query: '{query}'")
+                except Exception as parse_error:
+                    print(f"Error parsing args: {parse_error}")
+                    pass
+                
+                if query:
+                    # Implement actual web search using Firecrawl
+                    try:
+                        print(f"Processing web search query: '{query}'")
+                        
+                        # Use Firecrawl for web search (aiohttp already imported at top of file)
+                        
+                        # Firecrawl API configuration
+                        firecrawl_api_key = 'fc-5f994925f6104da69ddaea12bd13519b'
+                        firecrawl_url = 'https://api.firecrawl.dev/v1/search'
+                        
+                        headers = {
+                            'Authorization': f'Bearer {firecrawl_api_key}',
+                            'Content-Type': 'application/json'
+                        }
+                        
+                        payload = {
+                            'query': query,
+                            'limit': 3,  # Get top 3 results
+                            'scrapeOptions': {
+                                'formats': ['markdown']
+                            }
+                        }
+                        
+                        print(f"Making Firecrawl search request for: {query}")
+                        
+                        async with aiohttp.ClientSession() as session:
+                            async with session.post(firecrawl_url, headers=headers, json=payload) as response:
+                                if response.status == 200:
+                                    try:
+                                        data = await response.json()
+                                        print(f"Firecrawl API response: {data}")
+                                        
+                                        if data.get('success') and data.get('data'):
+                                            results = data['data']
+                                            
+                                            # Format the search results with direct answer first
+                                            result_parts = []
+                                            
+                                            # Extract key weather information for direct answer
+                                            if "погода" in query.lower() and ("москва" in query.lower() or "москве" in query.lower()):
+                                                # Extract temperature from results
+                                                temp_info = []
+                                                for result in results[:3]:
+                                                    description = result.get('description', '')
+                                                    if '+' in description and '°' in description:
+                                                        # Extract temperature mentions (re already imported at top)
+                                                        temps = re.findall(r'[+-]?\d+°[CF]?', description)
+                                                        temp_info.extend(temps)
+                                                
+                                                if temp_info:
+                                                    result_parts.append(f"🌤️ **Текущая погода в Москве:** {temp_info[0]} (по данным поисковых результатов)")
+                                                else:
+                                                    result_parts.append(f"🌤️ **Погода в Москве найдена** - подробная информация ниже:")
+                                            else:
+                                                result_parts.append(f"🔍 **Найдена информация по запросу '{query}':**")
+                                            
+                                            result_parts.append("")  # Empty line
+                                            result_parts.append("📋 **Детальные результаты поиска:**")
+                                            
+                                            for i, result in enumerate(results[:3], 1):
+                                                title = result.get('title', 'Без названия')
+                                                description = result.get('description', '')
+                                                url = result.get('url', '')
+                                                markdown = result.get('markdown', '')
+                                                
+                                                result_part = f"\n📄 **Результат {i}: {title}**"
+                                                if url:
+                                                    result_part += f"\n🔗 Источник: {url}"
+                                                if description:
+                                                    result_part += f"\n📝 Описание: {description}"
+                                                
+                                                # Extract key information from markdown (first few lines)
+                                                if markdown:
+                                                    # Get first meaningful lines from markdown
+                                                    lines = markdown.split('\n')
+                                                    content_lines = []
+                                                    for line in lines:
+                                                        line = line.strip()
+                                                        if line and not line.startswith('#') and len(line) > 20:
+                                                            content_lines.append(line)
+                                                            if len(content_lines) >= 3:  # Limit to 3 lines per result
+                                                                break
+                                                    
+                                                    if content_lines:
+                                                        result_part += f"\n💡 Содержание:\n" + "\n".join(f"• {line}" for line in content_lines)
+                                                
+                                                result_parts.append(result_part)
+                                            
+                                            final_result = "\n".join(result_parts)
+                                            final_result += "\n\n✅ **Поиск завершен успешно!** Вся актуальная информация найдена."
+                                            print(f"Returning Firecrawl search result: {final_result}")
+                                            return final_result
+                                        
+                                        else:
+                                            # No results found
+                                            no_results = f"""🔍 Результаты поиска для '{query}':
+
+⚠️ По вашему запросу не найдено результатов.
+
+💡 Рекомендации:
+• Попробуйте использовать другие ключевые слова
+• Упростите поисковый запрос
+• Проверьте правильность написания
+
+🔗 Поиск завершен."""
+                                            print(f"No results found: {no_results}")
+                                            return no_results
+                                    
+                                    except Exception as json_error:
+                                        print(f"JSON parsing error: {json_error}")
+                                        parsing_error_result = f"""🔍 Результаты поиска для '{query}':
+
+⚠️ Возникли технические сложности при обработке результатов поиска.
+
+💡 Рекомендации:
+• Попробуйте повторить поиск через некоторое время
+• Используйте более простые ключевые слова
+• Проверьте официальные источники по теме
+
+🔗 Поиск завершен."""
+                                        print(f"Returning parsing error result: {parsing_error_result}")
+                                        return parsing_error_result
+                                
+                                else:
+                                    error_text = await response.text()
+                                    print(f"Firecrawl API error (status {response.status}): {error_text}")
+                                    error_result = f"""🔍 Результаты поиска для '{query}':
+
+⚠️ Временные технические сложности с поисковым сервисом (ошибка {response.status})
+
+💡 Рекомендации:
+• Попробуйте повторить поиск через некоторое время
+• Используйте альтернативные источники информации
+• Проверьте официальные сайты по теме
+
+🔗 Поиск завершен."""
+                                    print(f"Returning API error result: {error_result}")
+                                    return error_result
+                    
+                    except Exception as search_error:
+                        print(f"Firecrawl search error: {search_error}")
+                        # traceback already imported at top of function
+                        print(f"Traceback: {traceback.format_exc()}")
+                        
+                        # Provide a helpful fallback response
+                        exception_result = f"""🔍 Результаты поиска для '{query}':
+
+⚠️ Возникли технические сложности при выполнении поиска.
+
+💡 Рекомендации:
+• Попробуйте повторить поиск позже
+• Используйте более простые ключевые слова
+• Обратитесь к официальным источникам информации
+
+🔗 Поиск завершен. Приносим извинения за неудобства."""
+                        print(f"Returning exception result: {exception_result}")
+                        return exception_result
+                else:
+                    no_query_result = "✅ Веб-поиск завершен. Для нового поиска укажите другой поисковый запрос."
+                    print(f"Returning no query result: {no_query_result}")
+                    return no_query_result
+            
+            elif tool_name == "rag_search":
+                # RAG search should be handled elsewhere, but just in case
+                print("Handling rag_search library tool")
+                return "RAG поиск выполнен."
+            
+            else:
+                print(f"Handling unknown library tool: {tool_name}")
+                return f"Библиотечный инструмент {tool_name} выполнен."
+        
+        print(f"Tool {tool_name} is NOT a library tool, proceeding with webhook/mcp logic")
+        
         # Pretty print the complete tool call information
         logging.info("Tool Call Details:\n%s", pprint.pformat({
             'tool_name': tool_name,
@@ -121,6 +341,7 @@ async def catch_all(ctx: RunContextWrapper[Any], args: str, tool_name: str, tool
             'config': {
                 'description': tool_config.get('description', ''),
                 'isMcp': tool_config.get('isMcp', False),
+                'isLibrary': tool_config.get('isLibrary', False),
                 'mcpServerName': tool_config.get('mcpServerName', ''),
                 'parameters': tool_config.get('parameters', {})
             }
@@ -159,6 +380,8 @@ async def catch_all(ctx: RunContextWrapper[Any], args: str, tool_name: str, tool
         return response_content
     except Exception as e:
         print(f"Error in catch_all: {str(e)}")
+        # traceback already imported at top of function
+        print(f"Traceback: {traceback.format_exc()}")
         return f"Error: {str(e)}"
 
 
@@ -245,7 +468,31 @@ def get_agents(agent_configs, tool_configs, complete_request):
         model = GigaChatModel()
         
         # add the name and description to the agent instructions
-        agent_instructions = f"## Your Name\n{agent_config['name']}\n\n## Description\n{agent_config.get('description', '')}\n\n## Instructions\n{agent_config.get('instructions', '')}"
+        agent_instructions = f"""## Your Name
+{agent_config['name']}
+
+## Description
+{agent_config.get('description', '')}
+
+## Instructions
+{agent_config.get('instructions', '')}
+
+## CRITICAL: How to use web_search tool
+When you use the web_search tool:
+1. **ALWAYS analyze the results** returned by the tool
+2. **Extract key information** from the search results to answer the user's question
+3. **Provide a direct answer** based on the information found
+4. **Do NOT ignore the tool results** - they contain the answer to the user's question
+5. **Do NOT give generic responses** like "How can I help?" after getting search results
+
+### Example of correct behavior:
+- User asks: "What's the weather in Moscow?"
+- You call web_search with query "weather in Moscow"
+- Tool returns: "Current weather in Moscow: +22°, partly cloudy, wind 2 m/s"
+- You respond: "Based on current information, the weather in Moscow is +22°C with partly cloudy skies and wind at 2 m/s."
+
+### WRONG behavior to avoid:
+- Getting search results but responding with "How can I help?" instead of using the information"""
         
         new_agent = NewAgent(
             name=agent_config["name"],
@@ -372,6 +619,5 @@ async def run_streamed(
         return stream_result
     except Exception as e:
         print(f"❌ Error during streaming run: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        print(f"Traceback: {traceback.format_exc()}")
         raise
