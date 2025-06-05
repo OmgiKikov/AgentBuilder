@@ -78,7 +78,7 @@ def get_access_token(oauth_url="https://ngw.devices.sberbank.ru:9443/api/v2/oaut
     """Получает access token для GigaChat API."""
     try:
         headers = {
-            'Authorization': f"Bearer ZDFhY2IzYmMtNDU5OC00OThiLWFmM2UtZDg4MmU0Mjg3MTAzOjQxZDdkNTFkLTZiMzItNDU4MC05MjNhLTQ4MDgxZGZmYTBhOA==",
+            'Authorization': f"Bearer {os.getenv('SECRET_KEY')}",
             'RqUID': str(uuid.uuid1()),
             'Content-Type': 'application/x-www-form-urlencoded',
         }
