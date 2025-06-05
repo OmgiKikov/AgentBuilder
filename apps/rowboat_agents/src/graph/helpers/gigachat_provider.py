@@ -315,7 +315,13 @@ parameters: {{"expression": "10+5"}}
                     pass
                 
                 ctx = MockContext()
-                result = await tool.on_invoke_tool(ctx, arguments)
+                # Конвертируем аргументы в JSON строку если это словарь
+                if isinstance(arguments, dict):
+                    args_str = json.dumps(arguments)
+                else:
+                    args_str = str(arguments)
+                
+                result = await tool.on_invoke_tool(ctx, args_str)
                 return str(result)
             else:
                 return f"Ошибка: инструмент {tool_name} не имеет реализации"
@@ -352,33 +358,77 @@ parameters: {{"expression": "10+5"}}
             # Парсим tool calls из ответа
             cleaned_response, tool_calls_data = self._parse_tool_calls_from_response(response_content, tools)
             
-            # Выполняем tool calls если они есть
-            final_response_parts = []
-            if cleaned_response.strip():
-                final_response_parts.append(cleaned_response.strip())
-            
-            for tool_call in tool_calls_data:
-                tool_result = await self._execute_tool_call(tool_call, tools)
-                final_response_parts.append(f"\n🔧 Результат {tool_call['name']}: {tool_result}")
-            
-            final_response = "\n".join(final_response_parts)
-            
-            # Создаем объект ответа в формате agents
-            output_items = self._create_output_items(final_response)
-            
-            # Создаем usage с оценочными значениями
-            usage = Usage(
-                requests=1,
-                input_tokens=self._estimate_tokens(system_prompt + user_message),
-                output_tokens=self._estimate_tokens(final_response),
-                total_tokens=self._estimate_tokens(system_prompt + user_message + final_response),
-            )
-            
-            return ModelResponse(
-                output=output_items,
-                usage=usage,
-                response_id=None,
-            )
+            # Если есть tool calls, выполняем их и отправляем второй запрос
+            if tool_calls_data:
+                # Выполняем все tool calls
+                tool_results = []
+                for tool_call in tool_calls_data:
+                    try:
+                        result = await self._execute_tool_call(tool_call, tools)
+                        tool_results.append({
+                            'call_id': tool_call['id'],
+                            'name': tool_call['name'],
+                            'result': result
+                        })
+                    except Exception as e:
+                        tool_results.append({
+                            'call_id': tool_call['id'],
+                            'name': tool_call['name'],
+                            'result': f"Ошибка: {str(e)}"
+                        })
+                
+                # Формируем новый промпт с результатами инструментов
+                tool_results_text = "\n".join([
+                    f"Результат вызова {tr['name']}: {tr['result']}" 
+                    for tr in tool_results
+                ])
+                
+                follow_up_message = f"""Пользователь: {user_message}
+
+Ты вызвал инструменты и получил следующие результаты:
+{tool_results_text}
+
+Теперь дай окончательный ответ пользователю, используя полученные результаты."""
+                
+                # Отправляем второй запрос к модели с результатами инструментов
+                final_response_content = self._chat_with_gigachat(system_prompt, follow_up_message)
+                
+                # Парсим финальный ответ (не должно быть новых tool calls)
+                final_cleaned_response, _ = self._parse_tool_calls_from_response(final_response_content, tools)
+                
+                # Создаем объект ответа в формате agents с финальным ответом
+                output_items = self._create_output_items(final_cleaned_response)
+                
+                # Создаем usage с оценочными значениями
+                usage = Usage(
+                    requests=1,
+                    input_tokens=self._estimate_tokens(system_prompt + user_message + follow_up_message),
+                    output_tokens=self._estimate_tokens(final_cleaned_response),
+                    total_tokens=self._estimate_tokens(system_prompt + user_message + follow_up_message + final_cleaned_response),
+                )
+                
+                return ModelResponse(
+                    output=output_items,
+                    usage=usage,
+                    response_id=None,
+                )
+            else:
+                # Если нет tool calls, возвращаем обычный ответ
+                output_items = self._create_output_items(cleaned_response)
+                
+                # Создаем usage с оценочными значениями
+                usage = Usage(
+                    requests=1,
+                    input_tokens=self._estimate_tokens(system_prompt + user_message),
+                    output_tokens=self._estimate_tokens(cleaned_response),
+                    total_tokens=self._estimate_tokens(system_prompt + user_message + cleaned_response),
+                )
+                
+                return ModelResponse(
+                    output=output_items,
+                    usage=usage,
+                    response_id=None,
+                )
             
         except Exception as e:
             raise AgentsException(f"GigaChat API error: {str(e)}")
@@ -437,7 +487,7 @@ parameters: {{"expression": "10+5"}}
             )
             sequence_number += 1
             
-            # 2. Если есть tool calls, эмулируем их как OpenAI
+            # 2. Если есть tool calls, отправляем их как события и ВОЗВРАЩАЕМ для обработки в основном потоке
             if tool_calls_data:
                 for tool_call in tool_calls_data:
                     # Создаем ResponseFunctionToolCall объект
@@ -514,8 +564,16 @@ parameters: {{"expression": "10+5"}}
                 )
                 sequence_number += 1
                 
-                # НЕ выполняем tool calls здесь - позволяем фреймворку agents делать это
-                # Это создаст правильные function spans через tracing
+                # ВАЖНО: НЕ выполняем tool calls здесь - позволяем фреймворку agents делать это
+                # Это создаст правильные function spans через tracing и покажет tool calls в UI
+                # НО нам нужно дождаться результатов и отправить второй запрос к модели
+                
+                # Сохраняем состояние для второго запроса
+                self._pending_tool_calls = tool_calls_data
+                self._pending_system_prompt = system_prompt
+                self._pending_user_message = user_message
+                self._pending_sequence_number = sequence_number
+                
                 return
             
             # 3. Если нет tool calls, создаем обычный ответ с текстом
@@ -643,6 +701,150 @@ parameters: {{"expression": "10+5"}}
             
         except Exception as e:
             raise AgentsException(f"GigaChat streaming error: {str(e)}")
+    
+    async def continue_after_tool_calls(self, tool_results: list[dict]) -> AsyncIterator[TResponseStreamEvent]:
+        """Продолжает генерацию после выполнения tool calls."""
+        
+        if not hasattr(self, '_pending_tool_calls'):
+            return
+        
+        # Формируем новый промпт с результатами инструментов
+        tool_results_text = "\n".join([
+            f"Результат вызова {tr['name']}: {tr['result']}" 
+            for tr in tool_results
+        ])
+        
+        follow_up_message = f"""Пользователь: {self._pending_user_message}
+
+Ты вызвал инструменты и получил следующие результаты:
+{tool_results_text}
+
+Теперь дай окончательный ответ пользователю, используя полученные результаты."""
+        
+        # Отправляем второй запрос к модели с результатами инструментов
+        final_response_content = self._chat_with_gigachat(self._pending_system_prompt, follow_up_message)
+        
+        # Парсим финальный ответ (не должно быть новых tool calls)
+        final_cleaned_response, _ = self._parse_tool_calls_from_response(final_response_content, [])
+        
+        sequence_number = self._pending_sequence_number
+        
+        # Отправляем финальный ответ как стрим
+        if final_cleaned_response.strip():
+            # Output Item Added (начало сообщения)
+            assistant_item = ResponseOutputMessage(
+                id=FAKE_RESPONSES_ID,
+                content=[],
+                role="assistant",
+                type="message",
+                status="in_progress",
+            )
+            
+            yield ResponseOutputItemAddedEvent(
+                item=assistant_item,
+                output_index=0,
+                type="response.output_item.added",
+                sequence_number=sequence_number
+            )
+            sequence_number += 1
+            
+            # Content Part Added (начало текстового контента)
+            text_part = ResponseOutputText(
+                text="",
+                type="output_text",
+                annotations=[],
+            )
+            
+            yield ResponseContentPartAddedEvent(
+                content_index=0,
+                item_id=FAKE_RESPONSES_ID,
+                output_index=0,
+                part=text_part,
+                type="response.content_part.added",
+                sequence_number=sequence_number
+            )
+            sequence_number += 1
+            
+            # Отправляем текст по кусочкам
+            words = final_cleaned_response.strip().split()
+            
+            for word in words:
+                delta = word + " "
+                
+                yield ResponseTextDeltaEvent(
+                    content_index=0,
+                    delta=delta,
+                    item_id=FAKE_RESPONSES_ID,
+                    output_index=0,
+                    type="response.output_text.delta",
+                    sequence_number=sequence_number
+                )
+                sequence_number += 1
+            
+            # Обновляем text_part с полным текстом
+            text_part.text = final_cleaned_response.strip()
+            
+            # Content Part Done
+            yield ResponseContentPartDoneEvent(
+                content_index=0,
+                item_id=FAKE_RESPONSES_ID,
+                output_index=0,
+                part=text_part,
+                type="response.content_part.done",
+                sequence_number=sequence_number
+            )
+            sequence_number += 1
+            
+            # Output Item Done
+            final_assistant_item = ResponseOutputMessage(
+                id=FAKE_RESPONSES_ID,
+                content=[text_part],
+                role="assistant",
+                type="message",
+                status="completed",
+            )
+            
+            yield ResponseOutputItemDoneEvent(
+                item=final_assistant_item,
+                output_index=0,
+                type="response.output_item.done",
+                sequence_number=sequence_number
+            )
+            sequence_number += 1
+            
+            # Response Completed
+            final_response = Response(
+                id=FAKE_RESPONSES_ID,
+                created_at=time.time(),
+                model="gigachat",
+                object="response",
+                output=[final_assistant_item],
+                tool_choice="auto",
+                top_p=0,
+                temperature=0,
+                tools=[],
+                parallel_tool_calls=False,
+                reasoning=None,
+                usage=ResponseUsage(
+                    input_tokens=self._estimate_tokens(self._pending_system_prompt + follow_up_message),
+                    output_tokens=self._estimate_tokens(final_cleaned_response),
+                    total_tokens=self._estimate_tokens(self._pending_system_prompt + follow_up_message + final_cleaned_response),
+                    input_tokens_details=InputTokensDetails(cached_tokens=0),
+                    output_tokens_details=OutputTokensDetails(reasoning_tokens=0)
+                )
+            )
+            
+            yield ResponseCompletedEvent(
+                response=final_response,
+                type="response.completed",
+                sequence_number=sequence_number
+            )
+        
+        # Очищаем состояние
+        delattr(self, '_pending_tool_calls')
+        delattr(self, '_pending_system_prompt')
+        delattr(self, '_pending_user_message')
+        delattr(self, '_pending_sequence_number')
     
     def _convert_input_to_prompts(
         self, 
@@ -798,9 +1000,26 @@ parameters: {{"expression": "10+5"}}
     def _chat_with_gigachat(self, system_prompt: str, user_message: str, max_retries: int = 3) -> str:
         """Отправляет запрос в GigaChat с повторными попытками."""
         
+        # Экранируем фигурные скобки для LangChain
+        def escape_braces(text: str) -> str:
+            """Экранирует одинарные фигурные скобки для LangChain."""
+            # Заменяем одинарные { и } на двойные {{ и }}
+            # Но сначала защищаем уже экранированные скобки
+            text = text.replace('{{', '__DOUBLE_OPEN__')
+            text = text.replace('}}', '__DOUBLE_CLOSE__')
+            text = text.replace('{', '{{')
+            text = text.replace('}', '}}')
+            # Восстанавливаем уже экранированные скобки
+            text = text.replace('__DOUBLE_OPEN__', '{{')
+            text = text.replace('__DOUBLE_CLOSE__', '}}')
+            return text
+        
+        escaped_system_prompt = escape_braces(system_prompt)
+        escaped_user_message = escape_braces(user_message)
+        
         messages = [
-            ("system", system_prompt),
-            ("user", user_message)
+            ("system", escaped_system_prompt),
+            ("user", escaped_user_message)
         ]
         
         chat_template = ChatPromptTemplate.from_messages(messages=messages)

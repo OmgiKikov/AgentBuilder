@@ -171,6 +171,11 @@ async def run_turn_streamed(
         external_tools = get_external_tools(tool_configs)
         tokens_used = {"total": 0, "prompt": 0, "completion": 0}
         iter = 0
+        
+        # Добавляем отслеживание tool calls для GigaChat
+        pending_tool_calls = {}  # call_id -> tool_call_info
+        tool_call_results = {}   # call_id -> result
+        
         while True:
             iter += 1
             is_internal_agent = check_internal_visibility(current_agent)
@@ -297,6 +302,17 @@ async def run_turn_streamed(
                                 continue
 
                             # Handle regular tool calls
+                            call_id = event.item.raw_item.call_id
+                            tool_name = event.item.raw_item.name
+                            
+                            # Отслеживаем tool call для GigaChat
+                            if hasattr(current_agent.model, '__class__') and 'GigaChat' in current_agent.model.__class__.__name__:
+                                pending_tool_calls[call_id] = {
+                                    'name': tool_name,
+                                    'call_id': call_id,
+                                    'arguments': event.item.raw_item.arguments
+                                }
+                            
                             message = {
                                 'content': None,
                                 'role': 'assistant',
@@ -352,6 +368,71 @@ async def run_turn_streamed(
                                 tool_name = event.item.tool_name
                             if not tool_call_id and hasattr(event.item, 'tool_call_id'):
                                 tool_call_id = event.item.tool_call_id
+
+                            # Сохраняем результат для GigaChat
+                            if hasattr(current_agent.model, '__class__') and 'GigaChat' in current_agent.model.__class__.__name__:
+                                if tool_call_id and tool_call_id in pending_tool_calls:
+                                    tool_call_results[tool_call_id] = {
+                                        'name': tool_name or pending_tool_calls[tool_call_id]['name'],
+                                        'result': str(event.item.output),
+                                        'call_id': tool_call_id
+                                    }
+                                    
+                                    # Проверяем, завершены ли все tool calls
+                                    if len(tool_call_results) == len(pending_tool_calls):
+                                        print(f"🎯 Все tool calls завершены для GigaChat! Вызываем continue_after_tool_calls...")
+                                        
+                                        # Вызываем continue_after_tool_calls
+                                        if hasattr(current_agent.model, 'continue_after_tool_calls'):
+                                            try:
+                                                results_list = list(tool_call_results.values())
+                                                async for continue_event in current_agent.model.continue_after_tool_calls(results_list):
+                                                    print(f"CONTINUE EVENT: {continue_event}")
+                                                    # Обрабатываем события как обычные raw_response_event
+                                                    if continue_event.type == "response.output_item.added":
+                                                        # Начало нового сообщения от ассистента
+                                                        pass
+                                                    elif continue_event.type == "response.output_text.delta":
+                                                        # Текстовые дельты - пропускаем, обработаем в конце
+                                                        pass
+                                                    elif continue_event.type == "response.output_item.done":
+                                                        # Завершение сообщения - извлекаем финальный контент
+                                                        if hasattr(continue_event.item, 'content') and continue_event.item.content:
+                                                            final_content = ""
+                                                            for content_item in continue_event.item.content:
+                                                                if hasattr(content_item, 'text'):
+                                                                    final_content += content_item.text
+                                                            
+                                                            if final_content.strip():
+                                                                final_message = {
+                                                                    'content': final_content,
+                                                                    'role': 'assistant',
+                                                                    'sender': current_agent.name,
+                                                                    'tool_calls': None,
+                                                                    'tool_call_id': None,
+                                                                    'tool_name': None,
+                                                                    'response_type': ResponseType.EXTERNAL.value
+                                                                }
+                                                                print('-'*100)
+                                                                print(f"Yielding final GigaChat message: {final_message}")
+                                                                print('-'*100)
+                                                                yield ('message', final_message)
+                                                                final_message['content'] = f"Sender agent: {current_agent.name}\nContent: {final_message['content']}"
+                                                                accumulated_messages.append(final_message)
+                                                                
+                                                                # Отмечаем что агент ответил
+                                                                agent_message_counts[current_agent.name] = 1
+                                                                
+                                                                # Очищаем состояние tool calls
+                                                                pending_tool_calls.clear()
+                                                                tool_call_results.clear()
+                                                                
+                                                                # Завершаем итерацию
+                                                                break
+                                            except Exception as e:
+                                                print(f"❌ Ошибка в continue_after_tool_calls: {e}")
+                                                import traceback
+                                                print(f"Traceback: {traceback.format_exc()}")
 
                             message = {
                                 'content': str(event.item.output),
