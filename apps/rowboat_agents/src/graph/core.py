@@ -175,6 +175,7 @@ async def run_turn_streamed(
         # Добавляем отслеживание tool calls для GigaChat
         pending_tool_calls = {}  # call_id -> tool_call_info
         tool_call_results = {}   # call_id -> result
+        gigachat_final_response_sent = False  # Флаг для отслеживания финального ответа GigaChat
         
         while True:
             iter += 1
@@ -423,6 +424,9 @@ async def run_turn_streamed(
                                                                 # Отмечаем что агент ответил
                                                                 agent_message_counts[current_agent.name] = 1
                                                                 
+                                                                # Устанавливаем флаг что финальный ответ отправлен
+                                                                gigachat_final_response_sent = True
+                                                                
                                                                 # Очищаем состояние tool calls
                                                                 pending_tool_calls.clear()
                                                                 tool_call_results.clear()
@@ -449,6 +453,13 @@ async def run_turn_streamed(
                             yield ('message', message)
 
                         elif event.item.type == "message_output_item":
+                            # Пропускаем обычные message_output_item для GigaChat если уже отправили финальный ответ
+                            if (hasattr(current_agent.model, '__class__') and 
+                                'GigaChat' in current_agent.model.__class__.__name__ and 
+                                gigachat_final_response_sent):
+                                print(f"🚫 Пропускаем дублирующий message_output_item для GigaChat")
+                                continue
+                            
                             # Extract content and citations
                             content = ""
                             url_citations = []
