@@ -3,6 +3,8 @@ import json
 import aiohttp
 import jwt
 import hashlib
+import traceback
+import re
 from agents import OpenAIChatCompletionsModel, trace, add_trace_processor
 import pprint
 from .helpers.gigachat_provider import GigaChatModel
@@ -128,9 +130,6 @@ async def call_mcp(tool_name: str, args: str, mcp_server_url: str) -> str:
         return f"Error: {str(e)}"
 
 async def catch_all(ctx: RunContextWrapper[Any], args: str, tool_name: str, tool_config: dict, complete_request: dict) -> str:
-    import re  # Move re import to the beginning
-    import traceback  # Move traceback import to the beginning
-    
     try:
         print(f"Catch all called for tool: {tool_name}")
         print(f"Tool config: {tool_config}")
@@ -168,7 +167,7 @@ async def catch_all(ctx: RunContextWrapper[Any], args: str, tool_name: str, tool
                         # Use Firecrawl for web search (aiohttp already imported at top of file)
                         
                         # Firecrawl API configuration
-                        firecrawl_api_key = 'fc-5f994925f6104da69ddaea12bd13519b'
+                        firecrawl_api_key = os.getenv('FIRECRAWL_API_KEY', 'fc-5f994925f6104da69ddaea12bd13519b')
                         firecrawl_url = 'https://api.firecrawl.dev/v1/search'
                         
                         headers = {
@@ -442,7 +441,7 @@ def get_agents(agent_configs, tool_configs, complete_request):
         rag_tool = get_rag_tool(agent_config, complete_request)
         if rag_tool:
             agent_tools.append(rag_tool)
-            add_rag_instructions_to_agent(agent_config)
+            add_rag_instructions_to_agent(agent_config, "rag_search")
 
         # Add web search tool if configured
         if agent_config.get("webSearch", False):

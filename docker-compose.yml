@@ -84,6 +84,7 @@ services:
       - MAX_CALLS_PER_CHILD_AGENT=${MAX_CALLS_PER_CHILD_AGENT}
       - ENABLE_TRACING=${ENABLE_TRACING}
       - ACCESS_TOKEN=${ACCESS_TOKEN}
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
     restart: unless-stopped
 
   copilot:
