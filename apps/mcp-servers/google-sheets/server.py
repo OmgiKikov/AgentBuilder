@@ -4,7 +4,7 @@ import os
 import json
 from collections.abc import AsyncIterator
 from typing import Any, Dict
-from contextvars import ContextVar
+from datetime import datetime, timedelta
 
 import click
 import mcp.types as types
@@ -17,6 +17,7 @@ from starlette.routing import Mount, Route
 from starlette.types import Receive, Scope, Send
 from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -39,10 +40,59 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 GOOGLE_SHEETS_MCP_SERVER_PORT = int(os.getenv("GOOGLE_SHEETS_MCP_SERVER_PORT", "5000"))
-GOOGLE_AUTH_TOKEN = os.getenv("GOOGLE_AUTH_TOKEN")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+GOOGLE_REFRESH_TOKEN = os.getenv("GOOGLE_REFRESH_TOKEN")
 
-# Context variable to store the access token for each request
-auth_token_context: ContextVar[str] = ContextVar("auth_token")
+
+class GoogleCredentialsManager:
+    def __init__(self):
+        self._credentials = None
+        self._last_refresh = None
+        self._refresh_threshold = timedelta(minutes=5)  # Refresh 5 minutes before expiry
+
+    def _create_credentials(self) -> Credentials:
+        """Create credentials object from environment variables."""
+        if not all([GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN]):
+            raise RuntimeError(
+                "Missing required Google OAuth credentials. Please set GOOGLE_CLIENT_ID, "
+                "GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN environment variables."
+            )
+
+        return Credentials(
+            None,  # No access token initially
+            refresh_token=GOOGLE_REFRESH_TOKEN,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=GOOGLE_CLIENT_ID,
+            client_secret=GOOGLE_CLIENT_SECRET,
+            scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        )
+
+    def get_credentials(self) -> Credentials:
+        """Get valid credentials, refreshing if necessary."""
+        now = datetime.now()
+
+        if (
+            self._credentials is None
+            or self._last_refresh is None
+            or now - self._last_refresh > self._refresh_threshold
+            or self._credentials.expired
+        ):
+            if self._credentials is None:
+                self._credentials = self._create_credentials()
+
+            try:
+                self._credentials.refresh(Request())
+                self._last_refresh = now
+            except Exception as e:
+                logger.error(f"Failed to refresh credentials: {e}")
+                raise RuntimeError("Failed to refresh Google OAuth credentials")
+
+        return self._credentials
+
+
+# Create a global credentials manager instance
+credentials_manager = GoogleCredentialsManager()
 
 
 # Error class for retryable errors
@@ -56,42 +106,17 @@ class RetryableToolError(Exception):
         self.developer_message = developer_message
 
 
-def get_sheets_service(access_token: str):
-    """Create Google Sheets service with access token."""
-    credentials = Credentials(token=access_token)
+def get_sheets_service():
+    """Create Google Sheets service with credentials."""
+    credentials = credentials_manager.get_credentials()
     return build("sheets", "v4", credentials=credentials)
 
 
 # This is used for the list_all_sheets tool
-def get_drive_service(access_token: str):
-    """Create Google Drive service with access token."""
-    credentials = Credentials(token=access_token)
+def get_drive_service():
+    """Create Google Drive service with credentials."""
+    credentials = credentials_manager.get_credentials()
     return build("drive", "v3", credentials=credentials)
-
-
-def get_auth_token() -> str:
-    """Get the authentication token from context."""
-    try:
-        return auth_token_context.get()
-    except LookupError:
-        raise RuntimeError("Authentication token not found in request context")
-
-
-def get_auth_token_or_empty() -> str:
-    """Get the authentication token from context or return empty string."""
-    try:
-        return auth_token_context.get()
-    except LookupError:
-        return ""
-
-
-# Context class to mock the context.get_auth_token_or_empty() calls
-class Context:
-    def get_auth_token_or_empty(self) -> str:
-        return get_auth_token_or_empty()
-
-
-context = Context()
 
 
 async def create_spreadsheet_tool(
@@ -101,8 +126,7 @@ async def create_spreadsheet_tool(
     """Create a new spreadsheet with the provided title and data in its first sheet."""
     logger.info(f"Executing tool: create_spreadsheet with title: {title}")
     try:
-        access_token = get_auth_token()
-        service = get_sheets_service(access_token)
+        service = get_sheets_service()
 
         try:
             sheet_data = SheetDataInput(data=data)  # type: ignore[arg-type]
@@ -145,8 +169,7 @@ async def get_spreadsheet_tool(spreadsheet_id: str) -> Dict[str, Any]:
     """Get the user entered values and formatted values for all cells in all sheets in the spreadsheet."""
     logger.info(f"Executing tool: get_spreadsheet with spreadsheet_id: {spreadsheet_id}")
     try:
-        access_token = get_auth_token()
-        service = get_sheets_service(access_token)
+        service = get_sheets_service()
 
         response = (
             service.spreadsheets()
@@ -179,8 +202,7 @@ async def write_to_cell_tool(
     """Write a value to a single cell in a spreadsheet."""
     logger.info(f"Executing tool: write_to_cell with spreadsheet_id: {spreadsheet_id}, cell: {column}{row}")
     try:
-        access_token = get_auth_token()
-        service = get_sheets_service(access_token)
+        service = get_sheets_service()
 
         validate_write_to_cell_params(service, spreadsheet_id, sheet_name, column, row)
 
@@ -220,8 +242,7 @@ async def list_all_sheets_tool() -> Dict[str, Any]:
     """List all Google Sheets spreadsheets in the user's Google Drive."""
     logger.info("Executing tool: list_all_sheets")
     try:
-        access_token = get_auth_token()
-        service = get_drive_service(access_token)
+        service = get_drive_service()
 
         # Search for Google Sheets files (mimeType for Google Sheets)
         query = "mimeType='application/vnd.google-apps.spreadsheet'"
@@ -489,19 +510,12 @@ def main(
     async def handle_sse(request):
         logger.info("Handling SSE connection")
 
-        # Extract auth token from headers
-        auth_token = request.headers.get("x-auth-token") or GOOGLE_AUTH_TOKEN
-        if not auth_token:
-            logger.error("Error: Google Sheets access token is missing. Provide it via x-auth-token header.")
-            return Response("Authentication token required", status_code=401)
-
-        # Set the auth token in context for this request
-        token = auth_token_context.set(auth_token)
         try:
             async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
                 await app.run(streams[0], streams[1], app.create_initialization_options())
-        finally:
-            auth_token_context.reset(token)
+        except Exception as e:
+            logger.error(f"Error handling SSE connection: {e}")
+            return Response("Internal server error", status_code=500)
 
         return Response()
 
@@ -516,26 +530,12 @@ def main(
     async def handle_streamable_http(scope: Scope, receive: Receive, send: Send) -> None:
         logger.info("Handling StreamableHTTP request")
 
-        # Extract auth token from headers
-        headers = dict(scope.get("headers", []))
-        auth_token = headers.get(b"x-auth-token")
-        if auth_token:
-            auth_token = auth_token.decode("utf-8")
-        else:
-            auth_token = GOOGLE_AUTH_TOKEN
-
-        if not auth_token:
-            logger.error("Error: Google Sheets access token is missing. Provide it via x-auth-token header.")
-            response = Response("Authentication token required", status_code=401)
-            await response(scope, receive, send)
-            return
-
-        # Set the auth token in context for this request
-        token = auth_token_context.set(auth_token)
         try:
             await session_manager.handle_request(scope, receive, send)
-        finally:
-            auth_token_context.reset(token)
+        except Exception as e:
+            logger.error(f"Error handling StreamableHTTP request: {e}")
+            response = Response("Internal server error", status_code=500)
+            await response(scope, receive, send)
 
     @contextlib.asynccontextmanager
     async def lifespan(app: Starlette) -> AsyncIterator[None]:

@@ -65,7 +65,9 @@ services:
     restart: unless-stopped
     environment:
       - GOOGLE_SHEETS_MCP_SERVER_PORT=3003
-      - GOOGLE_AUTH_TOKEN=${GOOGLE_AUTH_TOKEN}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REFRESH_TOKEN=${GOOGLE_REFRESH_TOKEN}
     profiles: ["mcp_server"]
 
   rowboat_agents:
