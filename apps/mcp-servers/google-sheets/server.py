@@ -42,26 +42,32 @@ GOOGLE_SHEETS_MCP_SERVER_PORT = int(os.getenv("GOOGLE_SHEETS_MCP_SERVER_PORT", "
 GOOGLE_AUTH_TOKEN = os.getenv("GOOGLE_AUTH_TOKEN")
 
 # Context variable to store the access token for each request
-auth_token_context: ContextVar[str] = ContextVar('auth_token')
+auth_token_context: ContextVar[str] = ContextVar("auth_token")
+
 
 # Error class for retryable errors
 class RetryableToolError(Exception):
-    def __init__(self, message: str, additional_prompt_content: str = "", retry_after_ms: int = 1000, developer_message: str = ""):
+    def __init__(
+        self, message: str, additional_prompt_content: str = "", retry_after_ms: int = 1000, developer_message: str = ""
+    ):
         super().__init__(message)
         self.additional_prompt_content = additional_prompt_content
         self.retry_after_ms = retry_after_ms
         self.developer_message = developer_message
 
+
 def get_sheets_service(access_token: str):
     """Create Google Sheets service with access token."""
     credentials = Credentials(token=access_token)
-    return build('sheets', 'v4', credentials=credentials)
+    return build("sheets", "v4", credentials=credentials)
+
 
 # This is used for the list_all_sheets tool
 def get_drive_service(access_token: str):
     """Create Google Drive service with access token."""
     credentials = Credentials(token=access_token)
-    return build('drive', 'v3', credentials=credentials)
+    return build("drive", "v3", credentials=credentials)
+
 
 def get_auth_token() -> str:
     """Get the authentication token from context."""
@@ -70,6 +76,7 @@ def get_auth_token() -> str:
     except LookupError:
         raise RuntimeError("Authentication token not found in request context")
 
+
 def get_auth_token_or_empty() -> str:
     """Get the authentication token from context or return empty string."""
     try:
@@ -77,12 +84,15 @@ def get_auth_token_or_empty() -> str:
     except LookupError:
         return ""
 
+
 # Context class to mock the context.get_auth_token_or_empty() calls
 class Context:
     def get_auth_token_or_empty(self) -> str:
         return get_auth_token_or_empty()
 
+
 context = Context()
+
 
 async def create_spreadsheet_tool(
     title: str = "Untitled spreadsheet",
@@ -112,9 +122,7 @@ async def create_spreadsheet_tool(
         body = spreadsheet.model_dump()
 
         response = (
-            service.spreadsheets()
-            .create(body=body, fields="spreadsheetId,spreadsheetUrl,properties/title")
-            .execute()
+            service.spreadsheets().create(body=body, fields="spreadsheetId,spreadsheetUrl,properties/title").execute()
         )
 
         return {
@@ -124,11 +132,14 @@ async def create_spreadsheet_tool(
         }
     except HttpError as e:
         logger.error(f"Google Sheets API error: {e}")
-        error_detail = json.loads(e.content.decode('utf-8'))
-        raise RuntimeError(f"Google Sheets API Error ({e.resp.status}): {error_detail.get('error', {}).get('message', 'Unknown error')}")
+        error_detail = json.loads(e.content.decode("utf-8"))
+        raise RuntimeError(
+            f"Google Sheets API Error ({e.resp.status}): {error_detail.get('error', {}).get('message', 'Unknown error')}"
+        )
     except Exception as e:
         logger.exception(f"Error executing tool create_spreadsheet: {e}")
         raise e
+
 
 async def get_spreadsheet_tool(spreadsheet_id: str) -> Dict[str, Any]:
     """Get the user entered values and formatted values for all cells in all sheets in the spreadsheet."""
@@ -149,11 +160,14 @@ async def get_spreadsheet_tool(spreadsheet_id: str) -> Dict[str, Any]:
         return parse_get_spreadsheet_response(response)
     except HttpError as e:
         logger.error(f"Google Sheets API error: {e}")
-        error_detail = json.loads(e.content.decode('utf-8'))
-        raise RuntimeError(f"Google Sheets API Error ({e.resp.status}): {error_detail.get('error', {}).get('message', 'Unknown error')}")
+        error_detail = json.loads(e.content.decode("utf-8"))
+        raise RuntimeError(
+            f"Google Sheets API Error ({e.resp.status}): {error_detail.get('error', {}).get('message', 'Unknown error')}"
+        )
     except Exception as e:
         logger.exception(f"Error executing tool get_spreadsheet: {e}")
         raise e
+
 
 async def write_to_cell_tool(
     spreadsheet_id: str,
@@ -193,11 +207,14 @@ async def write_to_cell_tool(
         return parse_write_to_cell_response(sheet_properties)
     except HttpError as e:
         logger.error(f"Google Sheets API error: {e}")
-        error_detail = json.loads(e.content.decode('utf-8'))
-        raise RuntimeError(f"Google Sheets API Error ({e.resp.status}): {error_detail.get('error', {}).get('message', 'Unknown error')}")
+        error_detail = json.loads(e.content.decode("utf-8"))
+        raise RuntimeError(
+            f"Google Sheets API Error ({e.resp.status}): {error_detail.get('error', {}).get('message', 'Unknown error')}"
+        )
     except Exception as e:
         logger.exception(f"Error executing tool write_to_cell: {e}")
         raise e
+
 
 async def list_all_sheets_tool() -> Dict[str, Any]:
     """List all Google Sheets spreadsheets in the user's Google Drive."""
@@ -209,39 +226,44 @@ async def list_all_sheets_tool() -> Dict[str, Any]:
         # Search for Google Sheets files (mimeType for Google Sheets)
         query = "mimeType='application/vnd.google-apps.spreadsheet'"
 
-        results = service.files().list(
-            q=query,
-            fields="files(id,name,createdTime,modifiedTime,owners,webViewLink)",
-            orderBy="modifiedTime desc"
-        ).execute()
+        results = (
+            service.files()
+            .list(
+                q=query,
+                fields="files(id,name,createdTime,modifiedTime,owners,webViewLink)",
+                orderBy="modifiedTime desc",
+            )
+            .execute()
+        )
 
-        files = results.get('files', [])
+        files = results.get("files", [])
 
         spreadsheets = []
         for file in files:
             spreadsheet_info = {
-                "id": file.get('id'),
-                "name": file.get('name'),
-                "createdTime": file.get('createdTime'),
-                "modifiedTime": file.get('modifiedTime'),
-                "webViewLink": file.get('webViewLink'),
-                "owners": [owner.get('displayName', owner.get('emailAddress', 'Unknown'))
-                          for owner in file.get('owners', [])]
+                "id": file.get("id"),
+                "name": file.get("name"),
+                "createdTime": file.get("createdTime"),
+                "modifiedTime": file.get("modifiedTime"),
+                "webViewLink": file.get("webViewLink"),
+                "owners": [
+                    owner.get("displayName", owner.get("emailAddress", "Unknown")) for owner in file.get("owners", [])
+                ],
             }
             spreadsheets.append(spreadsheet_info)
 
-        return {
-            "spreadsheets": spreadsheets,
-            "total_count": len(spreadsheets)
-        }
+        return {"spreadsheets": spreadsheets, "total_count": len(spreadsheets)}
 
     except HttpError as e:
         logger.error(f"Google Drive API error: {e}")
-        error_detail = json.loads(e.content.decode('utf-8'))
-        raise RuntimeError(f"Google Drive API Error ({e.resp.status}): {error_detail.get('error', {}).get('message', 'Unknown error')}")
+        error_detail = json.loads(e.content.decode("utf-8"))
+        raise RuntimeError(
+            f"Google Drive API Error ({e.resp.status}): {error_detail.get('error', {}).get('message', 'Unknown error')}"
+        )
     except Exception as e:
         logger.exception(f"Error executing tool list_all_sheets: {e}")
         raise e
+
 
 @click.command()
 @click.option("--port", default=GOOGLE_SHEETS_MCP_SERVER_PORT, help="Port to listen on for HTTP")
@@ -468,20 +490,16 @@ def main(
         logger.info("Handling SSE connection")
 
         # Extract auth token from headers
-        auth_token = request.headers.get('x-auth-token') or GOOGLE_AUTH_TOKEN
+        auth_token = request.headers.get("x-auth-token") or GOOGLE_AUTH_TOKEN
         if not auth_token:
-            logger.error('Error: Google Sheets access token is missing. Provide it via x-auth-token header.')
+            logger.error("Error: Google Sheets access token is missing. Provide it via x-auth-token header.")
             return Response("Authentication token required", status_code=401)
 
         # Set the auth token in context for this request
         token = auth_token_context.set(auth_token)
         try:
-            async with sse.connect_sse(
-                request.scope, request.receive, request._send
-            ) as streams:
-                await app.run(
-                    streams[0], streams[1], app.create_initialization_options()
-                )
+            async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
+                await app.run(streams[0], streams[1], app.create_initialization_options())
         finally:
             auth_token_context.reset(token)
 
@@ -495,21 +513,19 @@ def main(
         stateless=True,
     )
 
-    async def handle_streamable_http(
-        scope: Scope, receive: Receive, send: Send
-    ) -> None:
+    async def handle_streamable_http(scope: Scope, receive: Receive, send: Send) -> None:
         logger.info("Handling StreamableHTTP request")
 
         # Extract auth token from headers
         headers = dict(scope.get("headers", []))
-        auth_token = headers.get(b'x-auth-token')
+        auth_token = headers.get(b"x-auth-token")
         if auth_token:
-            auth_token = auth_token.decode('utf-8')
+            auth_token = auth_token.decode("utf-8")
         else:
             auth_token = GOOGLE_AUTH_TOKEN
 
         if not auth_token:
-            logger.error('Error: Google Sheets access token is missing. Provide it via x-auth-token header.')
+            logger.error("Error: Google Sheets access token is missing. Provide it via x-auth-token header.")
             response = Response("Authentication token required", status_code=401)
             await response(scope, receive, send)
             return
@@ -538,7 +554,6 @@ def main(
             # SSE routes
             Route("/sse", endpoint=handle_sse, methods=["GET"]),
             Mount("/messages/", app=sse.handle_post_message),
-
             # StreamableHTTP route
             Mount("/mcp", app=handle_streamable_http),
         ],
@@ -554,6 +569,7 @@ def main(
     uvicorn.run(starlette_app, host="0.0.0.0", port=port)
 
     return 0
+
 
 if __name__ == "__main__":
     main()

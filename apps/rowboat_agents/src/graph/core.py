@@ -66,7 +66,9 @@ def check_internal_visibility(current_agent):
 
 
 def add_sender_details_to_message(message, sender_agent_name):
-    message["content"] = f"Agent `{sender_agent_name}` finished processing the request.\nResponse: {message.get('content')}"
+    message["content"] = (
+        f"Agent `{sender_agent_name}` finished processing the request.\nResponse: {message.get('content')}"
+    )
     return message
 
 

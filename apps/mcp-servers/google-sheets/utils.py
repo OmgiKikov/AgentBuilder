@@ -1,4 +1,3 @@
-
 from typing import Any
 
 from google.oauth2.credentials import Credentials
@@ -27,6 +26,7 @@ DEFAULT_SHEET_COLUMN_COUNT = 26
 # ----------------------------------------------------------------
 # Sheets utils
 # ----------------------------------------------------------------
+
 
 def col_to_index(col: str) -> int:
     """Convert a sheet's column string to a 0-indexed column index
@@ -216,17 +216,13 @@ def _create_currency_cell(cell_value: str) -> CellData:
     value_without_symbol = cell_value[1:]
     try:
         num_value = int(value_without_symbol)
-        cell_format = CellFormat(
-            numberFormat=NumberFormat(type=NumberFormatType.CURRENCY, pattern="$#,##0")
-        )
+        cell_format = CellFormat(numberFormat=NumberFormat(type=NumberFormatType.CURRENCY, pattern="$#,##0"))
         cell_val = CellExtendedValue(numberValue=num_value)
         return CellData(userEnteredValue=cell_val, userEnteredFormat=cell_format)
     except ValueError:
         try:
             num_value = float(value_without_symbol)  # type: ignore[assignment]
-            cell_format = CellFormat(
-                numberFormat=NumberFormat(type=NumberFormatType.CURRENCY, pattern="$#,##0.00")
-            )
+            cell_format = CellFormat(numberFormat=NumberFormat(type=NumberFormatType.CURRENCY, pattern="$#,##0.00"))
             cell_val = CellExtendedValue(numberValue=num_value)
             return CellData(userEnteredValue=cell_val, userEnteredFormat=cell_format)
         except ValueError:
@@ -236,9 +232,7 @@ def _create_currency_cell(cell_value: str) -> CellData:
 def _create_percent_cell(cell_value: str) -> CellData:
     try:
         num_value = float(cell_value[:-1].strip())
-        cell_format = CellFormat(
-            numberFormat=NumberFormat(type=NumberFormatType.PERCENT, pattern="0.00%")
-        )
+        cell_format = CellFormat(numberFormat=NumberFormat(type=NumberFormatType.PERCENT, pattern="0.00%"))
         cell_val = CellExtendedValue(numberValue=num_value)
         return CellData(userEnteredValue=cell_val, userEnteredFormat=cell_format)
     except ValueError:
@@ -250,21 +244,13 @@ def _create_bool_cell(cell_value: bool) -> CellData:
 
 
 def _create_int_cell(cell_value: int) -> CellData:
-    cell_format = CellFormat(
-        numberFormat=NumberFormat(type=NumberFormatType.NUMBER, pattern="#,##0")
-    )
-    return CellData(
-        userEnteredValue=CellExtendedValue(numberValue=cell_value), userEnteredFormat=cell_format
-    )
+    cell_format = CellFormat(numberFormat=NumberFormat(type=NumberFormatType.NUMBER, pattern="#,##0"))
+    return CellData(userEnteredValue=CellExtendedValue(numberValue=cell_value), userEnteredFormat=cell_format)
 
 
 def _create_float_cell(cell_value: float) -> CellData:
-    cell_format = CellFormat(
-        numberFormat=NumberFormat(type=NumberFormatType.NUMBER, pattern="#,##0.00")
-    )
-    return CellData(
-        userEnteredValue=CellExtendedValue(numberValue=cell_value), userEnteredFormat=cell_format
-    )
+    cell_format = CellFormat(numberFormat=NumberFormat(type=NumberFormatType.NUMBER, pattern="#,##0.00"))
+    return CellData(userEnteredValue=CellExtendedValue(numberValue=cell_value), userEnteredFormat=cell_format)
 
 
 def _create_string_cell(cell_value: str) -> CellData:
@@ -278,9 +264,7 @@ def _create_string_cell(cell_value: str) -> CellData:
     return CellData(userEnteredValue=CellExtendedValue(stringValue=cell_value))
 
 
-def create_row_data(
-    row_data: dict[str, CellValue], min_col_index: int, max_col_index: int
-) -> RowData:
+def create_row_data(row_data: dict[str, CellValue], min_col_index: int, max_col_index: int) -> RowData:
     """Constructs RowData for a single row using the provided row_data.
 
     Args:
@@ -474,10 +458,7 @@ def validate_write_to_cell_params(  # type: ignore[no-any-unimported]
     """
     if not column.isalpha():
         raise ToolExecutionError(
-            message=(
-                f"Invalid column name {column}. "
-                "It must be a non-empty string containing only letters"
-            ),
+            message=(f"Invalid column name {column}. " "It must be a non-empty string containing only letters"),
         )
 
     if row < 1:
@@ -496,9 +477,7 @@ def validate_write_to_cell_params(  # type: ignore[no-any-unimported]
     )
     sheet_names = [sheet["properties"]["title"] for sheet in sheet_properties["sheets"]]
     sheet_row_count = sheet_properties["sheets"][0]["properties"]["gridProperties"]["rowCount"]
-    sheet_column_count = sheet_properties["sheets"][0]["properties"]["gridProperties"][
-        "columnCount"
-    ]
+    sheet_column_count = sheet_properties["sheets"][0]["properties"]["gridProperties"]["columnCount"]
 
     if sheet_name not in sheet_names:
         raise RetryableToolError(

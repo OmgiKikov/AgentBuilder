@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, field_validator, model_validator
 
+
 class CellErrorType(str, Enum):
     """The type of error in a cell
 
@@ -51,8 +52,7 @@ class CellExtendedValue(BaseModel):
         provided = [v for v in instance.__dict__.values() if v is not None]
         if len(provided) != 1:
             raise ValueError(
-                "Exactly one of numberValue, stringValue, boolValue, "
-                "formulaValue, or errorValue must be set."
+                "Exactly one of numberValue, stringValue, boolValue, " "formulaValue, or errorValue must be set."
             )
         return instance
 
@@ -215,9 +215,7 @@ class SheetDataInput(BaseModel):
         Helper method for when validating the `data` field.
         """
         if not isinstance(cells, dict):
-            raise TypeError(
-                f"Value for row '{row_int}' must be a dict mapping column letters to cell values."
-            )
+            raise TypeError(f"Value for row '{row_int}' must be a dict mapping column letters to cell values.")
         new_inner = {}
         for col_key, cell_value in cells.items():
             if not isinstance(col_key, str):
@@ -226,9 +224,7 @@ class SheetDataInput(BaseModel):
             if not col_string.isalpha():
                 raise TypeError(f"Column key '{col_key}' is invalid. Must be alphabetic.")
             if not isinstance(cell_value, int | float | str | bool):
-                raise TypeError(
-                    f"Cell value for {col_string}{row_int} must be an int, float, str, or bool."
-                )
+                raise TypeError(f"Cell value for {col_string}{row_int} must be an int, float, str, or bool.")
             new_inner[col_string] = cell_value
         return new_inner
 
