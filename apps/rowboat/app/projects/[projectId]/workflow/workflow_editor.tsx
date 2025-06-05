@@ -974,7 +974,7 @@ export function WorkflowEditor({
                         >
                             <RedoIcon size={16} />
                         </button>
-                        <Button
+                        {/* <Button
                             variant="solid"
                             size="md"
                             onPress={handlePublishWorkflow}
@@ -983,7 +983,7 @@ export function WorkflowEditor({
                             data-tour-target="deploy"
                         >
                             Развернуть
-                        </Button>
+                        </Button> */}
                         <Dropdown>
                             <DropdownTrigger>
                                 <Button
