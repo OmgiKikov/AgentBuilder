@@ -40,11 +40,15 @@ with open('example_multi_agent_1.md', 'r', encoding='utf-8') as file:
 with open('current_workflow.md', 'r', encoding='utf-8') as file:
     current_workflow_prompt = file.read()
 
+with open('additional_prompt.md', 'r', encoding='utf-8') as file:
+    additional_prompt = file.read()
+
 # Combine the instruction files to create the full multi-agent instructions
 streaming_instructions = "\n\n".join([
     copilot_instructions_multi_agent,
     copilot_multi_agent_example1,
-    current_workflow_prompt
+    current_workflow_prompt,
+    additional_prompt
 ])
 
 def format_gigachat_response(content: str) -> str:
@@ -235,14 +239,110 @@ def format_gigachat_response(content: str) -> str:
             print(f"Error processing copilot_change block: {e}")
             return match.group(0)
     
+    def detect_and_wrap_standalone_json(content: str) -> str:
+        """
+        Обнаруживает и оборачивает отдельно стоящий JSON в copilot_change блок
+        """
+        # Более точный поиск JSON объектов с правильным подсчетом скобок
+        def find_json_objects(text):
+            results = []
+            i = 0
+            while i < len(text):
+                if text[i] == '{':
+                    # Найдена открывающая скобка, ищем соответствующую закрывающую
+                    brace_count = 0
+                    start = i
+                    in_string = False
+                    escape_next = False
+                    
+                    while i < len(text):
+                        char = text[i]
+                        
+                        if escape_next:
+                            escape_next = False
+                        elif char == '\\':
+                            escape_next = True
+                        elif char == '"' and not escape_next:
+                            in_string = not in_string
+                        elif not in_string:
+                            if char == '{':
+                                brace_count += 1
+                            elif char == '}':
+                                brace_count -= 1
+                                if brace_count == 0:
+                                    # Найден полный JSON объект
+                                    json_str = text[start:i+1]
+                                    results.append((start, i+1, json_str))
+                                    break
+                        i += 1
+                    
+                    if brace_count != 0:
+                        # Незакрытый JSON, пропускаем
+                        i = start + 1
+                else:
+                    i += 1
+            
+            return results
+        
+        json_objects = find_json_objects(content)
+        
+        if not json_objects:
+            return content
+        
+        # Обрабатываем JSON объекты в обратном порядке, чтобы не сбить индексы
+        modified_content = content
+        
+        for start, end, json_str in reversed(json_objects):
+            try:
+                parsed = json.loads(json_str)
+                
+                # Проверяем, что это похоже на copilot_change JSON
+                if isinstance(parsed, dict) and ('config_changes' in parsed or 'change_description' in parsed):
+                    print(f"🔍 Found standalone JSON that looks like copilot_change: {json_str[:100]}...")
+                    
+                    # Пытаемся определить action, config_type и name из контекста или содержимого
+                    action = "edit"  # по умолчанию
+                    config_type = "agent"  # по умолчанию
+                    name = "Calculator Agent"  # по умолчанию для этого случая
+                    
+                    # Пытаемся извлечь имя из config_changes
+                    if 'config_changes' in parsed and isinstance(parsed['config_changes'], dict):
+                        if 'name' in parsed['config_changes']:
+                            name = parsed['config_changes']['name']
+                    
+                    # Форматируем JSON с отступами
+                    formatted_json = json.dumps(parsed, ensure_ascii=False, indent=2)
+                    
+                    # Создаем правильно отформатированный блок
+                    result = f"// action: {action}\n// config_type: {config_type}\n// name: {name}\n{formatted_json}"
+                    replacement = f'```copilot_change\n{result}\n```'
+                    
+                    # Заменяем JSON на отформатированный блок
+                    modified_content = modified_content[:start] + replacement + modified_content[end:]
+                    
+                    print("✅ Successfully wrapped standalone JSON in copilot_change block!")
+                
+            except json.JSONDecodeError:
+                continue
+            except Exception as e:
+                print(f"Error processing standalone JSON: {e}")
+                continue
+        
+        return modified_content
+    
     # Сначала обрабатываем полные блоки
     formatted_content = re.sub(pattern_complete, fix_copilot_block, content, flags=re.DOTALL)
     
     # Затем обрабатываем незакрытые блоки
     formatted_content = re.sub(pattern_incomplete, fix_copilot_block, formatted_content, flags=re.DOTALL)
     
+    # Если не найдено copilot_change блоков, ищем отдельно стоящий JSON
+    if '```copilot_change' not in formatted_content and 'copilot_change' not in formatted_content:
+        print("🔍 No copilot_change blocks found, checking for standalone JSON...")
+        formatted_content = detect_and_wrap_standalone_json(formatted_content)
+    
     # Логируем результат
-    if '```copilot_change' in content or 'copilot_change' in content:
+    if '```copilot_change' in content or 'copilot_change' in content or '{' in content:
         total_blocks = content.count('```copilot_change') + len(re.findall(r'copilot_change(?!\s*```)', content))
         print(f"Original copilot_change blocks: {total_blocks}")
         print(f"Applied formatting to copilot_change blocks")
@@ -250,13 +350,13 @@ def format_gigachat_response(content: str) -> str:
             print("✅ Formatting was applied!")
             # Логируем только первые 500 символов для читаемости
             print("До (первые 500 символов):")
-            print(content)
+            print(content[:500])
             print("После (первые 500 символов):")
-            print(formatted_content)
+            print(formatted_content[:500])
         else:
             print("⚠️ No formatting changes made")
             print("Контент (первые 500 символов):")
-            print(content)
+            print(content[:500])
     
     return formatted_content
 
@@ -272,7 +372,7 @@ def get_streaming_response(
         match context:
             case AgentContext():
                 context_prompt = f"""
-**NOTE**: The user is currently working on the following agent:
+**ПРИМЕЧАНИЕ**: В настоящее время пользователь работает над следующим агентом:
 {context.agentName}
 """
             case PromptContext():

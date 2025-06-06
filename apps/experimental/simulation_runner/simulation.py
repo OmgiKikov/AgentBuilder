@@ -105,86 +105,121 @@ async def simulate_simulation(
         # Run Rowboat chat in a thread if it's synchronous
         print(f"   🛥️  Вызов Rowboat API...")
         str_rowboat_response = ""
-        try:
-            # Сохраняем количество сообщений до вызова
-            messages_before = len(support_chat.messages)
-            
-            rowboat_response = await loop.run_in_executor(
-                None,
-                lambda: support_chat.run(simulated_content)
-            )
-            
-            # Получаем новые сообщения, добавленные после вызова
-            new_messages = support_chat.messages[messages_before:]
-            
-            print(f"   📥 Получено {len(new_messages)} новых сообщений от Rowboat:")
-            
-            # Выводим детальные логи всех новых сообщений
-            for i, msg in enumerate(new_messages, 1):
-                if hasattr(msg, 'agenticSender') and msg.agenticSender:
-                    sender = msg.agenticSender
-                else:
-                    sender = "System"
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                # Сохраняем количество сообщений до вызова
+                messages_before = len(support_chat.messages)
                 
-                if msg.role == 'assistant':
-                    if hasattr(msg, 'tool_calls') and msg.tool_calls:
-                        # Это вызов инструмента
-                        print(f"      {i}. 🔧 {sender} вызывает инструмент:")
-                        for tool_call in msg.tool_calls:
-                            tool_name = tool_call.function.name
-                            tool_args = tool_call.function.arguments
-                            print(f"         🛠️  {tool_name}({tool_args})")
-                            str_rowboat_response += f"Агент '{sender}' вызывает инструмент: {tool_name}({tool_args})\n"
-                            # Специальная обработка для transfer_to_agent
-                            if tool_name.startswith('transfer_to_'):
-                                try:
-                                    args_dict = json.loads(tool_args)
-                                    target_agent = args_dict.get('assistant', 'Unknown')
-                                    print(f"         ➡️  Передача управления: {sender} → {target_agent}")
-                                    str_rowboat_response += f"Передача управления: {sender} → {target_agent}\n"
-                                except:
-                                    print(f"         ➡️  Передача управления от {sender}")
-                                    str_rowboat_response += f"Передача управления от {sender}\n"
+                rowboat_response = await loop.run_in_executor(
+                    None,
+                    lambda: support_chat.run(simulated_content)
+                )
+                
+                # Получаем новые сообщения, добавленные после вызова
+                new_messages = support_chat.messages[messages_before:]
+                
+                print(f"   📥 Получено {len(new_messages)} новых сообщений от Rowboat:")
+                
+                # Выводим детальные логи всех новых сообщений
+                for i, msg in enumerate(new_messages, 1):
+                    if hasattr(msg, 'agenticSender') and msg.agenticSender:
+                        sender = msg.agenticSender
                     else:
-                        # Это обычное сообщение
-                        response_type = getattr(msg, 'agenticResponseType', 'unknown')
-                        if response_type == 'external':
-                            print(f"      {i}. 💬 {sender} (внешний ответ): {msg.content}")
-                            str_rowboat_response += f"Агент '{sender}' (внешний ответ): {msg.content}\n"
-                        else:
-                            print(f"      {i}. 🔄 {sender} (внутренний): {msg.content}")
-                            str_rowboat_response += f"Агент '{sender}' (внутренний): {msg.content}\n"
-                            
-                elif msg.role == 'tool':
-                    tool_name = getattr(msg, 'tool_name', 'unknown_tool')
-                    print(f"      {i}. ⚙️  Результат {tool_name}: {msg.content[:100]}...")
-                    str_rowboat_response += f"Результат {tool_name}: {msg.content}"
+                        sender = "System"
                     
-                    # Специальная обработка для transfer_to_agent результатов
-                    if tool_name == 'transfer_to_agent':
-                        try:
-                            result_dict = json.loads(msg.content)
-                            target_agent = result_dict.get('assistant', 'Unknown')
-                            print(f"         ✅ Управление передано агенту: {target_agent}")
-                            str_rowboat_response += f"Управление передано агенту: {target_agent}"
-                        except:
-                            pass
-                            
-                elif msg.role == 'user':
-                    print(f"      {i}. 👤 Пользователь: {msg.content}")
-            
-            print(f"   🤖 Финальный ответ Rowboat: {rowboat_response}")
-            messages.append({"role": "user", "content": rowboat_response})
-            if str_rowboat_response == "":
-                str_rowboat_response = rowboat_response
-            global_messages.append({"role": "assistant", "content": str_rowboat_response})
-            
-        except Exception as e:
-            print(f"   ❌ Ошибка при вызове Rowboat: {e}")
-            print(f"   📋 Детали клиента Rowboat:")
-            print(f"      Host: {rowboat_client.base_url}")
-            print(f"      Headers: {rowboat_client.headers}")
-            raise e
+                    if msg.role == 'assistant':
+                        if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                            # Это вызов инструмента
+                            print(f"      {i}. 🔧 {sender} вызывает инструмент:")
+                            for tool_call in msg.tool_calls:
+                                tool_name = tool_call.function.name
+                                tool_args = tool_call.function.arguments
+                                print(f"         🛠️  {tool_name}({tool_args})")
+                                str_rowboat_response += f"Агент '{sender}' вызывает инструмент: {tool_name}({tool_args})\n"
+                                # Специальная обработка для transfer_to_agent
+                                if tool_name.startswith('transfer_to_'):
+                                    try:
+                                        args_dict = json.loads(tool_args)
+                                        target_agent = args_dict.get('assistant', 'Unknown')
+                                        print(f"         ➡️  Передача управления: {sender} → {target_agent}")
+                                        str_rowboat_response += f"Передача управления: {sender} → {target_agent}\n"
+                                    except:
+                                        print(f"         ➡️  Передача управления от {sender}")
+                                        str_rowboat_response += f"Передача управления от {sender}\n"
+                        else:
+                            # Это обычное сообщение
+                            response_type = getattr(msg, 'agenticResponseType', 'unknown')
+                            if response_type == 'external':
+                                print(f"      {i}. 💬 {sender} (внешний ответ): {msg.content}")
+                                str_rowboat_response += f"Агент '{sender}' (внешний ответ): {msg.content}\n"
+                            else:
+                                print(f"      {i}. 🔄 {sender} (внутренний): {msg.content}")
+                                str_rowboat_response += f"Агент '{sender}' (внутренний): {msg.content}\n"
+                                
+                    elif msg.role == 'tool':
+                        tool_name = getattr(msg, 'tool_name', 'unknown_tool')
+                        print(f"      {i}. ⚙️  Результат {tool_name}: {msg.content[:100]}...")
+                        str_rowboat_response += f"Результат {tool_name}: {msg.content}"
+                        
+                        # Специальная обработка для transfer_to_agent результатов
+                        if tool_name == 'transfer_to_agent':
+                            try:
+                                result_dict = json.loads(msg.content)
+                                target_agent = result_dict.get('assistant', 'Unknown')
+                                print(f"         ✅ Управление передано агенту: {target_agent}")
+                                str_rowboat_response += f"Управление передано агенту: {target_agent}"
+                            except:
+                                pass
+                                
+                    elif msg.role == 'user':
+                        print(f"      {i}. 👤 Пользователь: {msg.content}")
+                
+                print(f"   🤖 Финальный ответ Rowboat: {rowboat_response}")
+                messages.append({"role": "user", "content": rowboat_response})
+                if str_rowboat_response == "":
+                    str_rowboat_response = rowboat_response
+                global_messages.append({"role": "assistant", "content": str_rowboat_response})
+                
+                # Если дошли до этой точки, значит все прошло успешно
+                break
+                
+            except Exception as e:
+                retry_count += 1
+                print(f"   ❌ Ошибка при вызове Rowboat (попытка {retry_count}/{max_retries}): {e}")
+                print(f"   📋 Детали клиента Rowboat:")
+                print(f"      Host: {rowboat_client.base_url}")
+                print(f"      Headers: {rowboat_client.headers}")
+                
+                # Добавляем дополнительную отладочную информацию
+                print(f"   🔍 Дополнительная диагностика:")
+                print(f"      Количество сообщений в support_chat: {len(support_chat.messages)}")
+                print(f"      Последние 3 сообщения:")
+                for i, msg in enumerate(support_chat.messages[-3:], 1):
+                    role = getattr(msg, 'role', 'unknown')
+                    content = getattr(msg, 'content', 'no content')[:50]
+                    response_type = getattr(msg, 'agenticResponseType', 'unknown')
+                    sender = getattr(msg, 'agenticSender', 'unknown')
+                    print(f"         {i}. {role} ({response_type}) от {sender}: {content}...")
+                
+                # Пытаемся получить более детальную информацию об ошибке
+                if "Last message was not an assistant message" in str(e):
+                    print(f"   ⚠️  Обнаружена проблема с последним сообщением")
+                    print(f"      Это может быть связано с незавершенным вызовом инструмента или передачей управления")
+                    print(f"      Попробуйте увеличить количество итераций или проверить конфигурацию агентов")
+                
+                if retry_count < max_retries:
+                    print(f"   🔄 Повторная попытка через 2 секунды...")
+                    await asyncio.sleep(2)
+                else:
+                    print(f"   💥 Исчерпаны все попытки, прерываем симуляцию")
+                    # Добавляем сообщение об ошибке в диалог
+                    error_message = f"Ошибка Rowboat API: {str(e)}"
+                    messages.append({"role": "user", "content": error_message})
+                    global_messages.append({"role": "assistant", "content": error_message})
+                    break  # Выходим из цикла итераций симуляции
 
     # -------------------------
     # (2) EVALUATION STEP

@@ -216,7 +216,7 @@ async def run_batch_simulations():
         except:
             pass
     
-    with open("benchmark/run_time/run_time_result.json", 'w', encoding='utf-8') as f:
+    with open("benchmark/run_time/run_time_result_2.json", 'w', encoding='utf-8') as f:
         json.dump(batch_results, f, ensure_ascii=False, indent=4, default=json_serializer)
 
 if __name__ == "__main__":

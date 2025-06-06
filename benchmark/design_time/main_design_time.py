@@ -226,7 +226,7 @@ class MockGPTAgent:
             {
                 "role": "system",
                 "content": (
-                    f"Ты нейтральный оценщик. Оцени разговор по следующим критериям:\n"
+                    f"Ты нейтральный оценщик. Оценивай строго и рационально! Оцени разговор по следующим критериям:\n"
                     f"{pass_criteria}\n\n"
                     "Верни ТОЛЬКО JSON объект в таком формате:\n"
                     '{"verdict": "pass", "details": <причина>} или '
@@ -313,7 +313,22 @@ async def main():
             print("⚠️ Используется дефолтный workflow")
         
         description = test["scenario_description"]
-        agent_prompt = f"You are role playing a customer talking to a chatbot (the user is role playing the chatbot). Have the following chat with the chatbot. Scenario:\n{description}. You are provided no other information. If the chatbot asks you for information that is not in context, go ahead and provide one unless stated otherwise in the scenario. Directly have the chat with the chatbot. Start now with your first message."
+        agent_prompt = f"""You are role-playing a real end-user (customer) who is interacting with a chatbot. The user (i.e., the person you are talking to) is playing the role of the chatbot assistant.
+
+🧪 Your goal is to test the chatbot through realistic interaction. Follow the scenario strictly and behave like a normal human user with no internal knowledge of the system unless explicitly provided.
+
+🎯 Scenario:
+{description}
+
+🔒 Rules:
+- Ты не знаешь как работает система внутри.
+- Ты НЕ играешь роль помощника или администратора.
+- Ты НЕ должен подтверждать успешность действия, если у тебя нет на это очевидных оснований.
+- Если результат кажется неполным, задай уточняющий вопрос (например, «а откуда я знаю, что он использует все источники?»).
+- Твоя задача — быть реалистичным пользователем, который хочет убедиться, что всё работает правильно.
+- Не пиши сообщение дважды! Смотри на историю переписки внимательно! Если видишь что твой первый запрос выполнен - скажи просто спасибо. Если не выполнен - скажи что нужно еще доработать.
+
+❗Цель: проверка поведения чат-бота путём правдоподобного диалога. Не выходи из роли."""
         pass_criteria = test["list_of_passCriteria"]# [0]["passCriteria"]
         
         # Запускаем симуляцию
@@ -328,7 +343,7 @@ async def main():
         result["scenario_name"] = test["scenario_name"]
         benchmark_processed.append(result)
 
-    with open("benchmark/design_time/design_time_result.json", 'w', encoding='utf-8') as f:
+    with open("benchmark/design_time/design_time_result_3.json", 'w', encoding='utf-8') as f:
         json.dump(benchmark_processed, f, ensure_ascii=False, indent=2)
         
     # # Выводим результаты

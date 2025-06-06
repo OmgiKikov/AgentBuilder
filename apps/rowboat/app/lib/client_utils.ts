@@ -32,6 +32,7 @@ export function validateConfigChanges(configType: string, configChanges: Record<
                 description: 'test',
                 type: 'conversation',
                 instructions: 'test',
+                examples: 'test',
                 prompts: [],
                 tools: [],
                 model: 'gpt-4o',

@@ -41,9 +41,15 @@ class Client:
         if not response_data.messages:
             raise ValueError("No response")
             
-        last_message = response_data.messages[-1]
-        if not isinstance(last_message, (AssistantMessage, AssistantMessageWithToolCalls)):
-            raise ValueError("Last message was not an assistant message")
+        # Ищем последнее сообщение ассистента вместо проверки только последнего сообщения
+        last_assistant_message = None
+        for message in reversed(response_data.messages):
+            if isinstance(message, (AssistantMessage, AssistantMessageWithToolCalls)):
+                last_assistant_message = message
+                break
+        
+        if not last_assistant_message:
+            raise ValueError("No assistant message found in response")
 
         return response_data
 
@@ -64,8 +70,24 @@ class Client:
             test_profile_id=test_profile_id
         )
 
-        if not response_data.messages[-1].agenticResponseType == 'external':
-            raise ValueError("Last message was not an external message")
+        # Ищем последнее внешнее сообщение ассистента
+        last_external_message = None
+        for message in reversed(response_data.messages):
+            if (isinstance(message, (AssistantMessage, AssistantMessageWithToolCalls)) and 
+                hasattr(message, 'agenticResponseType') and 
+                message.agenticResponseType == 'external'):
+                last_external_message = message
+                break
+        
+        if not last_external_message:
+            # Если нет внешнего сообщения, ищем любое сообщение ассистента
+            for message in reversed(response_data.messages):
+                if isinstance(message, (AssistantMessage, AssistantMessageWithToolCalls)):
+                    last_external_message = message
+                    break
+        
+        if not last_external_message:
+            raise ValueError("No assistant message found in response")
 
         return response_data
 
@@ -103,9 +125,29 @@ class StatefulChat:
         self.messages.extend(response_data.messages)
         self.state = response_data.state
         
-        # Return only the final message content
-        last_message = self.messages[-1]
-        return last_message.content
+        # Ищем последнее внешнее сообщение ассистента для возврата
+        last_external_content = None
+        for message in reversed(response_data.messages):
+            if (isinstance(message, (AssistantMessage, AssistantMessageWithToolCalls)) and 
+                hasattr(message, 'agenticResponseType') and 
+                message.agenticResponseType == 'external' and
+                message.content):
+                last_external_content = message.content
+                break
+        
+        # Если нет внешнего сообщения, ищем любое сообщение ассистента с содержимым
+        if not last_external_content:
+            for message in reversed(response_data.messages):
+                if (isinstance(message, (AssistantMessage, AssistantMessageWithToolCalls)) and 
+                    message.content):
+                    last_external_content = message.content
+                    break
+        
+        # Если все еще нет содержимого, возвращаем сообщение по умолчанию
+        if not last_external_content:
+            last_external_content = "I'm sorry, I didn't receive a proper response."
+        
+        return last_external_content
 
 
 def weather_lookup_tool(city_name: str) -> str:
