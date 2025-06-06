@@ -17,6 +17,7 @@ from .helpers.access import (
 from .helpers.instructions import (
     add_rag_instructions_to_agent
 )
+from .helpers.transfer import create_transfer_function_to_agent, create_transfer_tool_to_agent
 from .types import outputVisibility
 from agents import Agent as NewAgent, Runner, FunctionTool, RunContextWrapper, ModelSettings, WebSearchTool
 from .tracing import AgentTurnTraceProcessor
@@ -534,6 +535,14 @@ When you use the web_search tool:
     
     print("Returning created agents")
     print("="*100)
+
+    # Create transfer tools for each handoff
+    for new_agent in new_agents:
+        for handoff in new_agent.handoffs:
+            transfer_tool = create_transfer_tool_to_agent(new_agent, handoff)
+            new_agent.tools.append(transfer_tool)
+            print(f"Added transfer tool from {new_agent.name} to {handoff.name}")
+
     return new_agents
 
 # Initialize a flag to track if the trace processor is added
@@ -558,18 +567,84 @@ async def run_streamed(
         tokens_used = {}
 
     # Format messages to ensure they're compatible with the OpenAI API
+    # Keep conversation history for proper context
     formatted_messages = []
+    
     for msg in messages:
-        if isinstance(msg, dict) and "content" in msg:
-            formatted_msg = {
-                "role": msg.get("role", "user"),
-                "content": msg["content"]
-            }
-            formatted_messages.append(formatted_msg)
+        if isinstance(msg, dict):
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            
+            # Always include user messages (they contain the actual questions)
+            if role == "user":
+                if content and content.strip():
+                    formatted_msg = {
+                        "role": "user",
+                        "content": content.strip()
+                    }
+                    formatted_messages.append(formatted_msg)
+                continue
+            
+            # For assistant messages, include only those without tool_calls or with non-transfer tool_calls
+            if role == "assistant":
+                tool_calls = msg.get("tool_calls", [])
+                
+                # Skip messages that are only transfer calls
+                if tool_calls and all(tc.get("function", {}).get("name", "").startswith("transfer_to_") for tc in tool_calls):
+                    continue
+                
+                # Include assistant messages with content (actual responses)
+                if content and content.strip():
+                    # Clean content from sender prefixes if present
+                    clean_content = content
+                    if content.startswith("Sender agent:"):
+                        lines = content.split("\n")
+                        if len(lines) >= 2 and lines[1].startswith("Content:"):
+                            clean_content = lines[1][8:].strip()  # Remove "Content:" prefix
+                        else:
+                            clean_content = content.split("Content:", 1)[-1].strip() if "Content:" in content else content
+                    
+                    formatted_msg = {
+                        "role": "assistant", 
+                        "content": clean_content.strip()
+                    }
+                    formatted_messages.append(formatted_msg)
+                continue
+            
+            # Skip system and tool messages
+            if role in ["system", "tool"]:
+                continue
+                
         else:
+            # Handle non-dict messages
+            if str(msg).strip():
+                formatted_messages.append({
+                    "role": "user",
+                    "content": str(msg).strip()
+                })
+
+    # Ensure we have at least one message for the agent to respond to
+    if not formatted_messages:
+        formatted_messages = [{"role": "user", "content": "Привет! Как дела?"}]
+    
+    # If the last message is from assistant, add a prompt for the new agent
+    elif formatted_messages[-1]["role"] == "assistant":
+        # Find the last user message to understand what the user was asking about
+        last_user_msg = None
+        for msg in reversed(formatted_messages):
+            if msg["role"] == "user":
+                last_user_msg = msg["content"]
+                break
+        
+        if last_user_msg:
             formatted_messages.append({
                 "role": "user",
-                "content": str(msg)
+                "content": f"Продолжите отвечать на вопрос: {last_user_msg}"
+            })
+        else:
+            formatted_messages.append({
+                "role": "user", 
+                "content": "Продолжите разговор"
             })
 
     print("Beginning streaming run")
@@ -581,7 +656,7 @@ async def run_streamed(
     print(f"   🛠️ Agent tools count: {len(agent.tools) if hasattr(agent, 'tools') and agent.tools else 0}")
     if hasattr(agent, 'tools') and agent.tools:
         print(f"   🔧 Agent tools: {[tool.name for tool in agent.tools]}")
-    print(f"   💬 Formatted messages: {formatted_messages}")
+    print(f"   💬 Formatted messages ({len(formatted_messages)}): {formatted_messages}")
 
     try:
         # Add our custom trace processor only if tracing is enabled

@@ -199,7 +199,7 @@ async def run_turn_streamed(
 
             async for event in stream_result.stream_events():
                 try:
-                    print("EVENT:", event)
+                    # print("EVENT:", event)
                     # Handle web search events
                     if event.type == "raw_response_event":
                         # Handle token usage counting
@@ -284,6 +284,10 @@ async def run_turn_streamed(
                             child_call_counts[parent_child_key] = current_count + 1
                             parent_stack.append(current_agent)
                         current_agent = event.new_agent
+                        
+                        # ВАЖНО: Прерываем обработку текущих событий и начинаем новую итерацию с новым агентом
+                        print(f"🔄 Breaking event loop to start new iteration with agent: {current_agent.name}")
+                        break
 
                     # Handle regular messages and tool calls
                     elif event.type == "run_item_stream_event":
