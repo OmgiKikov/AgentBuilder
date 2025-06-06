@@ -148,9 +148,9 @@ export function App({
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
                             <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                PLAYGROUND
+                                ПЕСОЧНИЦА 
                             </div>
-                            <Tooltip content="Тестируйте ваш рабочий процесс и общайтесь с вашими агентами в реальном времени">
+                            <Tooltip content="Тестируйте ваших агентов прямо сейчас">
                                 <InfoIcon className="w-4 h-4 text-gray-400 cursor-help" />
                             </Tooltip>
                         </div>
@@ -164,20 +164,20 @@ export function App({
                         >
                             <PlusIcon className="w-4 h-4" />
                         </Button>
-                        <Button
+                        {/* <Button
                             variant="primary"
                             size="sm"
                             onClick={() => setShowDebugMessages(!showDebugMessages)}
                             className={showDebugMessages ? "bg-blue-50 text-blue-700 hover:bg-blue-100" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}
                             showHoverContent={true}
-                            hoverContent={showDebugMessages ? "Скрыть отладочные сообщения" : "Показать отладочные сообщения"}
+                            // hoverContent={showDebugMessages ? "Скрыть отладочные сообщения" : "Показать отладочные сообщения"}
                         >
                             {showDebugMessages ? (
                                 <BugIcon className="w-4 h-4" />
                             ) : (
                                 <BugOffIcon className="w-4 h-4" />
                             )}
-                        </Button>
+                        </Button> */}
                     </div>
                 }
                 rightActions={

@@ -70,7 +70,7 @@ export default function Sidebar({ projectId, useRag, useAuth, collapsed = false,
     }] : []),
     ...(useRag ? [{
       href: 'sources',
-      label: 'RAG',
+      label: 'Источники данных',
       icon: DatabaseIcon,
       requiresProject: true
     }] : []),

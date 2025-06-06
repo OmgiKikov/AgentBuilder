@@ -819,8 +819,33 @@ export function WorkflowEditor({
         setIsInitialState(false);
     }
 
+    function pluralize(n: number, one: string, few: string, many: string) {
+        if (n % 10 === 1 && n % 100 !== 11) return one;
+        if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return few;
+        return many;
+    }
+
+    function getRelativeTime(date: Date) {
+        const now = new Date();
+        const diff = Math.floor((now.getTime() - date.getTime()) / 1000); // разница в секундах
+
+        if (diff < 60) return 'только что';
+        if (diff < 3600) {
+            const mins = Math.floor(diff / 60);
+            return mins + ' ' + pluralize(mins, 'минуту', 'минуты', 'минут') + ' назад';
+        }
+        if (diff < 86400) {
+            const hours = Math.floor(diff / 3600);
+            return hours + ' ' + pluralize(hours, 'час', 'часа', 'часов') + ' назад';
+        }
+        const days = Math.floor(diff / 86400);
+        return days + ' ' + pluralize(days, 'день', 'дня', 'дней') + ' назад';
+    }
+
     return <div className="flex flex-col h-full relative">
         <div className="shrink-0 flex justify-between items-center pb-6">
+            {/* Левая часть (селектор версии, название, статус, меню версий) скрыта */}
+            {/*
             <div className="workflow-version-selector flex items-center gap-4 px-2 text-gray-800 dark:text-gray-100">
                 <WorkflowIcon size={16} />
                 <Tooltip content="Нажмите для редактирования">
@@ -880,7 +905,6 @@ export function WorkflowEditor({
                         >
                             Просмотр версий
                         </DropdownItem>
-
                         <DropdownItem
                             key="clone"
                             startContent={<div className="text-gray-500"><Layers2Icon size={16} /></div>}
@@ -888,7 +912,6 @@ export function WorkflowEditor({
                         >
                             Клонировать эту версию
                         </DropdownItem>
-
                         <DropdownItem
                             key="clipboard"
                             startContent={<div className="text-gray-500"><CopyIcon size={16} /></div>}
@@ -899,117 +922,118 @@ export function WorkflowEditor({
                     </DropdownMenu>
                 </Dropdown>
             </div>
-            {showCopySuccess && <div className="flex items-center gap-2">
-                <div className="text-green-500">Скопировано в буфер обмена</div>
-            </div>}
-            <div className="flex items-center gap-2">
-                {isLive && <div className="flex items-center gap-2">
-                    <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2">
-                        <AlertTriangle size={16} />
-                        Эта версия заблокирована. Вы не можете вносить изменения. Изменения, примененные через Copilot, <b>не</b> будут отражены.
-                    </div>
-                    <Button
-                        variant="solid"
-                        size="md"
-                        onPress={() => handleCloneVersion(state.present.workflow._id)}
-                        className="gap-2 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm"
-                        startContent={<Layers2Icon size={16} />}
-                    >
-                        Клонировать эту версию
-                    </Button>
-                    <Button
-                        variant="solid"
-                        size="md"
-                        onPress={() => setShowCopilot(!showCopilot)}
-                        className="gap-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
-                    >
-                    </Button>
-                </div>}
-                {!isLive && <div className="text-xs text-gray-400">
-                    {state.present.saving && <div className="flex items-center gap-1">
-                        <Spinner size="sm" />
-                        <div>Сохранение...</div>
-                    </div>}
-                    {!state.present.saving && state.present.workflow && <div>
-                        Обновлено <RelativeTime date={new Date(state.present.lastUpdatedAt)} />
-                    </div>}
-                </div>}
-                {!isLive && <>
-                    <button
-                        className="p-1 text-gray-400 hover:text-black hover:cursor-pointer"
-                        title="Отменить"
-                        disabled={state.currentIndex <= 0}
-                        onClick={() => dispatch({ type: "undo" })}
-                    >
-                        <UndoIcon size={16} />
-                    </button>
-                    <button
-                        className="p-1 text-gray-400 hover:text-black hover:cursor-pointer"
-                        title="Повторить"
-                        disabled={state.currentIndex >= state.patches.length}
-                        onClick={() => dispatch({ type: "redo" })}
-                    >
-                        <RedoIcon size={16} />
-                    </button>
-                    <Button
-                        variant="solid"
-                        size="md"
-                        onPress={handlePublishWorkflow}
-                        className="gap-2 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold text-sm"
-                        startContent={<RocketIcon size={16} />}
-                        data-tour-target="deploy"
-                    >
-                        Развернуть
-                    </Button>
-                    <Dropdown>
-                        <DropdownTrigger>
-                            <Button
-                                variant="solid"
-                                size="md"
-                                className="gap-2 px-4 bg-gray-600 hover:bg-gray-700 text-white font-semibold text-sm"
-                                startContent={<Settings2Icon size={16} />}
-                                data-tour-target="config-modal"
-                            >
-                                Конфигурация
-                            </Button>
-                        </DropdownTrigger>
-                        <DropdownMenu
-                            onAction={(key) => {
-                                if (key === 'agents' || key === 'tools' || key === 'prompts') {
-                                    setEntityModalTab(key as 'agents' | 'tools' | 'prompts');
-                                    setShowEntityModal(true);
-                                }
-                            }}
+            */}
+            {/* Правая часть (кнопки, время, конфигурация) сдвинута вправо */}
+            <div className="flex justify-end w-full">
+                <div className="flex items-center gap-2">
+                    {isLive && <div className="flex items-center gap-2">
+                        <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2">
+                            <AlertTriangle size={16} />
+                            Эта версия заблокирована. Вы не можете вносить изменения. Изменения, примененные через Copilot, <b>не</b> будут отражены.
+                        </div>
+                        <Button
+                            variant="solid"
+                            size="md"
+                            onPress={() => handleCloneVersion(state.present.workflow._id)}
+                            className="gap-2 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm"
+                            startContent={<Layers2Icon size={16} />}
                         >
-                            <DropdownSection title="Управление сущностями">
-                                <DropdownItem
-                                    key="agents"
-                                    startContent={<UsersIcon size={16} className="text-blue-500" />}
-                                    description={`${state.present.workflow.agents.length} агентов`}
-                                    className="gap-x-2"
+                            Клонировать эту версию
+                        </Button>
+                        <Button
+                            variant="solid"
+                            size="md"
+                            onPress={() => setShowCopilot(!showCopilot)}
+                            className="gap-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
+                        >
+                        </Button>
+                    </div>}
+                    {!isLive && <div className="text-xs text-gray-400">
+                        {state.present.saving && <div className="flex items-center gap-1">
+                            <Spinner size="sm" />
+                            <div>Сохранение...</div>
+                        </div>}
+                        {!state.present.saving && state.present.workflow && <div>
+                            Обновлено {getRelativeTime(new Date(state.present.lastUpdatedAt))}
+                        </div>}
+                    </div>}
+                    {!isLive && <>
+                        <button
+                            className="p-1 text-gray-400 hover:text-black hover:cursor-pointer"
+                            title="Отменить"
+                            disabled={state.currentIndex <= 0}
+                            onClick={() => dispatch({ type: "undo" })}
+                        >
+                            <UndoIcon size={16} />
+                        </button>
+                        <button
+                            className="p-1 text-gray-400 hover:text-black hover:cursor-pointer"
+                            title="Повторить"
+                            disabled={state.currentIndex >= state.patches.length}
+                            onClick={() => dispatch({ type: "redo" })}
+                        >
+                            <RedoIcon size={16} />
+                        </button>
+                        {/* <Button
+                            variant="solid"
+                            size="md"
+                            onPress={handlePublishWorkflow}
+                            className="gap-2 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold text-sm"
+                            startContent={<RocketIcon size={16} />}
+                            data-tour-target="deploy"
+                        >
+                            Развернуть
+                        </Button> */}
+                        <Dropdown>
+                            <DropdownTrigger>
+                                <Button
+                                    variant="solid"
+                                    size="md"
+                                    className="gap-2 px-4 bg-gray-600 hover:bg-gray-700 text-white font-semibold text-sm"
+                                    startContent={<Settings2Icon size={16} />}
+                                    data-tour-target="config-modal"
                                 >
-                                    Агенты
-                                </DropdownItem>
-                                <DropdownItem
-                                    key="tools"
-                                    startContent={<WrenchIcon size={16} className="text-green-500" />}
-                                    description={`${state.present.workflow.tools.length + projectTools.length} инструментов`}
-                                    className="gap-x-2"
-                                >
-                                    Инструменты
-                                </DropdownItem>
-                                <DropdownItem
-                                    key="prompts"
-                                    startContent={<FileTextIcon size={16} className="text-purple-500" />}
-                                    description={`${state.present.workflow.prompts.length} промптов`}
-                                    className="gap-x-2"
-                                >
-                                    Промпты
-                                </DropdownItem>
-                            </DropdownSection>
-                        </DropdownMenu>
-                    </Dropdown>
-                </>}
+                                    Конфигурация
+                                </Button>
+                            </DropdownTrigger>
+                            <DropdownMenu
+                                onAction={(key) => {
+                                    if (key === 'agents' || key === 'tools' || key === 'prompts') {
+                                        setEntityModalTab(key as 'agents' | 'tools' | 'prompts');
+                                        setShowEntityModal(true);
+                                    }
+                                }}
+                            >
+                                <DropdownSection title="Управление сущностями">
+                                    <DropdownItem
+                                        key="agents"
+                                        startContent={<UsersIcon size={16} className="text-blue-500" />}
+                                        description={`${state.present.workflow.agents.length} агентов`}
+                                        className="gap-x-2"
+                                    >
+                                        Агенты
+                                    </DropdownItem>
+                                    <DropdownItem
+                                        key="tools"
+                                        startContent={<WrenchIcon size={16} className="text-green-500" />}
+                                        description={`${state.present.workflow.tools.length + projectTools.length} инструментов`}
+                                        className="gap-x-2"
+                                    >
+                                        Инструменты
+                                    </DropdownItem>
+                                    <DropdownItem
+                                        key="prompts"
+                                        startContent={<FileTextIcon size={16} className="text-purple-500" />}
+                                        description={`${state.present.workflow.prompts.length} промптов`}
+                                        className="gap-x-2"
+                                    >
+                                        Промпты
+                                    </DropdownItem>
+                                </DropdownSection>
+                            </DropdownMenu>
+                        </Dropdown>
+                    </>}
+                </div>
             </div>
         </div>
         <ResizablePanelGroup direction="horizontal" className="grow flex overflow-auto gap-1">

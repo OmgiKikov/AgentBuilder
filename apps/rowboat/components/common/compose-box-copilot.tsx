@@ -111,7 +111,7 @@ export function ComposeBoxCopilot({
             </div>
 
             {/* Новый современный контейнер */}
-            <div className="flex items-center gap-3 min-h-[52px] p-3 rounded-2xl border border-gray-200 dark:border-[#2a2d31] bg-white dark:bg-[#1e2023]">
+            <div className="flex items-center gap-3 min-h-[52px] p-3 rounded-2xl border border-gray-200 dark:border-[#2a2d31] bg-white dark:bg-[#1e2023]" data-tour-target="copilot-file-link">
                 {/* Микрофон */}
                 <AudioInputButton onTextReceived={handleAudioText} disabled={loading} />
 

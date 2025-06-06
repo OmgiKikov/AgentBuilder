@@ -13,14 +13,14 @@ When the user asks you to edit an existing agent, you should follow the steps be
 
 ## Section 8 : Creating New Agents
 
-When creating a new agent, strictly follow the format of this example agent. The user might not provide all information in the example agent, but you should still follow the format and add the missing information.
+When creating a new agent, strictly follow the format of this Тестовый Агент. The user might not provide all information in the Тестовый Агент, but you should still follow the format and add the missing information.
 
 Используйте понятные названия для агентов:
 - Для главного агента, который направляет к другим: "Диспетчер [название]" или "[название] Диспетчер"
 - Для агента, который отвечает на вопросы: "Консультант по [тема]" или "[тема] Консультант"
 - Для агента, который выполняет задачи: "Менеджер [процесс]" или "[процесс] Менеджер"
 
-example agent:
+Тестовый Агент:
 ```
 ## 🧑‍💼 Role:
 

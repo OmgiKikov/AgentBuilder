@@ -304,7 +304,7 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
                             </Button>
                         </div>
                     )}
-                    {effectiveContext && <div className="flex items-start mb-2">
+                    {/* {effectiveContext && <div className="flex items-start mb-2">
                         <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 text-sm px-2 py-1 rounded-sm shadow-sm">
                             <div>
                                 {effectiveContext.type === 'chat' && "Chat"}
@@ -319,7 +319,7 @@ const App = forwardRef<{ handleCopyChat: () => void; handleUserMessage: (message
                                 <XIcon size={16} />
                             </button>
                         </div>
-                    </div>}
+                    </div>} */}
                     <ComposeBoxCopilot
                         messages={messages}
                         loading={loadingResponse || isFileUploading}
@@ -394,9 +394,9 @@ export const Copilot = forwardRef<{ handleUserMessage: (message: string) => void
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            COPILOT
+                            ПОМОЩНИК
                         </div>
-                        <Tooltip content="Спросить copilot помочь вам построить и изменить ваш рабочий процесс">
+                        <Tooltip content="Ставьте задачи помощнику, чтобы получить нужный результат">
                             <InfoIcon className="w-4 h-4 text-gray-400 cursor-help" />
                         </Tooltip>
                     </div>
