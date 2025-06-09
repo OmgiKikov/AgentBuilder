@@ -41,6 +41,7 @@ def set_sys_message(messages):
     """
     If the system message is empty, set it to the default message: "You are a helplful assistant."
     """
+    messages = [msg.copy() for msg in messages]
     if messages[0].get("role") == "system" and messages[0].get("content") == "":
         messages[0]["content"] = "You are a helpful assistant."
         print("Updated system message: ", messages[0])
@@ -74,11 +75,13 @@ def add_sender_details_to_message(message, sender_agent_name):
 
 
 def add_sender_details_to_messages(messages):
+    result_messages = []
     for msg in messages:
-        msg["sender"] = msg.get("sender", None)
         if msg.get("sender"):
-            add_sender_details_to_message(message=msg, sender_agent_name=msg["sender"])
-    return messages
+            result_messages.append(
+                add_sender_details_to_message(message=msg, sender_agent_name=msg.get("sender"))
+            )
+    return result_messages
 
 
 def append_messages(messages, accumulated_messages):
