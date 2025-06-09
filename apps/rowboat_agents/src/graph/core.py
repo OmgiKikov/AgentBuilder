@@ -5,6 +5,8 @@ import asyncio
 from typing import AsyncGenerator, Dict, List, Tuple, Optional
 from abc import ABC, abstractmethod
 from collections import defaultdict
+
+from agents import Agent
 from .helpers.access import get_agent_by_name, get_prompt_by_type
 from .helpers.library_tools import handle_web_search_event
 from .helpers.control import get_last_agent_name
@@ -177,12 +179,12 @@ class TurnRunner(ABC):
 
 
 class GreetingTurnRunner(TurnRunner):
-    def __init__(self, start_agent_name: str, prompt_configs: Dict) -> None:
+    def __init__(self, start_agent_name: str, content: str) -> None:
         super().__init__(start_agent_name=start_agent_name)
-        self._prompt_configs = prompt_configs
+        self._content = content
 
     async def _produce_conversation_messages(self) -> None:
-        await self._produce_assistance_content_message(content=self._get_greeting_prompt())
+        await self._produce_assistance_content_message(content=self._content)
 
     def _get_current_agent_name(self) -> Optional[str]:
         return self._start_agent_name
@@ -190,38 +192,25 @@ class GreetingTurnRunner(TurnRunner):
     def _is_current_agent_internal(self) -> bool:
         return False
 
-    def _get_greeting_prompt(self) -> str:
-        return get_prompt_by_type(self._prompt_configs, PromptType.GREETING) or "Как я могу вам помочь?"
-
 
 class MultiAgentsTurnRunner(TurnRunner):
     def __init__(
         self,
         messages,
         start_agent_name,
-        agent_configs,
-        tool_configs,
-        start_turn_with_start_agent,
-        state=None,
-        complete_request=None,
+        current_agent: Agent,
         enable_tracing=False,
     ) -> None:
         super().__init__(start_agent_name=start_agent_name)
         self._messages = messages
-        self._agent_configs = agent_configs
-        self._tool_configs = tool_configs
-        self._start_turn_with_start_agent = start_turn_with_start_agent
-        self._state = state or {}
-        self._complete_request = complete_request or {}
         self._enable_tracing = enable_tracing
         self._child_call_counts = defaultdict(int)
-        self._current_agent = None
+        self._current_agent = current_agent
         self._parent_stack = []
         self._iter = 0
 
     async def _produce_conversation_messages(self) -> None:
         self._iter = 0
-        self._initialize_agent()
 
         while True:
             self._on_new_iteration_start()
@@ -485,30 +474,42 @@ class MultiAgentsTurnRunner(TurnRunner):
     def _is_current_agent_internal(self) -> bool:
         return check_internal_visibility(self._current_agent)
 
-    def _initialize_agent(self):
-        agents = get_agents(
-            agent_configs=self._agent_configs,
-            tool_configs=self._tool_configs,
-            complete_request=self._complete_request,
-        )
-        agents = add_child_transfer_related_instructions_to_agents(agents)
-        agents = add_openai_recommended_instructions_to_agents(agents)
-        last_agent_name = get_last_agent_name(
-            state=self._state,
-            agent_configs=self._agent_configs,
-            start_agent_name=self._start_agent_name,
-            msg_type="user",
-            latest_assistant_msg=None,
-            start_turn_with_start_agent=self._start_turn_with_start_agent,
-        )
-        self._current_agent = get_agent_by_name(last_agent_name, agents)
-
     def _get_current_agent_name(self) -> Optional[str]:
         return self._current_agent.name if self._current_agent else None
 
 
-def _is_greeting_turn(messages) -> bool:
+def is_greeting_turn(messages) -> bool:
     return all(msg.get("role") == "system" for msg in messages)
+
+
+def prepare_messages(messages):
+    return add_sender_details_to_messages(set_sys_message(messages))
+
+
+def create_current_agent(
+    start_agent_name,
+    agent_configs,
+    tool_configs,
+    start_turn_with_start_agent,
+    state={},
+    complete_request={},
+):
+    agents = get_agents(
+        agent_configs=agent_configs,
+        tool_configs=tool_configs,
+        complete_request=complete_request,
+    )
+    agents = add_child_transfer_related_instructions_to_agents(agents)
+    agents = add_openai_recommended_instructions_to_agents(agents)
+    last_agent_name = get_last_agent_name(
+        state=state,
+        agent_configs=agent_configs,
+        start_agent_name=start_agent_name,
+        msg_type="user",
+        latest_assistant_msg=None,
+        start_turn_with_start_agent=start_turn_with_start_agent,
+    )
+    return get_agent_by_name(last_agent_name, agents)
 
 
 async def run_turn_streamed(
@@ -532,22 +533,24 @@ async def run_turn_streamed(
     4. Control flows from parent to child, and child must return to parent after responding
     5. Turn ends when an external agent outputs a message
     """
-    if _is_greeting_turn(messages):
-        turn_runner = GreetingTurnRunner(start_agent_name=start_agent_name, prompt_configs=prompt_configs)
-    else:
-        messages = set_sys_message(messages)
-        messages = add_sender_details_to_messages(messages)
-        enable_tracing = complete_request.get("enable_tracing", False) if enable_tracing is None else enable_tracing
-
-        turn_runner = MultiAgentsTurnRunner(
-            messages=messages,
+    if is_greeting_turn(messages):
+        turn_runner = GreetingTurnRunner(
             start_agent_name=start_agent_name,
-            agent_configs=agent_configs,
-            tool_configs=tool_configs,
-            start_turn_with_start_agent=start_turn_with_start_agent,
-            state=state,
-            complete_request=complete_request,
-            enable_tracing=enable_tracing,
+            content=get_prompt_by_type(prompt_configs, PromptType.GREETING) or "Как я могу вам помочь?",
+        )
+    else:
+        turn_runner = MultiAgentsTurnRunner(
+            messages=prepare_messages(messages=messages),
+            start_agent_name=start_agent_name,
+            current_agent=create_current_agent(
+                start_agent_name=start_agent_name,
+                agent_configs=agent_configs,
+                tool_configs=tool_configs,
+                start_turn_with_start_agent=start_turn_with_start_agent,
+                state=state,
+                complete_request=complete_request,
+            ),
+            enable_tracing=complete_request.get("enable_tracing", False) if enable_tracing is None else enable_tracing,
         )
 
     async for event in turn_runner.stream():
