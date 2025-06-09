@@ -3,19 +3,20 @@ import json
 import aiohttp
 import jwt
 import hashlib
+from dataclasses import dataclass
 from agents import OpenAIChatCompletionsModel, trace, add_trace_processor
 import pprint
 
 # Import helper functions needed for get_agents
 from .helpers.access import get_tool_config_by_name, get_tool_config_by_type
 from .helpers.instructions import add_rag_instructions_to_agent
-from .types import outputVisibility
-from agents import Agent as NewAgent, Runner, FunctionTool, RunContextWrapper, ModelSettings, WebSearchTool
+from .types import ResponseType, outputVisibility
+from agents import Agent, Runner, FunctionTool, RunContextWrapper, ModelSettings, WebSearchTool
 from .tracing import AgentTurnTraceProcessor
 
 # Add import for OpenAI functionality
 from src.utils.common import generate_openai_output
-from typing import Any
+from typing import Any, Literal
 import asyncio
 from mcp import ClientSession
 from mcp.client.sse import sse_client
@@ -33,11 +34,28 @@ db = mongo_client["rowboat"]
 from src.utils.client import client, PROVIDER_DEFAULT_MODEL
 
 
+DEFAULT_MAX_CALLS_PER_PARENT_AGENT = 3
+
+
 class NewResponse(BaseModel):
     messages: List[Dict]
     agent: Optional[Any] = None
     tokens_used: Optional[dict] = {}
     error_msg: Optional[str] = ""
+
+
+@dataclass
+class NodeAgent(Agent):
+    output_visibility: str = outputVisibility.EXTERNAL.value
+    max_calls_per_parent_agent: int = DEFAULT_MAX_CALLS_PER_PARENT_AGENT
+
+    def is_internal(self) -> bool:
+        return self.output_visibility == outputVisibility.INTERNAL.value
+
+    def get_response_type(self) -> str:
+        if self.is_internal():
+            return ResponseType.INTERNAL.value
+        return ResponseType.EXTERNAL.value
 
 
 async def mock_tool(tool_name: str, args: str, description: str, mock_instructions: str) -> str:
@@ -211,9 +229,6 @@ def get_rag_tool(config: dict, complete_request: dict) -> FunctionTool:
         return None
 
 
-DEFAULT_MAX_CALLS_PER_PARENT_AGENT = 3
-
-
 def _create_interruption_tool() -> FunctionTool:
     return FunctionTool(
         name="interrupt_agent",
@@ -326,19 +341,19 @@ def get_agents(agent_configs, tool_configs, complete_request):
             )
 
             # Create the agent object
-            new_agent = NewAgent(
+            new_agent = NodeAgent(
                 name=agent_config["name"],
                 instructions=agent_instructions,
                 handoff_description=agent_config["description"],
                 tools=new_tools,
                 model=model,
                 model_settings=ModelSettings(temperature=0.0),
+                output_visibility=agent_config.get("outputVisibility", outputVisibility.EXTERNAL.value),
+                max_calls_per_parent_agent=agent_config.get(
+                    "maxCallsPerParentAgent", DEFAULT_MAX_CALLS_PER_PARENT_AGENT
+                ),
             )
 
-            # Set the max calls per parent agent
-            new_agent.max_calls_per_parent_agent = agent_config.get(
-                "maxCallsPerParentAgent", DEFAULT_MAX_CALLS_PER_PARENT_AGENT
-            )
             if not agent_config.get("maxCallsPerParentAgent", None):
                 print(
                     f"WARNING: Max calls per parent agent not received for agent {new_agent.name}. Using rowboat_agents default of {DEFAULT_MAX_CALLS_PER_PARENT_AGENT}"
@@ -346,8 +361,6 @@ def get_agents(agent_configs, tool_configs, complete_request):
             else:
                 print(f"Max calls per parent agent for agent {new_agent.name}: {new_agent.max_calls_per_parent_agent}")
 
-            # Set output visibility
-            new_agent.output_visibility = agent_config.get("outputVisibility", outputVisibility.EXTERNAL.value)
             if not agent_config.get("outputVisibility", None):
                 print(
                     f"WARNING: Output visibility not received for agent {new_agent.name}. Using rowboat_agents default of {new_agent.output_visibility}"

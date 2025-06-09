@@ -2,17 +2,15 @@ import traceback
 import json
 import uuid
 import asyncio
-from typing import AsyncGenerator, Dict, List, Tuple, Optional
+from typing import AsyncGenerator, Dict, List, Tuple, Optional, cast
 from abc import ABC, abstractmethod
 from collections import defaultdict
-
-from agents import Agent
 from .helpers.access import get_agent_by_name, get_prompt_by_type
 from .helpers.library_tools import handle_web_search_event
 from .helpers.control import get_last_agent_name
-from .execute_turn import run_streamed as swarm_run_streamed, get_agents
+from .execute_turn import NodeAgent as Agent, run_streamed as swarm_run_streamed, get_agents
 from .helpers.instructions import add_child_transfer_related_instructions
-from .types import PromptType, outputVisibility, ResponseType
+from .types import PromptType, ResponseType
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 
 
@@ -38,11 +36,6 @@ def add_openai_recommended_instructions_to_agents(agents):
     for agent in agents:
         agent.instructions = RECOMMENDED_PROMPT_PREFIX + "\n\n" + agent.instructions
     return agents
-
-
-def check_internal_visibility(current_agent):
-    """Check if an agent is internal based on its outputVisibility"""
-    return current_agent.output_visibility == outputVisibility.INTERNAL.value
 
 
 def add_sender_details_to_message(message, sender_agent_name):
@@ -75,8 +68,8 @@ def append_messages(messages, accumulated_messages):
 
 
 class TurnRunner(ABC):
-    def __init__(self, start_agent_name: str) -> None:
-        self._start_agent_name = start_agent_name
+    def __init__(self, current_agent: Agent) -> None:
+        self._current_agent = current_agent
         self._tokens_used = {"total": 0, "prompt": 0, "completion": 0}
         self._accumulated_messages = []
         self._agent_message_counts = defaultdict(int)
@@ -84,7 +77,7 @@ class TurnRunner(ABC):
 
     async def stream(self) -> AsyncGenerator:
         print("\n=== Starting new turn ===")
-        print(f"Starting agent: {self._start_agent_name}")
+        print(f"Starting agent: {self._current_agent.name}")
 
         try:
             asyncio.create_task(self._produce_messages())
@@ -127,18 +120,10 @@ class TurnRunner(ABC):
 
     def _get_final_state(self) -> Dict:
         return {
-            "last_agent_name": self._get_current_agent_name(),
+            "last_agent_name": self._current_agent.name,
             "tokens": self._tokens_used,
             "turn_messages": self._accumulated_messages,
         }
-
-    @abstractmethod
-    def _get_current_agent_name(self) -> Optional[str]:
-        pass
-
-    @abstractmethod
-    def _is_current_agent_internal(self) -> bool:
-        pass
 
     async def _produce_assistance_message(
         self,
@@ -147,11 +132,10 @@ class TurnRunner(ABC):
         citations: Optional[List] = None,
         tool_calls: Optional[List] = None,
     ) -> None:
-        sender_agent_name = self._get_current_agent_name()
         message = {
             "content": content,
             "role": "assistant",
-            "sender": sender_agent_name,
+            "sender": self._current_agent.name,
             "tool_calls": tool_calls,
             "tool_call_id": None,
             "tool_name": None,
@@ -161,51 +145,38 @@ class TurnRunner(ABC):
             message["citations"] = citations
         await self._produce_message(message)
         self._accumulated_messages.append(
-            add_sender_details_to_message(message=message, sender_agent_name=sender_agent_name)
+            add_sender_details_to_message(message=message, sender_agent_name=self._current_agent.name)
         )
 
     async def _produce_assistance_content_message(self, content: str, citations: Optional[List] = None) -> None:
-        self._agent_message_counts[self._get_current_agent_name()] += 1
+        self._agent_message_counts[self._current_agent.name] += 1
         await self._produce_assistance_message(
-            response_type=self._get_current_agent_response_type(),
+            response_type=self._current_agent.get_response_type(),
             content=content,
             citations=citations,
         )
 
-    def _get_current_agent_response_type(self) -> str:
-        if self._is_current_agent_internal():
-            return ResponseType.INTERNAL.value
-        return ResponseType.EXTERNAL.value
-
 
 class GreetingTurnRunner(TurnRunner):
-    def __init__(self, start_agent_name: str, content: str) -> None:
-        super().__init__(start_agent_name=start_agent_name)
+    def __init__(self, current_agent: Agent, content: str) -> None:
+        super().__init__(current_agent=current_agent)
         self._content = content
 
     async def _produce_conversation_messages(self) -> None:
         await self._produce_assistance_content_message(content=self._content)
-
-    def _get_current_agent_name(self) -> Optional[str]:
-        return self._start_agent_name
-
-    def _is_current_agent_internal(self) -> bool:
-        return False
 
 
 class MultiAgentsTurnRunner(TurnRunner):
     def __init__(
         self,
         messages,
-        start_agent_name,
         current_agent: Agent,
         enable_tracing=False,
     ) -> None:
-        super().__init__(start_agent_name=start_agent_name)
+        super().__init__(current_agent=current_agent)
         self._messages = messages
         self._enable_tracing = enable_tracing
         self._child_call_counts = defaultdict(int)
-        self._current_agent = current_agent
         self._parent_stack = []
         self._iter = 0
 
@@ -215,7 +186,7 @@ class MultiAgentsTurnRunner(TurnRunner):
         while True:
             self._on_new_iteration_start()
 
-            is_internal_agent = self._is_current_agent_internal()
+            is_internal_agent = self._current_agent.is_internal()
 
             stream_result = await swarm_run_streamed(
                 agent=self._current_agent,
@@ -233,19 +204,18 @@ class MultiAgentsTurnRunner(TurnRunner):
 
                         await self._produce_web_search_messages(event=event)
                     elif event.type == "agent_updated_stream_event":
-                        if self._should_skip_transfer_control(event=event):
+                        new_agent = cast(Agent, event.new_agent)
+                        if self._should_skip_transfer_control(new_agent=new_agent):
                             continue
 
                         await self._produce_control_transition_messages(
-                            new_agent_name=event.new_agent.name, response_type=ResponseType.INTERNAL.value
+                            new_agent=new_agent, response_type=ResponseType.INTERNAL.value
                         )
 
-                        if check_internal_visibility(event.new_agent):
-                            self._child_call_counts[
-                                self._get_parent_child_key(new_agent_name=event.new_agent.name)
-                            ] += 1
+                        if new_agent.is_internal():
+                            self._child_call_counts[self._get_parent_child_key(new_agent=new_agent)] += 1
                             self._parent_stack.append(self._current_agent)
-                        self._current_agent = event.new_agent
+                        self._current_agent = new_agent
                     elif event.type == "run_item_stream_event":
                         if event.item.type == "tool_call_item":
                             if hasattr(event.item.raw_item, "type") and event.item.raw_item.type == "web_search_call":
@@ -267,13 +237,13 @@ class MultiAgentsTurnRunner(TurnRunner):
 
                             await self._produce_assistance_content_message(content=content, citations=url_citations)
 
-                            if self._is_current_agent_internal() and self._parent_stack:
+                            if self._current_agent.is_internal() and self._parent_stack:
                                 await self._produce_control_transition_messages(
-                                    new_agent_name=self._parent_stack[-1].name,
-                                    response_type=self._get_current_agent_response_type(),
+                                    new_agent=self._parent_stack[-1],
+                                    response_type=self._current_agent.get_response_type(),
                                 )
                                 self._current_agent = self._parent_stack.pop()
-                            elif not self._is_current_agent_internal():
+                            elif not self._current_agent.is_internal():
                                 break
 
                 except Exception as e:
@@ -288,7 +258,7 @@ class MultiAgentsTurnRunner(TurnRunner):
                     print("=" * 50)
                     raise
 
-            if not is_internal_agent and self._get_current_agent_name() in self._agent_message_counts:
+            if not is_internal_agent and self._current_agent.name in self._agent_message_counts:
                 break
 
     def _on_new_iteration_start(self) -> None:
@@ -296,29 +266,28 @@ class MultiAgentsTurnRunner(TurnRunner):
         self._messages = append_messages(self._messages, self._accumulated_messages)
         print("-" * 100)
         print(f"Iteration {iter} of turn loop")
-        print(f"Current agent: {self._get_current_agent_name()} (internal: {self._is_current_agent_internal()})")
+        print(f"Current agent: {self._current_agent.name} (internal: {self._current_agent.is_internal()})")
         print(f"Parent stack: {[agent.name for agent in self._parent_stack]}")
         print("-" * 100)
 
-    def _should_skip_transfer_control(self, event):
-        if self._get_current_agent_name() == event.new_agent.name:
+    def _should_skip_transfer_control(self, new_agent: Agent):
+        if self._current_agent.name == new_agent.name:
             print(
-                f"\nSkipping agent transfer attempt: {self._get_current_agent_name()} -> "
-                f"{event.new_agent.name} (self-transfer)"
+                f"\nSkipping agent transfer attempt: {self._current_agent.name} -> " f"{new_agent.name} (self-transfer)"
             )
             return True
 
-        current_count = self._child_call_counts[self._get_parent_child_key(new_agent_name=event.new_agent.name)]
-        if current_count >= event.new_agent.max_calls_per_parent_agent:
+        current_count = self._child_call_counts[self._get_parent_child_key(new_agent=new_agent)]
+        if current_count >= new_agent.max_calls_per_parent_agent:
             print(
-                f"Skipping transfer from {self._get_current_agent_name()} to "
-                f"{event.new_agent.name} (max calls reached from parent to child)"
+                f"Skipping transfer from {self._current_agent.name} to "
+                f"{new_agent.name} (max calls reached from parent to child)"
             )
             return True
         return False
 
-    def _get_parent_child_key(self, new_agent_name: str) -> str:
-        return f"{self._get_current_agent_name()}:{new_agent_name}"
+    def _get_parent_child_key(self, new_agent: Agent) -> str:
+        return f"{self._current_agent.name}:{new_agent.name}"
 
     async def _produce_web_search_messages(self, event) -> None:
         web_search_messages = handle_web_search_event(event, self._current_agent)
@@ -327,7 +296,7 @@ class MultiAgentsTurnRunner(TurnRunner):
             await self._produce_message(message)
             if message.get("role") != "tool":
                 self._accumulated_messages.append(
-                    add_sender_details_to_message(message=message, sender_agent_name=self._get_current_agent_name())
+                    add_sender_details_to_message(message=message, sender_agent_name=self._current_agent.name)
                 )
 
     def _update_tokens_usage_info(self, event):
@@ -424,28 +393,26 @@ class MultiAgentsTurnRunner(TurnRunner):
             message_description="tool call output message",
         )
 
-    async def _produce_control_transition_messages(self, new_agent_name: str, response_type: str) -> None:
+    async def _produce_control_transition_messages(self, new_agent: Agent, response_type: str) -> None:
         tool_call_id = str(uuid.uuid4())
         await self._produce_control_transition_call_message(
-            tool_call_id=tool_call_id, new_agent_name=new_agent_name, response_type=response_type
+            tool_call_id=tool_call_id, new_agent=new_agent, response_type=response_type
         )
-        await self._produce_control_transition_response_message(
-            tool_call_id=tool_call_id, new_agent_name=new_agent_name
-        )
+        await self._produce_control_transition_response_message(tool_call_id=tool_call_id, new_agent=new_agent)
 
     async def _produce_control_transition_call_message(
-        self, tool_call_id: str, new_agent_name: str, response_type: str
+        self, tool_call_id: str, new_agent: Agent, response_type: str
     ) -> None:
         await self._produce_message(
             message={
                 "content": None,
                 "role": "assistant",
-                "sender": self._get_current_agent_name(),
+                "sender": self._current_agent.name,
                 "tool_calls": [
                     {
                         "function": {
                             "name": "transfer_to_agent",
-                            "arguments": json.dumps({"assistant": new_agent_name}),
+                            "arguments": json.dumps({"assistant": new_agent.name}),
                         },
                         "id": tool_call_id,
                         "type": "function",
@@ -458,10 +425,10 @@ class MultiAgentsTurnRunner(TurnRunner):
             message_description="control transition message",
         )
 
-    async def _produce_control_transition_response_message(self, tool_call_id: str, new_agent_name: str) -> None:
+    async def _produce_control_transition_response_message(self, tool_call_id: str, new_agent: Agent) -> None:
         await self._produce_message(
             message={
-                "content": json.dumps({"assistant": new_agent_name}),
+                "content": json.dumps({"assistant": new_agent.name}),
                 "role": "tool",
                 "sender": None,
                 "tool_calls": None,
@@ -470,12 +437,6 @@ class MultiAgentsTurnRunner(TurnRunner):
             },
             message_description="control transition response",
         )
-
-    def _is_current_agent_internal(self) -> bool:
-        return check_internal_visibility(self._current_agent)
-
-    def _get_current_agent_name(self) -> Optional[str]:
-        return self._current_agent.name if self._current_agent else None
 
 
 def is_greeting_turn(messages) -> bool:
@@ -535,13 +496,12 @@ async def run_turn_streamed(
     """
     if is_greeting_turn(messages):
         turn_runner = GreetingTurnRunner(
-            start_agent_name=start_agent_name,
+            current_agent=Agent(name=start_agent_name),
             content=get_prompt_by_type(prompt_configs, PromptType.GREETING) or "Как я могу вам помочь?",
         )
     else:
         turn_runner = MultiAgentsTurnRunner(
             messages=prepare_messages(messages=messages),
-            start_agent_name=start_agent_name,
             current_agent=create_current_agent(
                 start_agent_name=start_agent_name,
                 agent_configs=agent_configs,
