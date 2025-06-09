@@ -214,6 +214,22 @@ def get_rag_tool(config: dict, complete_request: dict) -> FunctionTool:
 DEFAULT_MAX_CALLS_PER_PARENT_AGENT = 3
 
 
+def _create_interruption_tool() -> FunctionTool:
+    return FunctionTool(
+        name="interrupt_agent",
+        description="Interrupt the current agent's execution. This is a hidden tool that should be used when the agent needs to stop its execution and return control to the parent agent or end the turn.",
+        params_json_schema={
+            "type": "object",
+            "properties": {
+                "reason": {"type": "string", "description": "The reason for interrupting the agent's execution"}
+            },
+            "required": ["reason"],
+        },
+        strict_json_schema=False,
+        on_invoke_tool=lambda ctx, args: None,  # No-op since we handle this in run_turn_streamed
+    )
+
+
 def get_agents(agent_configs, tool_configs, complete_request):
     """
     Creates and initializes Agent objects based on their configurations and connections.
@@ -242,7 +258,7 @@ def get_agents(agent_configs, tool_configs, complete_request):
 
         print(f"Agent {agent_config['name']} has {len(agent_config['tools'])} configured tools")
 
-        new_tools = []
+        new_tools = [_create_interruption_tool()]
 
         for tool_name in agent_config["tools"]:
             tool_config = get_tool_config_by_name(tool_configs, tool_name)

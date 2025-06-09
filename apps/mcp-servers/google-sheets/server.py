@@ -65,7 +65,7 @@ class GoogleCredentialsManager:
             token_uri="https://oauth2.googleapis.com/token",
             client_id=GOOGLE_CLIENT_ID,
             client_secret=GOOGLE_CLIENT_SECRET,
-            scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+            scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"],
         )
 
     def get_credentials(self) -> Credentials:
