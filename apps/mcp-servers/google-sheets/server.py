@@ -350,7 +350,7 @@ def main(
             ),
             types.Tool(
                 name="google_sheets_write_to_cell",
-                description="Write a value to a specific cell in a spreadsheet.",
+                description="Write a value to a specific cell in a spreadsheet. CRITICAL: Before writing to a cell, you MUST first call google_sheets_get_spreadsheet to check which cells are already occupied and what data they contain. This will help you avoid overwriting existing data.",
                 inputSchema={
                     "type": "object",
                     "required": ["spreadsheet_id", "column", "row", "value"],
