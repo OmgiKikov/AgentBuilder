@@ -5,10 +5,33 @@ import json
 import os
 from openai import OpenAI
 
-from scenario_types import TestSimulation, TestResult, AggregateResults, TestScenario
+from apps.experimental.simulation_runner.scenario_types import TestSimulation, TestResult, AggregateResults, TestScenario
 
-from db import write_test_result, get_scenario_by_id
-from rowboat import Client, StatefulChat
+from apps.experimental.simulation_runner.db import write_test_result, get_scenario_by_id
+
+# Проверяем, нужно ли использовать мок
+USE_MOCK_ROWBOAT = os.environ.get("MOCK_ROWBOAT", "false").lower() == "true"
+USE_DEBUG_ROWBOAT = os.environ.get("DEBUG_ROWBOAT", "false").lower() == "true"
+
+if USE_MOCK_ROWBOAT:
+    print("🔧 Используется мок-версия Rowboat для тестирования")
+    from mock_rowboat import MockClient as Client, MockStatefulChat as StatefulChat
+    # Для мока используем простой класс
+    class UserMessage:
+        def __init__(self, role: str, content: str):
+            self.role = role
+            self.content = content
+elif USE_DEBUG_ROWBOAT:
+    print("🔧 Используется отладочная версия Rowboat для диагностики")
+    from debug_rowboat_client import DebugClient as Client, DebugStatefulChat as StatefulChat
+    # Для дебага используем простой класс
+    class UserMessage:
+        def __init__(self, role: str, content: str):
+            self.role = role
+            self.content = content
+else:
+    from rowboat import Client, StatefulChat
+    from rowboat.schema import UserMessage
 
 openai_client = OpenAI()
 MODEL_NAME = "gpt-4o"
@@ -31,6 +54,12 @@ async def simulate_simulation(
 
     loop = asyncio.get_running_loop()
     pass_criteria = pass_criteria
+    
+    print(f"🔄 Начинаю симуляцию:")
+    print(f"   Сценарий: {scenario.name}")
+    print(f"   Profile ID: {profile_id}")
+    print(f"   Workflow ID: {workflow_id}")
+    print(f"   Max iterations: {max_iterations}")
 
     # Todo: add profile_id
     support_chat = StatefulChat(rowboat_client, workflow_id=workflow_id, test_profile_id=profile_id)
@@ -47,10 +76,15 @@ async def simulate_simulation(
     # -------------------------
     # (1) MAIN SIMULATION LOOP
     # -------------------------
-    for _ in range(max_iterations):
+    print(f"🤖 Запуск основного цикла симуляции ({max_iterations} итераций)...")
+    global_messages = []
+    
+    for iteration in range(max_iterations):
+        print(f"   Итерация {iteration + 1}/{max_iterations}")
         openai_input = messages
 
         # Run OpenAI API call in a separate thread (non-blocking)
+        print(f"   🧠 Вызов OpenAI API...")
         simulated_user_response = await loop.run_in_executor(
             None,  # default ThreadPool
             lambda: openai_client.chat.completions.create(
@@ -61,28 +95,108 @@ async def simulate_simulation(
         )
 
         simulated_content = simulated_user_response.choices[0].message.content.strip()
+        print(f"   👤 Сгенерированное сообщение пользователя: {simulated_content}")
         messages.append({"role": "assistant", "content": simulated_content})
+        global_messages.append({"role": "user", "content": simulated_content})
+        
         # Run Rowboat chat in a thread if it's synchronous
-        rowboat_response = await loop.run_in_executor(None, lambda: support_chat.run(simulated_content))
-
-        messages.append({"role": "user", "content": rowboat_response})
+        print(f"   🛥️  Вызов Rowboat API...")
+        str_rowboat_response = ""
+        try:
+            # Сохраняем количество сообщений до вызова
+            messages_before = len(support_chat.messages)
+            
+            rowboat_response = await loop.run_in_executor(
+                None,
+                lambda: support_chat.run(simulated_content)
+            )
+            
+            # Получаем новые сообщения, добавленные после вызова
+            new_messages = support_chat.messages[messages_before:]
+            
+            print(f"   📥 Получено {len(new_messages)} новых сообщений от Rowboat:")
+            
+            # Выводим детальные логи всех новых сообщений
+            for i, msg in enumerate(new_messages, 1):
+                if hasattr(msg, 'agenticSender') and msg.agenticSender:
+                    sender = msg.agenticSender
+                else:
+                    sender = "System"
+                
+                if msg.role == 'assistant':
+                    if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                        # Это вызов инструмента
+                        print(f"      {i}. 🔧 {sender} вызывает инструмент:")
+                        for tool_call in msg.tool_calls:
+                            tool_name = tool_call.function.name
+                            tool_args = tool_call.function.arguments
+                            print(f"         🛠️  {tool_name}({tool_args})")
+                            str_rowboat_response += f"Агент '{sender}' вызывает инструмент: {tool_name}({tool_args})\n"
+                            # Специальная обработка для transfer_to_agent
+                            if tool_name.startswith('transfer_to_'):
+                                try:
+                                    args_dict = json.loads(tool_args)
+                                    target_agent = args_dict.get('assistant', 'Unknown')
+                                    print(f"         ➡️  Передача управления: {sender} → {target_agent}")
+                                    str_rowboat_response += f"Передача управления: {sender} → {target_agent}\n"
+                                except:
+                                    print(f"         ➡️  Передача управления от {sender}")
+                                    str_rowboat_response += f"Передача управления от {sender}\n"
+                    else:
+                        # Это обычное сообщение
+                        response_type = getattr(msg, 'agenticResponseType', 'unknown')
+                        if response_type == 'external':
+                            print(f"      {i}. 💬 {sender} (внешний ответ): {msg.content}")
+                            str_rowboat_response += f"Агент '{sender}' (внешний ответ): {msg.content}\n"
+                        else:
+                            print(f"      {i}. 🔄 {sender} (внутренний): {msg.content}")
+                            str_rowboat_response += f"Агент '{sender}' (внутренний): {msg.content}\n"
+                            
+                elif msg.role == 'tool':
+                    tool_name = getattr(msg, 'tool_name', 'unknown_tool')
+                    print(f"      {i}. ⚙️  Результат {tool_name}: {msg.content[:100]}...")
+                    str_rowboat_response += f"Результат {tool_name}: {msg.content}"
+                    
+                    # Специальная обработка для transfer_to_agent результатов
+                    if tool_name == 'transfer_to_agent':
+                        try:
+                            result_dict = json.loads(msg.content)
+                            target_agent = result_dict.get('assistant', 'Unknown')
+                            print(f"         ✅ Управление передано агенту: {target_agent}")
+                            str_rowboat_response += f"Управление передано агенту: {target_agent}"
+                        except:
+                            pass
+                            
+                elif msg.role == 'user':
+                    print(f"      {i}. 👤 Пользователь: {msg.content}")
+            
+            print(f"   🤖 Финальный ответ Rowboat: {rowboat_response}")
+            messages.append({"role": "user", "content": rowboat_response})
+            if str_rowboat_response == "":
+                str_rowboat_response = rowboat_response
+            global_messages.append({"role": "assistant", "content": str_rowboat_response})
+            
+        except Exception as e:
+            print(f"   ❌ Ошибка при вызове Rowboat: {e}")
+            print(f"   📋 Детали клиента Rowboat:")
+            print(f"      Host: {rowboat_client.base_url}")
+            print(f"      Headers: {rowboat_client.headers}")
+            raise e
 
     # -------------------------
     # (2) EVALUATION STEP
     # -------------------------
+    print(f"📊 Начинаю оценку результатов...")
+    
     # swap the roles of the assistant and the user
     transcript_str = ""
-    for m in messages:
-        if m.get("role") == "assistant":
-            m["role"] = "user"
-        elif m.get("role") == "user":
-            m["role"] = "assistant"
+    for m in global_messages:
         role = m.get("role", "unknown")
         content = m.get("content", "")
         transcript_str += f"{role.upper()}: {content}\n"
 
-    # Store the transcript as a JSON string
-    transcript = json.dumps(messages)
+    # # Store the transcript as a JSON string
+    transcript = json.dumps(global_messages)
 
     # We use passCriteria as the evaluation "criteria."
     evaluation_prompt = [
@@ -107,6 +221,7 @@ async def simulate_simulation(
     ]
 
     # Run evaluation in a separate thread
+    print(f"🧠 Вызов OpenAI API для оценки...")
     eval_response = await loop.run_in_executor(
         None,
         lambda: openai_client.chat.completions.create(
@@ -126,6 +241,7 @@ async def simulate_simulation(
     if evaluation_result is None:
         raise Exception("No 'verdict' field found in evaluation response")
 
+    print(f"✅ Оценка завершена: {evaluation_result} - {details}")
     return (evaluation_result, details, transcript)
 
 
