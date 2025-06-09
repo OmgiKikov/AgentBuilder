@@ -89,7 +89,7 @@ export function ComposeBox({
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(false)}
                         disabled={disabled || loading}
-                        placeholder="Type a message..."
+                        placeholder="Введите сообщение..."
                         autoResize={true}
                         maxHeight={120}
                         className={`

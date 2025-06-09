@@ -23,16 +23,6 @@ if [ "$USE_RAG_SCRAPING" = "true" ]; then
   CMD="$CMD --profile rag_urls_worker"
 fi
 
-# Add more mappings as needed
-# if [ "$SOME_OTHER_ENV" = "true" ]; then
-#   CMD="$CMD --profile some_other_profile"
-# fi
-
-# Запуск сервиса MCP
-echo "Запускаем MCP сервер на порту 8080"
-echo "Для подключения используйте http://localhost:8080/sse"
-echo "Список инструментов доступен по адресу http://localhost:8080/tools"
-
 # Add the up and build flags at the end
 CMD="$CMD up --build"
 

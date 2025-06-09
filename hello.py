@@ -14,6 +14,7 @@ from starlette.responses import JSONResponse, Response
 app = Server("hello_server")
 # http://hello-mcp-server:8080/sse
 
+
 @app.list_tools()
 async def list_tools() -> list[types.Tool]:
     """Возвращает список доступных инструментов."""
@@ -27,44 +28,38 @@ async def list_tools() -> list[types.Tool]:
                 "properties": {
                     "question": {
                         "type": "string",
-                        "description": "Строка чисел и арифметическиз операций которые нужно посчитать"
+                        "description": "Строка чисел и арифметическиз операций которые нужно посчитать",
                     }
-                }
-            }
+                },
+            },
         )
     ]
 
+
 @app.call_tool()
-async def call_tool(name: str, arguments: dict) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
+async def call_tool(
+    name: str, arguments: dict
+) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
     """Обрабатывает вызов инструмента."""
     print(f"DEBUG: Вызов инструмента {name} с аргументами: {json.dumps(arguments, ensure_ascii=False)}")
-    
+
     if name == "calculator":
         question = arguments.get("question", "")
         print(f"DEBUG: Получен вопрос: {question}")
-        
+
         # Возвращаем фиксированный ответ
         try:
             response = str(eval(question))
         except:
             response = "Произошла ошибка"
         print(f"DEBUG: Отправляем ответ: {response}")
-        
-        return [
-            types.TextContent(
-                type="text",
-                text=response
-            )
-        ]
-    
+
+        return [types.TextContent(type="text", text=response)]
+
     # Если инструмент не найден
     print(f"DEBUG: Неизвестный инструмент: {name}")
-    return [
-        types.TextContent(
-            type="text",
-            text=f"Неизвестный инструмент: {name}"
-        )
-    ]
+    return [types.TextContent(type="text", text=f"Неизвестный инструмент: {name}")]
+
 
 def create_starlette_app(mcp_server: Server, *, debug: bool = False) -> Starlette:
     """Создание Starlette приложения, которое обслуживает MCP сервер с SSE."""
@@ -73,17 +68,17 @@ def create_starlette_app(mcp_server: Server, *, debug: bool = False) -> Starlett
     async def handle_sse(request: Request) -> Response:
         # Создаем опции инициализации
         init_options = mcp_server.create_initialization_options()
-        
+
         # Если задан MCP_PUBLIC_URL в переменных окружения, используем его
         # Устанавливаем публичный URL непосредственно в сервере MCP
         public_url = os.environ.get("MCP_PUBLIC_URL")
         if public_url:
             mcp_server.sse_url = public_url
-        
+
         async with sse.connect_sse(
-                request.scope,
-                request.receive,
-                request._send,  # noqa: SLF001
+            request.scope,
+            request.receive,
+            request._send,  # noqa: SLF001
         ) as (read_stream, write_stream):
             await mcp_server.run(
                 read_stream,
@@ -95,18 +90,14 @@ def create_starlette_app(mcp_server: Server, *, debug: bool = False) -> Starlett
     # Добавляем эндпоинт для получения инструментов в формате, совместимом с AgentBuilder
     async def handle_tools(request: Request) -> JSONResponse:
         tools_list = await list_tools()
-        
+
         # Преобразуем в формат, ожидаемый AgentBuilder
         formatted_tools = []
         for tool in tools_list:
-            formatted_tool = {
-                "name": tool.name,
-                "description": tool.description,
-                "inputSchema": tool.inputSchema
-            }
+            formatted_tool = {"name": tool.name, "description": tool.description, "inputSchema": tool.inputSchema}
             formatted_tools.append(formatted_tool)
             print(f"DEBUG: Сформированный инструмент: {json.dumps(formatted_tool, indent=2, ensure_ascii=False)}")
-        
+
         return JSONResponse(formatted_tools)
 
     return Starlette(
@@ -121,12 +112,12 @@ def create_starlette_app(mcp_server: Server, *, debug: bool = False) -> Starlett
 
 if __name__ == "__main__":
     mcp_server = app  # Используем наш MCP сервер
-    
+
     import argparse
-    
-    parser = argparse.ArgumentParser(description='Запуск MCP SSE-сервера')
-    parser.add_argument('--host', default='0.0.0.0', help='Хост для привязки')
-    parser.add_argument('--port', type=int, default=8080, help='Порт для прослушивания')
+
+    parser = argparse.ArgumentParser(description="Запуск MCP SSE-сервера")
+    parser.add_argument("--host", default="0.0.0.0", help="Хост для привязки")
+    parser.add_argument("--port", type=int, default=8080, help="Порт для прослушивания")
     args = parser.parse_args()
 
     # Связываем SSE обработчик запросов с MCP сервером
@@ -142,5 +133,5 @@ if __name__ == "__main__":
     print("Доступная функция: hello")
     print("Для подключения к серверу используйте:")
     print(f"uv run client.py {public_url}")
-    
-    uvicorn.run(starlette_app, host=args.host, port=args.port) 
+
+    uvicorn.run(starlette_app, host=args.host, port=args.port)

@@ -7,16 +7,19 @@ from lib import AgentContext, PromptContext, ToolContext, ChatContext
 from client import PROVIDER_COPILOT_MODEL
 from client import completions_client
 
+
 class UserMessage(BaseModel):
     role: Literal["user"]
     content: str
+
 
 class AssistantMessage(BaseModel):
     role: Literal["assistant"]
     content: str
 
+
 class DataSource(BaseModel):
-    id: str = Field(alias='_id')
+    id: str = Field(alias="_id")
     name: str
     description: Optional[str] = None
     active: bool = True
@@ -27,17 +30,19 @@ class DataSource(BaseModel):
     class Config:
         populate_by_name = True
 
-with open('copilot_edit_agent.md', 'r', encoding='utf-8') as file:
+
+with open("copilot_edit_agent.md", "r", encoding="utf-8") as file:
     copilot_instructions_edit_agent = file.read()
 
+
 def get_response(
-        messages: List[UserMessage | AssistantMessage],
-        workflow_schema: str,
-        current_workflow_config: str,
-        context: AgentContext | PromptContext | ToolContext | ChatContext | None = None,
-        dataSources: Optional[List[DataSource]] = None,
-        copilot_instructions: str = copilot_instructions_edit_agent
-    ) -> str:
+    messages: List[UserMessage | AssistantMessage],
+    workflow_schema: str,
+    current_workflow_config: str,
+    context: AgentContext | PromptContext | ToolContext | ChatContext | None = None,
+    dataSources: Optional[List[DataSource]] = None,
+    copilot_instructions: str = copilot_instructions_edit_agent,
+) -> str:
     # if context is provided, create a prompt for the context
     if context:
         match context:
@@ -94,15 +99,10 @@ The current workflow config is:
 User: {last_message.content}
 """
 
-    updated_msgs = [{"role": "system", "content": sys_prompt}] + [
-        message.model_dump() for message in messages
-    ]
+    updated_msgs = [{"role": "system", "content": sys_prompt}] + [message.model_dump() for message in messages]
 
     response = completions_client.chat.completions.create(
-        model=PROVIDER_COPILOT_MODEL,
-        messages=updated_msgs,
-        temperature=0.0,
-        response_format={"type": "json_object"}
+        model=PROVIDER_COPILOT_MODEL, messages=updated_msgs, temperature=0.0, response_format={"type": "json_object"}
     )
 
     return response.choices[0].message.content

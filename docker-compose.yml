@@ -56,13 +56,18 @@ services:
     volumes:
       - uploads:/app/uploads
 
-  hello-mcp-server:
+  google-sheets-mcp-server:
     build:
-      context: .
+      context: ./apps/mcp-servers/google-sheets
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "3003:3003"
     restart: unless-stopped
+    environment:
+      - GOOGLE_SHEETS_MCP_SERVER_PORT=3003
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REFRESH_TOKEN=${GOOGLE_REFRESH_TOKEN}
     profiles: ["mcp_server"]
 
   rowboat_agents:

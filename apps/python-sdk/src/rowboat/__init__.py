@@ -7,7 +7,7 @@ from .schema import (
     AssistantMessageWithToolCalls,
     ToolMessage,
     ApiRequest,
-    ApiResponse
+    ApiResponse,
 )
 
 __version__ = "0.1.0"
@@ -25,4 +25,4 @@ __all__ = [
     # Request/Response types
     "ApiRequest",
     "ApiResponse",
-] 
+]

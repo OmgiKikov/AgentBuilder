@@ -11,48 +11,33 @@ interface TourStep {
 const TOUR_STEPS: TourStep[] = [
     {
         target: 'copilot',
-        content: 'Создавайте агентов с помощью копилота.\nЭто может занять минуту.',
-        title: 'Шаг 1/9'
+        content: 'Создавайте агентов с помощью помощника. Это может занять минуту.',
+        title: 'Шаг 1/5'
+    },
+    {
+        target: 'copilot-file-link',
+        content: 'Так же в этом поле вы можете вставлять ссылки прямо в чат, а также прикреплять файлы через кнопку со скрепкой. Всё для удобной работы с вашими материалами!',
+        title: 'Шаг 2/5'
     },
     {
         target: 'playground',
-        content: 'Тестируйте вашего ассистента на площадке.\nОтлаживайте вызовы инструментов и ответы.',
-        title: 'Шаг 2/9'
+        content: 'Тестируйте ваших агентов прямо сейчас. Отлаживайте вызовы инструментов и ответы.',
+        title: 'Шаг 3/5'
     },
+    // {
+    //     target: 'tools-marketplace',
+    //     content: 'Здесь вы можете подключать и настраивать интеграции с внешними сервисами и инструментами для вашего проекта.',
+    //     title: 'Шаг 4/6'
+    // },
     {
-        target: 'entity-agents',
-        content: 'Управляйте вашими агентами.\nУказывайте инструкции, примеры и использование инструментов.',
-        title: 'Шаг 3/9'
-    },
-    {
-        target: 'entity-tools',
-        content: 'Создавайте свои инструменты, импортируйте MCP-инструменты или используйте существующие.\nМокап-инструменты для быстрого тестирования.',
-        title: 'Шаг 4/9'
-    },
-    {
-        target: 'entity-prompts',
-        content: 'Управляйте промтами, которые будут использоваться агентами.\nНастраивайте приветственное сообщение.',
-        title: 'Шаг 5/9'
-    },
-    {
-        target: 'entity-data-sources',
-        content: 'Добавляйте и управляйте источниками данных RAG, которые будут использоваться агентами.\nДоступные источники: локальные файлы, файлы S3, веб-URL и обычный текст.\n\nВАЖНО: После добавления источника данных обязательно добавьте его в\nконфигурацию и инструкции агента (упомяните @tool:rag_search).',
-        title: 'Шаг 6/9'
-    },
-    {
-        target: 'settings',
-        content: 'Настройте параметры проекта\nПолучите API-ключи, настройте вебхуки инструментов.',
-        title: 'Шаг 7/9'
-    },
-    {
-        target: 'deploy',
-        content: 'Разверните версию вашего рабочего процесса, чтобы сделать его активным.\nЭто сделает ваш рабочий процесс доступным для использования через API и SDK.\n\nУзнайте больше:\n• <a href="https://docs.AgentBuilderlabs.com/using_the_api/" target="_blank" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">Использование API</a>\n• <a href="https://docs.AgentBuilderlabs.com/using_the_sdk/" target="_blank" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">Использование SDK</a>',
-        title: 'Шаг 8/9'
+        target: 'config-modal',
+        content: 'В модальном окне "Конфигурация" вы управляете агентами, инструментами, промптами и RAG-источниками. Всё в одном месте!',
+        title: 'Шаг 4/5'
     },
     {
         target: 'tour-button',
-        content: 'Вернитесь сюда в любое время, чтобы перезапустить тур.\nВсё ещё есть вопросы? Смотрите нашу <a href="https://docs.AgentBuilderlabs.com/" target="_blank" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">документацию</a> или обращайтесь к нам по email',
-        title: 'Шаг 9/9'
+        content: 'Вернитесь сюда в любое время, чтобы повторить гайд.',
+        title: 'Шаг 5/5'
     }
 ];
 
@@ -245,7 +230,7 @@ export function ProductTour({
                         onClick={handleSkip}
                         className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                     >
-                        Пропустить тур
+                        Пропустить гайд
                     </button>
                     <button
                         onClick={handleNext}

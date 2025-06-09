@@ -20,6 +20,7 @@ from apps.experimental.simulation_runner.simulation import simulate_simulations 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 class JobService:
     def __init__(self):
         self.poll_interval = 5  # seconds
@@ -144,6 +145,7 @@ class JobService:
             logging.info("Service stopped by user.")
         finally:
             loop.close()
+
 
 if __name__ == "__main__":
     service = JobService()

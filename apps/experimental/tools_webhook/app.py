@@ -18,12 +18,14 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def require_signed_request(f):
     """
     If SIGNING_SECRET is set, verifies the request content's SHA256 hash
     matches 'bodyHash' in the 'X-Signature-Jwt' header using HS256.
     If no SIGNING_SECRET is configured, skip the validation entirely.
     """
+
     @wraps(f)
     def decorated(*args, **kwargs):
         signing_secret = os.environ.get("SIGNING_SECRET", "").strip()
@@ -45,10 +47,10 @@ def require_signed_request(f):
                 signing_secret,
                 algorithms=["HS256"],
                 options={
-                    "require": ["bodyHash"],   # must have bodyHash
-                    "verify_aud": False,       # disable audience check
-                    "verify_iss": False,       # disable issuer check
-                }
+                    "require": ["bodyHash"],  # must have bodyHash
+                    "verify_aud": False,  # disable audience check
+                    "verify_iss": False,  # disable issuer check
+                },
             )
         except InvalidTokenError as e:
             logger.error("Invalid token: %s", e)
@@ -64,7 +66,9 @@ def require_signed_request(f):
             return jsonify({"error": "bodyHash mismatch"}), 403
 
         return f(*args, **kwargs)
+
     return decorated
+
 
 @app.route("/tool_call", methods=["POST"])
 @require_signed_request
@@ -122,6 +126,7 @@ def tool_call():
     except Exception as e:
         logger.exception("Unexpected error in /tool_call route")
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)

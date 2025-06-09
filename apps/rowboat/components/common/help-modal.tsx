@@ -32,50 +32,6 @@ export function HelpModal({ isOpen, onClose, onStartTour }: HelpModalProps) {
                             </div>
                         </div>
                     </Button>
-
-                    <a 
-                        href="https://docs.AgentBuilderlabs.com/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block"
-                    >
-                        <Button
-                            className="w-full justify-start gap-4 text-left py-6 px-4 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-all duration-200 group hover:scale-[1.02] hover:shadow-md"
-                            variant="light"
-                        >
-                            <div className="bg-indigo-100 dark:bg-indigo-500/20 p-2 rounded-lg group-hover:bg-indigo-200 dark:group-hover:bg-indigo-500/30 transition-colors">
-                                <BookOpen className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-                            </div>
-                            <div>
-                                <div className="font-medium text-base text-gray-900 dark:text-gray-100">Документация</div>
-                                <div className="text-sm text-gray-500 dark:text-gray-400">
-                                    Ознакомьтесь с подробными руководствами
-                                </div>
-                            </div>
-                        </Button>
-                    </a>
-
-                    <a 
-                        href="mailto:johnkikov01@gmail.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block"
-                    >
-                        <Button
-                            className="w-full justify-start gap-4 text-left py-6 px-4 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-all duration-200 group hover:scale-[1.02] hover:shadow-md"
-                            variant="light"
-                        >
-                            <div className="bg-indigo-100 dark:bg-indigo-500/20 p-2 rounded-lg group-hover:bg-indigo-200 dark:group-hover:bg-indigo-500/30 transition-colors">
-                                <MessageCircle className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-                            </div>
-                            <div>   
-                                <div className="font-medium text-base text-gray-900 dark:text-gray-100">Связаться с нами</div>
-                                <div className="text-sm text-gray-500 dark:text-gray-400">
-                                    Получите помощь от нашей команды
-                                </div>
-                            </div>
-                        </Button>
-                    </a>
                 </div>
 
                 <div className="mt-8 flex justify-end">

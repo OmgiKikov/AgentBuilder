@@ -10,13 +10,14 @@ import json
 
 # Load environment variables
 from load_env import load_environment
+
 load_environment()
 
 # Configure logging to stdout for Docker compatibility
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]  # Send logs to stdout
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],  # Send logs to stdout
 )
 logger = logging.getLogger(__name__)
 
@@ -25,13 +26,14 @@ ROWBOAT_API_HOST = os.environ.get("ROWBOAT_API_HOST").strip()
 
 Message = UserMessage | SystemMessage
 
+
 def process_conversation_turn(
     user_input: str,
     workflow_id: str,
     system_prompt: str = "You are a helpful assistant. Provide concise and clear answers.",
     previous_messages: List[Message] = None,
     previous_state: Any = None,
-    project_id: str = None
+    project_id: str = None,
 ) -> Tuple[str, List[Message], Any]:
     """
     Process a single conversation turn with the RowBoat agent using the stateless API.
@@ -52,29 +54,21 @@ def process_conversation_turn(
         messages = [] if previous_messages is None else previous_messages.copy()
 
         # If we're starting a new conversation, add the system message
-        if not messages or not any(msg.role == 'system' for msg in messages):
-            messages.append(SystemMessage(role='system', content=system_prompt))
+        if not messages or not any(msg.role == "system" for msg in messages):
+            messages.append(SystemMessage(role="system", content=system_prompt))
 
         # Add the user's new
         if user_input:
-            messages.append(UserMessage(role='user', content=user_input))
+            messages.append(UserMessage(role="user", content=user_input))
 
         # Process the conversation using the stateless API
         logger.info(f"Sending to RowBoat API with {len(messages)} messages")
 
         # Create client with custom project_id if provided
 
-        client = Client(
-            host=ROWBOAT_API_HOST,
-            project_id=project_id,
-            api_key=get_api_key(project_id)
-        )
+        client = Client(host=ROWBOAT_API_HOST, project_id=project_id, api_key=get_api_key(project_id))
 
-        response_messages, new_state = client.chat(
-            messages=messages,
-            workflow_id=workflow_id,
-            state=previous_state
-        )
+        response_messages, new_state = client.chat(messages=messages, workflow_id=workflow_id, state=previous_state)
 
         # Extract the assistant's response (last message)
         if response_messages and len(response_messages) > 0:
@@ -85,12 +79,12 @@ def process_conversation_turn(
         # Update messages list with the new responses
         final_messages = messages + response_messages
 
-
         logger.info(f"Got response from RowBoat API: {assistant_response[:100]}...")
         return assistant_response, final_messages, new_state
 
     except Exception as e:
         logger.error(f"Error processing conversation turn: {str(e)}")
         import traceback
+
         logger.error(traceback.format_exc())
         return "I'm sorry, I encountered an error processing your request.", previous_messages, previous_state

@@ -10,8 +10,9 @@ from copilot import copilot_instructions_edit_agent
 import json
 from audio_transcription import transcribe_audio
 
+
 class DataSource(BaseModel):
-    id: str = Field(alias='_id')
+    id: str = Field(alias="_id")
     name: str
     description: Optional[str] = None
     active: bool = True
@@ -22,6 +23,7 @@ class DataSource(BaseModel):
     class Config:
         populate_by_name = True
 
+
 class ApiRequest(BaseModel):
     messages: List[UserMessage | AssistantMessage]
     workflow_schema: str
@@ -29,46 +31,52 @@ class ApiRequest(BaseModel):
     context: AgentContext | PromptContext | ToolContext | ChatContext | None = None
     dataSources: Optional[List[DataSource]] = None
 
+
 class ApiResponse(BaseModel):
     response: str
 
 
 app = Flask(__name__)
 
+
 def validate_request(request_data: ApiRequest) -> None:
     """Validate the chat request data."""
     if not request_data.messages:
-        raise ValueError('Messages list cannot be empty')
+        raise ValueError("Messages list cannot be empty")
 
     if not isinstance(request_data.messages[-1], UserMessage):
-        raise ValueError('Last message must be a user message')
+        raise ValueError("Last message must be a user message")
+
 
 def require_api_key(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({'error': 'Missing or invalid authorization header'}), 401
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return jsonify({"error": "Missing or invalid authorization header"}), 401
 
-        token = auth_header.split('Bearer ')[1]
-        actual = os.environ.get('API_KEY', '').strip()
+        token = auth_header.split("Bearer ")[1]
+        actual = os.environ.get("API_KEY", "").strip()
         if actual and token != actual:
-            return jsonify({'error': 'Invalid API key'}), 403
+            return jsonify({"error": "Invalid API key"}), 403
 
         return f(*args, **kwargs)
+
     return decorated
 
-@app.route('/health', methods=['GET'])
-def health():
-    return jsonify({'status': 'ok'})
 
-@app.route('/chat_stream', methods=['POST'])
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"})
+
+
+@app.route("/chat_stream", methods=["POST"])
 @require_api_key
 def chat_stream():
     try:
         raw_data = request.json
         print(f"Raw request JSON: {json.dumps(raw_data)}")
-        
+
         request_data = ApiRequest(**raw_data)
         print(f"received /chat_stream request: {request_data}")
         validate_request(request_data)
@@ -79,7 +87,7 @@ def chat_stream():
                 workflow_schema=request_data.workflow_schema,
                 current_workflow_config=request_data.current_workflow_config,
                 context=request_data.context,
-                dataSources=request_data.dataSources
+                dataSources=request_data.dataSources,
             )
 
             for chunk in stream:
@@ -91,33 +99,22 @@ def chat_stream():
 
         return Response(
             stream_with_context(generate()),
-            mimetype='text/event-stream',
-            headers={
-                'Cache-Control': 'no-cache',
-                'X-Accel-Buffering': 'no'
-            }
+            mimetype="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
     except ValidationError as ve:
         print(ve)
-        return jsonify({
-            'error': 'Invalid request format',
-            'details': str(ve)
-        }), 400
+        return jsonify({"error": "Invalid request format", "details": str(ve)}), 400
     except ValueError as ve:
         print(ve)
-        return jsonify({
-            'error': 'Invalid request data',
-            'details': str(ve)
-        }), 400
+        return jsonify({"error": "Invalid request data", "details": str(ve)}), 400
     except Exception as e:
         print(e)
-        return jsonify({
-            'error': 'Internal server error',
-            'details': str(e)
-        }), 500
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
-@app.route('/edit_agent_instructions', methods=['POST'])
+
+@app.route("/edit_agent_instructions", methods=["POST"])
 @require_api_key
 def edit_agent_instructions():
     try:
@@ -130,7 +127,7 @@ def edit_agent_instructions():
             workflow_schema=request_data.workflow_schema,
             current_workflow_config=request_data.current_workflow_config,
             context=request_data.context,
-            copilot_instructions=copilot_instructions_edit_agent
+            copilot_instructions=copilot_instructions_edit_agent,
         )
 
         api_response = ApiResponse(response=response).model_dump()
@@ -139,49 +136,39 @@ def edit_agent_instructions():
 
     except ValidationError as ve:
         print(ve)
-        return jsonify({
-            'error': 'Invalid request format',
-            'details': str(ve)
-        }), 400
+        return jsonify({"error": "Invalid request format", "details": str(ve)}), 400
     except ValueError as ve:
         print(ve)
-        return jsonify({
-            'error': 'Invalid request data',
-            'details': str(ve)
-        }), 400
+        return jsonify({"error": "Invalid request data", "details": str(ve)}), 400
     except Exception as e:
         print(e)
-        return jsonify({
-            'error': 'Internal server error',
-            'details': str(e)
-        }), 500
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
-@app.route('/transcribe_audio', methods=['POST'])
+
+@app.route("/transcribe_audio", methods=["POST"])
 def transcribe_audio_route():
     try:
-        if 'audio' not in request.files:
-            return jsonify({'error': 'No audio file provided'}), 400
-        
-        audio_file = request.files['audio']
+        if "audio" not in request.files:
+            return jsonify({"error": "No audio file provided"}), 400
+
+        audio_file = request.files["audio"]
         audio_data = audio_file.read()
-        
-        language = request.form.get('language', 'ru')
-        
+
+        language = request.form.get("language", "ru")
+
         # Транскрибируем аудио
         transcription = transcribe_audio(audio_data, language)
-        
+
         if not transcription:
-            return jsonify({'error': 'Failed to transcribe audio'}), 500
-        
-        return jsonify({'transcription': transcription})
-        
+            return jsonify({"error": "Failed to transcribe audio"}), 500
+
+        return jsonify({"transcription": transcription})
+
     except Exception as e:
         print(e)
-        return jsonify({
-            'error': 'Internal server error',
-            'details': str(e)
-        }), 500
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     print("Starting Flask server...")
-    app.run(port=3002, host='0.0.0.0', debug=True)
+    app.run(port=3002, host="0.0.0.0", debug=True)

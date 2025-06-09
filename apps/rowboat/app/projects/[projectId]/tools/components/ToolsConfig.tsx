@@ -5,6 +5,7 @@ import { Tabs, Tab } from '@/components/ui/tabs';
 import { HostedServers } from './HostedServers';
 import { CustomServers } from './CustomServers';
 import { WebhookConfig } from './WebhookConfig';
+import { NoCodeMCPBuilder } from './NoCodeMCPBuilder';
 import type { Key } from 'react';
 
 export function ToolsConfig() {
@@ -31,6 +32,11 @@ export function ToolsConfig() {
         <Tab key="custom" title="Собственные MCP серверы">
           <div className="mt-4 p-6">
             <CustomServers />
+          </div>
+        </Tab>
+        <Tab key="no-code" title="Создать MCP инструмент">
+          <div className="mt-4 p-6">
+            <NoCodeMCPBuilder />
           </div>
         </Tab>
         <Tab key="webhook" title="Webhook инструменты">

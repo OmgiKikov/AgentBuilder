@@ -6,7 +6,9 @@ import copy
 from .execute_turn import Agent, Response, create_response
 
 from src.utils.common import common_logger, generate_openai_output, update_tokens_used
+
 logger = common_logger
+
 
 def classify_hallucination(context: str, assistant_response: str, chat_history: list, model: str) -> str:
     """
@@ -95,7 +97,17 @@ def classify_hallucination(context: str, assistant_response: str, chat_history: 
     response = generate_llm_output(messages, model)
     return response
 
-def post_process_response(messages: list, post_processing_agent_name: str, post_process_instructions: str, style_prompt: str = None, context: str = None, model: str = "gpt-4o", tokens_used: dict = {}, last_agent: Agent = None) -> dict:
+
+def post_process_response(
+    messages: list,
+    post_processing_agent_name: str,
+    post_process_instructions: str,
+    style_prompt: str = None,
+    context: str = None,
+    model: str = "gpt-4o",
+    tokens_used: dict = {},
+    last_agent: Agent = None,
+) -> dict:
     agent_instructions = last_agent.instructions
     agent_history = last_agent.history
     # agent_instructions = ''
@@ -110,11 +122,11 @@ def post_process_response(messages: list, post_processing_agent_name: str, post_
         logger.info("Last message is a tool call, skipping post processing and setting last message to external")
         skip = True
 
-    elif not pending_msg['response_type'] == "internal":
+    elif not pending_msg["response_type"] == "internal":
         logger.info("Last message is not internal, skipping post processing and setting last message to external")
         skip = True
 
-    elif not pending_msg['content']:
+    elif not pending_msg["content"]:
         logger.info("Last message has no content, skipping post processing and setting last message to external")
         skip = True
 
@@ -123,16 +135,16 @@ def post_process_response(messages: list, post_processing_agent_name: str, post_
         skip = True
 
     if skip:
-        pending_msg['response_type'] = "external"
-        response = Response(
-            messages=[],
-            tokens_used=tokens_used,
-            agent=last_agent,
-            error_msg=''
-        )
+        pending_msg["response_type"] = "external"
+        response = Response(messages=[], tokens_used=tokens_used, agent=last_agent, error_msg="")
         return response
 
-    agent_history_str = f"\n{'*'*100}\n".join([f"Role: {message['role']} | Content: {message.get('content', 'None')} | Tool Calls: {message.get('tool_calls', 'None')}" for message in agent_history[:-1]])
+    agent_history_str = f"\n{'*'*100}\n".join(
+        [
+            f"Role: {message['role']} | Content: {message.get('content', 'None')} | Tool Calls: {message.get('tool_calls', 'None')}"
+            for message in agent_history[:-1]
+        ]
+    )
     logger.debug(f"Agent history: {agent_history_str}")
 
     prompt = f"""
@@ -192,11 +204,7 @@ def post_process_response(messages: list, post_processing_agent_name: str, post_
 
     logger.debug(f"Sanitizing response for style. Original response: {pending_msg['content']}")
     completion = generate_openai_output(
-        messages=[
-            {"role": "system", "content": prompt}
-        ],
-        model = model,
-        return_completion=True
+        messages=[{"role": "system", "content": prompt}], model=model, return_completion=True
     )
     content = completion.choices[0].message.content
     if content:
@@ -204,15 +212,10 @@ def post_process_response(messages: list, post_processing_agent_name: str, post_
         tokens_used = update_tokens_used(provider="openai", model=model, tokens_used=tokens_used, completion=completion)
         logger.debug(f"Response after style check: {content}, tokens used: {tokens_used}")
 
-    pending_msg['content'] = content if content else pending_msg['content']
-    pending_msg['response_type'] = "external"
-    pending_msg['sender'] = pending_msg['sender'] + f' >> {post_processing_agent_name}'
+    pending_msg["content"] = content if content else pending_msg["content"]
+    pending_msg["response_type"] = "external"
+    pending_msg["sender"] = pending_msg["sender"] + f" >> {post_processing_agent_name}"
 
-    response = Response(
-        messages=[pending_msg],
-        tokens_used=tokens_used,
-        agent=last_agent,
-        error_msg=''
-    )
+    response = Response(messages=[pending_msg], tokens_used=tokens_used, agent=last_agent, error_msg="")
 
     return response

@@ -45,7 +45,7 @@ export async function getCopilotResponse(
 
     // prepare request
     const request: z.infer<typeof CopilotAPIRequest> = {
-        messages: messages.map(convertToCopilotApiMessage),
+        messages: messages.filter(msg => msg.role !== 'system').map(convertToCopilotApiMessage),
         workflow_schema: JSON.stringify(zodToJsonSchema(CopilotWorkflow)),
         current_workflow_config: JSON.stringify(copilotWorkflow),
         context: context ? convertToCopilotApiChatContext(context) : null,
@@ -133,6 +133,7 @@ export async function getCopilotResponseStream(
 ): Promise<{
     streamId: string;
 }> {
+    console.log('getCopilotResponseStream dataSources', dataSources); // DEBUG
     await projectAuthCheck(projectId);
     if (!await check_query_limit(projectId)) {
         throw new QueryLimitError();
@@ -149,7 +150,7 @@ export async function getCopilotResponseStream(
 
     // prepare request
     const request: z.infer<typeof CopilotAPIRequest> = {
-        messages: messages.map(convertToCopilotApiMessage),
+        messages: messages.filter(msg => msg.role !== 'system').map(convertToCopilotApiMessage),
         workflow_schema: JSON.stringify(zodToJsonSchema(CopilotWorkflow)),
         current_workflow_config: JSON.stringify(copilotWorkflow),
         context: context ? convertToCopilotApiChatContext(context) : null,
@@ -194,7 +195,7 @@ export async function getCopilotAgentInstructions(
 
     // prepare request
     const request: z.infer<typeof CopilotAPIRequest> = {
-        messages: messages.map(convertToCopilotApiMessage),
+        messages: messages.filter(msg => msg.role !== 'system').map(convertToCopilotApiMessage),
         workflow_schema: JSON.stringify(zodToJsonSchema(CopilotWorkflow)),
         current_workflow_config: JSON.stringify(copilotWorkflow),
         context: {

@@ -8,22 +8,17 @@ import json
 from time import time
 from rowboat.schema import SystemMessage, UserMessage, ApiMessage
 import elevenlabs
+
 # Load environment variables
 from load_env import load_environment
+
 load_environment()
 
 from twilio_api import process_conversation_turn
 
 
 # Import MongoDB utility functions
-from util import (
-    get_call_state,
-    save_call_state,
-    delete_call_state,
-    get_mongodb_status,
-    get_twilio_config,
-    CallState
-)
+from util import get_call_state, save_call_state, delete_call_state, get_mongodb_status, get_twilio_config, CallState
 
 Message = SystemMessage | UserMessage
 
@@ -35,8 +30,8 @@ app = Flask(__name__)
 # Configure logging to stdout for Docker compatibility
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]  # Send logs to stdout
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],  # Send logs to stdout
 )
 logger = logging.getLogger(__name__)
 
@@ -48,7 +43,8 @@ active_calls = {}
 TTS_VOICE = "Markus - Mature and Chill"
 TTS_MODEL = "eleven_flash_v2_5"
 
-@app.route('/inbound', methods=['POST'])
+
+@app.route("/inbound", methods=["POST"])
 def handle_inbound_call():
     """Handle incoming calls to Twilio numbers configured for RowBoat"""
     try:
@@ -56,9 +52,9 @@ def handle_inbound_call():
         logger.info(f"Received inbound call request: {request.values}")
 
         # Get the Twilio phone number that received the call
-        to_number = request.values.get('To')
-        call_sid = request.values.get('CallSid')
-        from_number = request.values.get('From')
+        to_number = request.values.get("To")
+        call_sid = request.values.get("CallSid")
+        from_number = request.values.get("From")
 
         logger.info(f"Inbound call from {from_number} to {to_number}, CallSid: {call_sid}")
         logger.info(f"Raw To number value: '{to_number}', Type: {type(to_number)}")
@@ -71,10 +67,12 @@ def handle_inbound_call():
         # Look up configuration in MongoDB
         twilio_config = get_twilio_config(to_number)
         if twilio_config:
-            workflow_id = twilio_config['workflow_id']
-            project_id = twilio_config['project_id']
-            system_prompt = twilio_config.get('system_prompt', system_prompt)
-            logger.info(f"Found MongoDB configuration for {to_number}: project_id={project_id}, workflow_id={workflow_id}")
+            workflow_id = twilio_config["workflow_id"]
+            project_id = twilio_config["project_id"]
+            system_prompt = twilio_config.get("system_prompt", system_prompt)
+            logger.info(
+                f"Found MongoDB configuration for {to_number}: project_id={project_id}, workflow_id={workflow_id}"
+            )
         else:
             logger.warning(f"No active configuration found in MongoDB for phone number {to_number}")
 
@@ -82,9 +80,12 @@ def handle_inbound_call():
             # No workflow found - provide error message
             logger.error(f"No workflow_id found for inbound call to {to_number}")
             response = VoiceResponse()
-            response.say("I'm sorry, this phone number is not properly configured in our system. Please contact support.", voice='alice')
+            response.say(
+                "I'm sorry, this phone number is not properly configured in our system. Please contact support.",
+                voice="alice",
+            )
             # Include additional information in TwiML for debugging
-            response.say(f"Received call to number {to_number}", voice='alice')
+            response.say(f"Received call to number {to_number}", voice="alice")
             response.hangup()
             return str(response)
 
@@ -95,11 +96,11 @@ def handle_inbound_call():
             system_prompt=system_prompt,
             conversation_history=[],
             messages=[],  # For stateless API
-            state=None,   # For stateless API state
+            state=None,  # For stateless API state
             turn_count=0,
             inbound=True,
             to_number=to_number,
-            created_at=int(time())  # Add timestamp for expiration tracking
+            created_at=int(time()),  # Add timestamp for expiration tracking
         )
 
         # Save to MongoDB (primary source of truth)
@@ -122,32 +123,35 @@ def handle_inbound_call():
     except Exception as e:
         # Log the full error with traceback
         import traceback
+
         logger.error(f"Error in handle_inbound_call: {str(e)}")
         logger.error(traceback.format_exc())
 
         # Return a basic TwiML response so Twilio doesn't get a 500 error
         response = VoiceResponse()
-        response.say("I'm sorry, we encountered an error processing your call. Please try again later.", voice='alice')
+        response.say("I'm sorry, we encountered an error processing your call. Please try again later.", voice="alice")
         response.hangup()
         return str(response)
 
-@app.route('/twiml', methods=['POST'])
+
+@app.route("/twiml", methods=["POST"])
 def handle_twiml_call():
     """TwiML endpoint for outbound call handling"""
-    call_sid = request.values.get('CallSid')
+    call_sid = request.values.get("CallSid")
 
     # Get call state to retrieve workflow_id and project_id
     call_state = get_call_state(call_sid)
     if call_state:
-        workflow_id = call_state.get('workflow_id')
-        project_id = call_state.get('project_id')
+        workflow_id = call_state.get("workflow_id")
+        project_id = call_state.get("project_id")
         return handle_call(call_sid, workflow_id, project_id)
     else:
         # No call state found - error response
         response = VoiceResponse()
-        response.say("I'm sorry, your call session has expired. Please try again.", voice='alice')
+        response.say("I'm sorry, your call session has expired. Please try again.", voice="alice")
         response.hangup()
         return str(response)
+
 
 def handle_call(call_sid, workflow_id, project_id=None):
     """Common handler for both inbound and outbound calls"""
@@ -179,12 +183,12 @@ def handle_call(call_sid, workflow_id, project_id=None):
                 system_prompt="You are a helpful assistant. Provide concise and clear answers.",
                 conversation_history=[],
                 messages=[],  # For stateless API
-                state=None,   # For stateless API state
+                state=None,  # For stateless API state
                 turn_count=0,
                 inbound=False,  # Default for outbound calls
                 to_number="",  # This will be set properly for inbound calls
                 created_at=int(time()),  # Add timestamp for expiration tracking
-                last_transcription=""
+                last_transcription="",
             )
 
             # Save to MongoDB (primary source of truth)
@@ -204,19 +208,19 @@ def handle_call(call_sid, workflow_id, project_id=None):
         # Create TwiML response
         response = VoiceResponse()
 
-# Check if this is a new call (no turns yet)
-        if call_state.get('turn_count', 0) == 0:
+        # Check if this is a new call (no turns yet)
+        if call_state.get("turn_count", 0) == 0:
             logger.info("First turn: generating AI greeting using an empty user input...")
 
             # Generate greeting by calling process_conversation_turn with empty user input
             try:
                 ai_greeting, updated_messages, updated_state = process_conversation_turn(
                     user_input="",  # empty to signal "give me your greeting"
-                    workflow_id=call_state['workflow_id'],
-                    system_prompt=call_state['system_prompt'],
+                    workflow_id=call_state["workflow_id"],
+                    system_prompt=call_state["system_prompt"],
                     previous_messages=[],
                     previous_state=None,
-                    project_id=call_state.get('project_id')
+                    project_id=call_state.get("project_id"),
                 )
             except Exception as e:
                 logger.error(f"Error generating AI greeting: {str(e)}")
@@ -227,13 +231,10 @@ def handle_call(call_sid, workflow_id, project_id=None):
                 updated_state = None
 
             # Update call_state with AI greeting
-            call_state['messages'] = updated_messages
-            call_state['state'] = updated_state
-            call_state['conversation_history'].append({
-                'user': "",  # empty user
-                'assistant': ai_greeting
-            })
-            call_state['turn_count'] = 1
+            call_state["messages"] = updated_messages
+            call_state["state"] = updated_state
+            call_state["conversation_history"].append({"user": "", "assistant": ai_greeting})  # empty user
+            call_state["turn_count"] = 1
 
             # Save changes to MongoDB
             try:
@@ -253,15 +254,15 @@ def handle_call(call_sid, workflow_id, project_id=None):
 
             # Gather user input next
             gather = Gather(
-                input='speech',
-                action=f'/process_speech?call_sid={call_sid}',
-                speech_timeout='auto',
-                language='en-US',
+                input="speech",
+                action=f"/process_speech?call_sid={call_sid}",
+                speech_timeout="auto",
+                language="en-US",
                 enhanced=True,
-                speechModel='phone_call'
+                speechModel="phone_call",
             )
             response.append(gather)
-            response.redirect('/twiml')
+            response.redirect("/twiml")
 
         logger.info(f"Returning response: {str(response)}")
         return str(response)
@@ -269,22 +270,24 @@ def handle_call(call_sid, workflow_id, project_id=None):
     except Exception as e:
         # Log the full error with traceback
         import traceback
+
         logger.error(f"Error in handle_call: {str(e)}")
         logger.error(traceback.format_exc())
 
         # Return a basic TwiML response
         response = VoiceResponse()
-        response.say("I'm sorry, we encountered an error processing your call. Please try again later.", voice='alice')
+        response.say("I'm sorry, we encountered an error processing your call. Please try again later.", voice="alice")
         response.hangup()
         return str(response)
 
-@app.route('/process_speech', methods=['POST'])
+
+@app.route("/process_speech", methods=["POST"])
 def process_speech():
     """Process user speech input and generate AI response"""
     try:
         logger.info(f"Processing speech: {request.values}")
 
-        call_sid = request.args.get('call_sid')
+        call_sid = request.args.get("call_sid")
 
         # Log all request values for debugging
         logger.info(f"FULL REQUEST VALUES: {dict(request.values)}")
@@ -292,8 +295,8 @@ def process_speech():
 
         # Get the speech result directly from Twilio
         # We're now relying on Twilio's enhanced speech recognition instead of Deepgram
-        speech_result = request.values.get('SpeechResult')
-        confidence = request.values.get('Confidence')
+        speech_result = request.values.get("SpeechResult")
+        confidence = request.values.get("Confidence")
 
         logger.info(f"Twilio SpeechResult: {speech_result}")
         logger.info(f"Twilio Confidence: {confidence}")
@@ -301,28 +304,28 @@ def process_speech():
         if not call_sid:
             logger.warning(f"Missing call_sid: {call_sid}")
             response = VoiceResponse()
-            response.say("I'm sorry, I couldn't process that request.", voice='alice')
+            response.say("I'm sorry, I couldn't process that request.", voice="alice")
             response.hangup()
             return str(response)
 
         if not speech_result:
             logger.warning("No speech result after transcription attempts")
             response = VoiceResponse()
-            response.say("I'm sorry, I didn't catch what you said. Could you please try again?", voice='alice')
+            response.say("I'm sorry, I didn't catch what you said. Could you please try again?", voice="alice")
 
             # Gather user input again
             gather = Gather(
-                input='speech',
-                action=f'/process_speech?call_sid={call_sid}',
-                speech_timeout='auto',
-                language='en-US',
+                input="speech",
+                action=f"/process_speech?call_sid={call_sid}",
+                speech_timeout="auto",
+                language="en-US",
                 enhanced=True,
-                speechModel='phone_call'
+                speechModel="phone_call",
             )
             response.append(gather)
 
             # Redirect to twiml endpoint which will get call state from MongoDB
-            response.redirect('/twiml')
+            response.redirect("/twiml")
 
             return str(response)
 
@@ -346,25 +349,25 @@ def process_speech():
         if not call_state:
             logger.warning(f"No call state found for speech processing: {call_sid}")
             response = VoiceResponse()
-            response.say("I'm sorry, your call session has expired. Please call back.", voice='alice')
+            response.say("I'm sorry, your call session has expired. Please call back.", voice="alice")
             response.hangup()
             return str(response)
 
         # Extract key information
-        workflow_id = call_state.get('workflow_id')
-        project_id = call_state.get('project_id')
-        system_prompt = call_state.get('system_prompt', "You are a helpful assistant.")
+        workflow_id = call_state.get("workflow_id")
+        project_id = call_state.get("project_id")
+        system_prompt = call_state.get("system_prompt", "You are a helpful assistant.")
 
         # Check if we have a Deepgram transcription stored in the call state
-        if 'last_transcription' in call_state and call_state['last_transcription']:
-            deepgram_transcription = call_state['last_transcription']
+        if "last_transcription" in call_state and call_state["last_transcription"]:
+            deepgram_transcription = call_state["last_transcription"]
             logger.info(f"Found stored Deepgram transcription: {deepgram_transcription}")
             logger.info(f"Comparing with Twilio transcription: {speech_result}")
 
             # Use the Deepgram transcription instead of Twilio's
             speech_result = deepgram_transcription
             # Remove it so we don't use it again
-            del call_state['last_transcription']
+            del call_state["last_transcription"]
             logger.info(f"Using Deepgram transcription instead")
 
         # Log final user input that will be used
@@ -376,10 +379,11 @@ def process_speech():
             if speech_result:
                 # Remove any common filler words or fix typical transcription issues
                 import re
+
                 # Convert to lowercase for easier pattern matching
                 cleaned_input = speech_result.lower()
                 # Remove filler words that might be at the beginning
-                cleaned_input = re.sub(r'^(um|uh|like|so|okay|well)\s+', '', cleaned_input)
+                cleaned_input = re.sub(r"^(um|uh|like|so|okay|well)\s+", "", cleaned_input)
                 # Capitalize first letter for better appearance
                 if cleaned_input:
                     speech_result = cleaned_input[0].upper() + cleaned_input[1:]
@@ -387,8 +391,8 @@ def process_speech():
             logger.info(f"Sending to RowBoat: '{speech_result}'")
 
             # Get previous messages and state from call state
-            previous_messages = call_state.get('messages', [])
-            previous_state = call_state.get('state')
+            previous_messages = call_state.get("messages", [])
+            previous_state = call_state.get("state")
 
             # Process with stateless API
             ai_response, updated_messages, updated_state = process_conversation_turn(
@@ -397,12 +401,12 @@ def process_speech():
                 system_prompt=system_prompt,
                 previous_messages=previous_messages,
                 previous_state=previous_state,
-                project_id=project_id
+                project_id=project_id,
             )
 
             # Update the messages and state in call state
-            call_state['messages'] = updated_messages
-            call_state['state'] = updated_state
+            call_state["messages"] = updated_messages
+            call_state["state"] = updated_state
 
             logger.info(f"RowBoat response: {ai_response}")
         except Exception as e:
@@ -422,11 +426,8 @@ def process_speech():
             # (The stream-audio endpoint will read it from here)
 
             # Update conversation history (do this before streaming so the endpoint can access it)
-            call_state['conversation_history'].append({
-                'user': speech_result,
-                'assistant': ai_response
-            })
-            call_state['turn_count'] += 1
+            call_state["conversation_history"].append({"user": speech_result, "assistant": ai_response})
+            call_state["turn_count"] += 1
 
             # Save to MongoDB (primary source of truth)
             try:
@@ -450,24 +451,25 @@ def process_speech():
         except Exception as e:
             logger.error(f"Error with audio streaming for response: {str(e)}")
             import traceback
+
             logger.error(traceback.format_exc())
             # Fallback to Twilio TTS
-            response.say(ai_response, voice='alice')
+            response.say(ai_response, voice="alice")
 
         # Gather next user input with enhanced speech recognition
         gather = Gather(
-            input='speech',
-            action=f'/process_speech?call_sid={call_sid}',
-            speech_timeout='auto',
-            language='en-US',
+            input="speech",
+            action=f"/process_speech?call_sid={call_sid}",
+            speech_timeout="auto",
+            language="en-US",
             enhanced=True,  # Enable enhanced speech recognition
-            speechModel='phone_call'  # Optimize for phone calls
+            speechModel="phone_call",  # Optimize for phone calls
         )
         response.append(gather)
 
         # If no input detected, redirect to twiml endpoint
         # Call state will be retrieved from MongoDB
-        response.redirect('/twiml')
+        response.redirect("/twiml")
 
         logger.info(f"Returning TwiML response for speech processing")
         return str(response)
@@ -475,20 +477,20 @@ def process_speech():
     except Exception as e:
         # Log the full error with traceback
         import traceback
+
         logger.error(f"Error in process_speech: {str(e)}")
         logger.error(traceback.format_exc())
 
         # Return a basic TwiML response
         response = VoiceResponse()
-        response.say("I'm sorry, we encountered an error processing your speech. Please try again.", voice='alice')
+        response.say("I'm sorry, we encountered an error processing your speech. Please try again.", voice="alice")
         response.gather(
-            input='speech',
-            action=f'/process_speech?call_sid={request.args.get("call_sid")}',
-            speech_timeout='auto'
+            input="speech", action=f'/process_speech?call_sid={request.args.get("call_sid")}', speech_timeout="auto"
         )
         return str(response)
 
-@app.route('/stream-audio/<call_sid>/<text_type>/<unique_id>', methods=['GET'])
+
+@app.route("/stream-audio/<call_sid>/<text_type>/<unique_id>", methods=["GET"])
 def stream_audio(call_sid, text_type, unique_id):
     """Stream audio directly from ElevenLabs to Twilio without saving to disk"""
     try:
@@ -518,9 +520,9 @@ def stream_audio(call_sid, text_type, unique_id):
 
                 call_state = active_calls[call_sid]
                 logger.info(f"Using in-memory state for streaming: {call_sid}")
-            if call_state.get('conversation_history') and len(call_state['conversation_history']) > 0:
+            if call_state.get("conversation_history") and len(call_state["conversation_history"]) > 0:
                 # Get the most recent AI response
-                text_to_speak = call_state['conversation_history'][-1]['assistant']
+                text_to_speak = call_state["conversation_history"][-1]["assistant"]
             else:
                 logger.warning(f"No conversation history found for call {call_sid}")
                 text_to_speak = "I'm sorry, I don't have a response ready. Could you please repeat?"
@@ -534,15 +536,11 @@ def stream_audio(call_sid, text_type, unique_id):
 
         logger.info(f"Streaming audio for text: {text_to_speak[:50]}...")
 
-
         def generate():
             try:
                 # Generate and stream the audio directly
                 audio_stream = elevenlabs_client.generate(
-                    text=text_to_speak,
-                    voice=TTS_VOICE,
-                    model=TTS_MODEL,
-                    output_format="mp3_44100_128"
+                    text=text_to_speak, voice=TTS_VOICE, model=TTS_MODEL, output_format="mp3_44100_128"
                 )
 
                 # Stream chunks directly to the response
@@ -553,28 +551,31 @@ def stream_audio(call_sid, text_type, unique_id):
             except Exception as e:
                 logger.error(f"Error in audio stream generator: {str(e)}")
                 import traceback
+
                 logger.error(traceback.format_exc())
 
         # Return a streaming response
-        response = Response(generate(), mimetype='audio/mpeg')
+        response = Response(generate(), mimetype="audio/mpeg")
         return response
 
     except Exception as e:
         logger.error(f"Error setting up audio stream: {str(e)}")
         import traceback
+
         logger.error(traceback.format_exc())
         return "Error streaming audio", 500
 
-@app.route('/call-status', methods=['POST'])
+
+@app.route("/call-status", methods=["POST"])
 def call_status_callback():
     """Handle call status callbacks from Twilio"""
-    call_sid = request.values.get('CallSid')
-    call_status = request.values.get('CallStatus')
+    call_sid = request.values.get("CallSid")
+    call_status = request.values.get("CallStatus")
 
     logger.info(f"Call {call_sid} status: {call_status}")
 
     # Clean up resources when call completes
-    if call_status in ['completed', 'failed', 'busy', 'no-answer', 'canceled']:
+    if call_status in ["completed", "failed", "busy", "no-answer", "canceled"]:
         # Get call state from MongoDB or memory
         call_state = None
 
@@ -604,16 +605,13 @@ def call_status_callback():
                 logger.info(f"Removed call {call_sid} from MongoDB")
             except Exception as e:
                 logger.error(f"Error removing call state from MongoDB: {str(e)}")
-    return '', 204
+    return "", 204
 
 
-@app.route('/health', methods=['GET'])
+@app.route("/health", methods=["GET"])
 def health_check():
     """Simple health check endpoint"""
-    health_data = {
-        "status": "healthy",
-        "active_calls_memory": len(active_calls)
-    }
+    health_data = {"status": "healthy", "active_calls_memory": len(active_calls)}
 
     # Get MongoDB status
     try:
@@ -626,7 +624,8 @@ def health_check():
 
     return jsonify(health_data)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Log startup information
     logger.info(f"Starting Twilio-RowBoat server")
     # Remove the explicit run configuration since Flask CLI will handle it

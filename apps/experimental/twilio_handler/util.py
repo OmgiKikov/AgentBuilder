@@ -13,16 +13,16 @@ from rowboat.schema import ApiMessage
 # Configure logging to stdout for Docker compatibility
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]  # Send logs to stdout
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],  # Send logs to stdout
 )
 logger = logging.getLogger(__name__)
 
 # MongoDB Configuration
-MONGODB_URI = os.environ.get('MONGODB_URI')
-MONGODB_DB = 'rowboat'
+MONGODB_URI = os.environ.get("MONGODB_URI")
+MONGODB_DB = "rowboat"
 
-CALL_STATE_COLLECTION = 'call-state'
+CALL_STATE_COLLECTION = "call-state"
 MONGODB_EXPIRY_SECONDS = 86400  # Default 24 hours
 API_KEYS_COLLECTION = "api_keys"
 # MongoDB client singleton
@@ -30,6 +30,7 @@ _mongo_client = None
 _db = None
 _call_state_collection = None
 _api_keys_collection = None
+
 
 # Define chat state pydantic model
 class CallState(BaseModel):
@@ -61,8 +62,9 @@ class CallState(BaseModel):
         # More lenient type validation
         "arbitrary_types_allowed": True,
         # Allow population by field name
-        "populate_by_name": True
+        "populate_by_name": True,
     }
+
 
 def init_mongodb():
     """Initialize MongoDB connection and set up indexes."""
@@ -71,21 +73,22 @@ def init_mongodb():
     try:
         _mongo_client = MongoClient(MONGODB_URI)
         # Force a command to check the connection
-        _mongo_client.admin.command('ping')
+        _mongo_client.admin.command("ping")
 
         # Set up database and collection
         _db = _mongo_client[MONGODB_DB]
         _call_state_collection = _db[CALL_STATE_COLLECTION]
         _api_keys_collection = _db[API_KEYS_COLLECTION]
         # Create TTL index if it doesn't exist
-        if 'expires_at_1' not in _call_state_collection.index_information():
-            _call_state_collection.create_index('expires_at', expireAfterSeconds=0)
+        if "expires_at_1" not in _call_state_collection.index_information():
+            _call_state_collection.create_index("expires_at", expireAfterSeconds=0)
 
         logger.info(f"Connected to MongoDB at {MONGODB_URI}")
         return True
     except ConnectionFailure as e:
         logger.error(f"Failed to connect to MongoDB: {str(e)}")
         raise RuntimeError(f"Could not connect to MongoDB: {str(e)}")
+
 
 def get_collection() -> Collection:
     """Get the MongoDB collection, initializing if needed."""
@@ -96,6 +99,7 @@ def get_collection() -> Collection:
 
     return _call_state_collection
 
+
 def get_api_keys_collection() -> Collection:
     """Get the MongoDB collection, initializing if needed."""
     global _api_keys_collection
@@ -105,11 +109,13 @@ def get_api_keys_collection() -> Collection:
 
     return _api_keys_collection
 
+
 def get_api_key(project_id: str) -> Optional[str]:
     """Get the API key for a given project ID."""
     collection = get_api_keys_collection()
     doc = collection.find_one({"projectId": project_id})
     return doc["key"] if doc else None
+
 
 def save_call_state(call_sid: str, call_state: CallState) -> bool:
     """
@@ -129,11 +135,7 @@ def save_call_state(call_sid: str, call_state: CallState) -> bool:
 
         collection = get_collection()
         # Use call_sid as document ID
-        collection.update_one(
-            {'_id': call_sid},
-            {'$set': call_state.model_dump()},
-            upsert=True
-        )
+        collection.update_one({"_id": call_sid}, {"$set": call_state.model_dump()}, upsert=True)
         logger.info(f"Saved call state to MongoDB for call {call_sid}")
         return True
     except PyMongoError as e:
@@ -142,6 +144,7 @@ def save_call_state(call_sid: str, call_state: CallState) -> bool:
     except Exception as e:
         logger.error(f"Unexpected error in save_call_state: {str(e)}")
         raise RuntimeError(f"Failed to save call state: {str(e)}")
+
 
 def get_call_state(call_sid: str) -> Optional[CallState]:
     """
@@ -157,7 +160,7 @@ def get_call_state(call_sid: str) -> Optional[CallState]:
         collection = get_collection()
 
         # Query MongoDB for the call state
-        state_doc = collection.find_one({'_id': call_sid})
+        state_doc = collection.find_one({"_id": call_sid})
         if not state_doc:
             logger.info(f"No call state found in MongoDB for call {call_sid}")
             return None
@@ -173,6 +176,7 @@ def get_call_state(call_sid: str) -> Optional[CallState]:
         logger.error(f"Unexpected error in get_call_state: {str(e)}")
         raise RuntimeError(f"Failed to retrieve call state: {str(e)}")
 
+
 def delete_call_state(call_sid: str) -> bool:
     """
     Delete call state from MongoDB.
@@ -187,7 +191,7 @@ def delete_call_state(call_sid: str) -> bool:
         collection = get_collection()
 
         # Delete the document from MongoDB
-        result = collection.delete_one({'_id': call_sid})
+        result = collection.delete_one({"_id": call_sid})
         if result.deleted_count > 0:
             logger.info(f"Deleted call state from MongoDB for call {call_sid}")
             return True
@@ -200,6 +204,7 @@ def delete_call_state(call_sid: str) -> bool:
     except Exception as e:
         logger.error(f"Unexpected error in delete_call_state: {str(e)}")
         raise RuntimeError(f"Failed to delete call state: {str(e)}")
+
 
 def count_active_calls() -> int:
     """
@@ -218,6 +223,7 @@ def count_active_calls() -> int:
         logger.error(f"Unexpected error in count_active_calls: {str(e)}")
         raise RuntimeError(f"Failed to count active calls: {str(e)}")
 
+
 def get_mongodb_status() -> Dict[str, Any]:
     """
     Get MongoDB connection status information.
@@ -225,18 +231,13 @@ def get_mongodb_status() -> Dict[str, Any]:
     Returns:
         Dictionary with status information
     """
-    status = {
-        "status": "connected",
-        "uri": MONGODB_URI,
-        "database": MONGODB_DB,
-        "collection": CALL_STATE_COLLECTION
-    }
+    status = {"status": "connected", "uri": MONGODB_URI, "database": MONGODB_DB, "collection": CALL_STATE_COLLECTION}
 
     try:
         # First check connection with a simple command
         collection = get_collection()
         db = collection.database
-        db.command('ping')
+        db.command("ping")
         status["connection"] = "ok"
 
         # Count active calls
@@ -259,6 +260,7 @@ def get_mongodb_status() -> Dict[str, Any]:
 
     return status
 
+
 # Twilio configuration functions
 def get_twilio_config(phone_number: str) -> Optional[Dict[str, Any]]:
     """
@@ -276,23 +278,22 @@ def get_twilio_config(phone_number: str) -> Optional[Dict[str, Any]]:
         db = client[MONGODB_DB]
 
         # Use the twilio_configs collection
-        config_collection = db['twilio_configs']
+        config_collection = db["twilio_configs"]
 
         # Enhanced logging for phone number format
         logger.info(f"Looking up configuration for phone number: '{phone_number}'")
 
         # Try different formats of the phone number
-        cleaned_number = phone_number.strip().replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+        cleaned_number = phone_number.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
 
         possible_formats = [
             phone_number,  # Original format from Twilio
             cleaned_number,  # Thoroughly cleaned number
-            '+' + cleaned_number if not cleaned_number.startswith('+') else cleaned_number,  # Ensure + prefix
-
+            "+" + cleaned_number if not cleaned_number.startswith("+") else cleaned_number,  # Ensure + prefix
             # Try with different country code formats
-            '+1' + cleaned_number[-10:] if len(cleaned_number) >= 10 else cleaned_number,  # US format with +1
-            '1' + cleaned_number[-10:] if len(cleaned_number) >= 10 else cleaned_number,   # US format with 1
-            cleaned_number[-10:] if len(cleaned_number) >= 10 else cleaned_number,         # US format without country code
+            "+1" + cleaned_number[-10:] if len(cleaned_number) >= 10 else cleaned_number,  # US format with +1
+            "1" + cleaned_number[-10:] if len(cleaned_number) >= 10 else cleaned_number,  # US format with 1
+            cleaned_number[-10:] if len(cleaned_number) >= 10 else cleaned_number,  # US format without country code
         ]
 
         # Remove duplicates while preserving order
@@ -308,20 +309,30 @@ def get_twilio_config(phone_number: str) -> Optional[Dict[str, Any]]:
         # Try each format
         for phone_format in possible_formats:
             # Look up the configuration for this phone number format with status=active
-            config = config_collection.find_one({'phone_number': phone_format, 'status': 'active'})
+            config = config_collection.find_one({"phone_number": phone_format, "status": "active"})
             if config:
-                logger.info(f"Found active configuration for '{phone_format}': project_id={config.get('project_id')}, workflow_id={config.get('workflow_id')}")
+                logger.info(
+                    f"Found active configuration for '{phone_format}': project_id={config.get('project_id')}, workflow_id={config.get('workflow_id')}"
+                )
                 break  # Found a match, exit the loop
 
         # If we didn't find any match
         if not config:
             # Try a more generic query to see what configurations exist
             try:
-                all_configs = list(config_collection.find({'phone_number': {'$regex': phone_number[-10:] if len(phone_number) >= 10 else phone_number}}))
+                all_configs = list(
+                    config_collection.find(
+                        {"phone_number": {"$regex": phone_number[-10:] if len(phone_number) >= 10 else phone_number}}
+                    )
+                )
                 if all_configs:
-                    logger.warning(f"Found {len(all_configs)} configurations that match phone number {phone_number}, but none are active:")
+                    logger.warning(
+                        f"Found {len(all_configs)} configurations that match phone number {phone_number}, but none are active:"
+                    )
                     for cfg in all_configs:
-                        logger.warning(f"  - Phone: {cfg.get('phone_number')}, Status: {cfg.get('status')}, Workflow: {cfg.get('workflow_id')}")
+                        logger.warning(
+                            f"  - Phone: {cfg.get('phone_number')}, Status: {cfg.get('status')}, Workflow: {cfg.get('workflow_id')}"
+                        )
                 else:
                     logger.warning(f"No configurations found at all for phone number {phone_number} or related formats")
             except Exception as e:
@@ -331,16 +342,19 @@ def get_twilio_config(phone_number: str) -> Optional[Dict[str, Any]]:
             return None
 
         # Make sure required fields are present
-        if 'project_id' not in config or 'workflow_id' not in config:
+        if "project_id" not in config or "workflow_id" not in config:
             logger.error(f"Configuration for {phone_number} is missing required fields")
             return None
 
-        logger.info(f"Found active configuration for {phone_number}: project_id={config['project_id']}, workflow_id={config['workflow_id']}")
+        logger.info(
+            f"Found active configuration for {phone_number}: project_id={config['project_id']}, workflow_id={config['workflow_id']}"
+        )
         return config
     except Exception as e:
         logger.error(f"Error retrieving Twilio configuration for {phone_number}: {str(e)}")
         # Return None instead of raising an exception to allow fallback to default behavior
         return None
+
 
 def list_active_twilio_configs() -> List[Dict[str, Any]]:
     """
@@ -355,16 +369,17 @@ def list_active_twilio_configs() -> List[Dict[str, Any]]:
         db = client[MONGODB_DB]
 
         # Use the twilio_configs collection
-        config_collection = db['twilio_configs']
+        config_collection = db["twilio_configs"]
 
         # Find all active configurations
-        configs = list(config_collection.find({'status': 'active'}))
+        configs = list(config_collection.find({"status": "active"}))
 
         logger.info(f"Found {len(configs)} active Twilio configurations")
         return configs
     except Exception as e:
         logger.error(f"Error retrieving active Twilio configurations: {str(e)}")
         return []
+
 
 def save_twilio_config(config: Dict[str, Any]) -> bool:
     """
@@ -376,7 +391,7 @@ def save_twilio_config(config: Dict[str, Any]) -> bool:
     Returns:
         True if successful, False otherwise
     """
-    required_fields = ['phone_number', 'project_id', 'workflow_id']
+    required_fields = ["phone_number", "project_id", "workflow_id"]
     for field in required_fields:
         if field not in config:
             logger.error(f"Missing required field '{field}' in Twilio configuration")
@@ -388,26 +403,22 @@ def save_twilio_config(config: Dict[str, Any]) -> bool:
         db = client[MONGODB_DB]
 
         # Use the twilio_configs collection
-        config_collection = db['twilio_configs']
+        config_collection = db["twilio_configs"]
 
         # Ensure status is set to active
-        if 'status' not in config:
-            config['status'] = 'active'
+        if "status" not in config:
+            config["status"] = "active"
 
         # Add timestamp
-        config['updated_at'] = datetime.datetime.utcnow()
-        if 'created_at' not in config:
-            config['created_at'] = config['updated_at']
+        config["updated_at"] = datetime.datetime.utcnow()
+        if "created_at" not in config:
+            config["created_at"] = config["updated_at"]
 
         # Use phone_number as the ID
-        phone_number = config['phone_number']
+        phone_number = config["phone_number"]
 
         # Update or insert the configuration
-        result = config_collection.update_one(
-            {'phone_number': phone_number},
-            {'$set': config},
-            upsert=True
-        )
+        result = config_collection.update_one({"phone_number": phone_number}, {"$set": config}, upsert=True)
 
         if result.matched_count > 0:
             logger.info(f"Updated Twilio configuration for {phone_number}")
@@ -418,6 +429,7 @@ def save_twilio_config(config: Dict[str, Any]) -> bool:
     except Exception as e:
         logger.error(f"Error saving Twilio configuration: {str(e)}")
         return False
+
 
 # Initialize MongoDB on module import
 init_mongodb()

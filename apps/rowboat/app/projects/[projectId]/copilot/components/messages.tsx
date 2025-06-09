@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { Workflow, WorkflowTool, WorkflowAgent, WorkflowPrompt } from "@/app/lib/types/workflow_types";
 import MarkdownContent from "@/app/lib/components/markdown-content";
-import { MessageSquareIcon, EllipsisIcon, XIcon } from "lucide-react";
+import { MessageSquareIcon, EllipsisIcon, XIcon, CheckCheckIcon } from "lucide-react";
 import { CopilotMessage, CopilotAssistantMessage, CopilotAssistantMessageActionPart } from "@/app/lib/types/copilot_types";
 import { Action, StreamingAction } from './actions';
 import { useParsedBlocks } from "../use-parsed-blocks";
 import { validateConfigChanges } from "@/app/lib/client_utils";
+import { getAppliedChangeKey } from "../app";
 
 const CopilotResponsePart = z.union([
     z.object({
@@ -152,6 +153,16 @@ function InternalAssistantMessage({ content }: { content: string }) {
     );
 }
 
+function SystemMessage({ content }: { content: string }) {
+    return (
+        <div className="w-full">
+            <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2.5 rounded-lg text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                <svg className="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><circle cx="12" cy="16" r="1" /></svg>
+                {content}
+            </div>
+        </div>
+    );
+}
 
 function AssistantMessage({
     content,
@@ -167,6 +178,7 @@ function AssistantMessage({
     loading: boolean
 }) {
     const blocks = useParsedBlocks(content);
+    const [appliedChanges, setAppliedChanges] = useState<Record<string, boolean>>({});
 
     // parse actions from parts
     let parsed: z.infer<typeof CopilotResponsePart>[] = [];
@@ -181,39 +193,159 @@ function AssistantMessage({
         }
     }
 
+    // Collect all actions with their indices
+    const actionsWithIndices: Array<{action: z.infer<typeof CopilotAssistantMessageActionPart>['content'], index: number}> = [];
+    let actionCounter = 0;
+    parsed.forEach((part, index) => {
+        if (part.type === 'action') {
+            actionsWithIndices.push({ action: part.action, index: actionCounter });
+            actionCounter++;
+        }
+    });
+    
+    const hasMultipleActions = actionsWithIndices.length > 1;
+    
+    // Check if all actions are applied
+    const allActionsApplied = actionsWithIndices.every(({ action, index }) => {
+        if (!action || action.error) return true;
+        return Object.keys(action.config_changes).every(key => 
+            appliedChanges[getAppliedChangeKey(messageIndex, index, key)]
+        );
+    });
+
+    // Handle applying all actions
+    const handleApplyAll = () => {
+        actionsWithIndices.forEach(({ action, index }) => {
+            if (!action || action.error) return;
+            
+            if (action.action === 'create_new') {
+                switch (action.config_type) {
+                    case 'agent':
+                        dispatch({
+                            type: 'add_agent',
+                            agent: {
+                                name: action.name,
+                                ...action.config_changes
+                            }
+                        });
+                        break;
+                    case 'tool':
+                        dispatch({
+                            type: 'add_tool',
+                            tool: {
+                                name: action.name,
+                                ...action.config_changes
+                            }
+                        });
+                        break;
+                    case 'prompt':
+                        dispatch({
+                            type: 'add_prompt',
+                            prompt: {
+                                name: action.name,
+                                ...action.config_changes
+                            }
+                        });
+                        break;
+                }
+            } else if (action.action === 'edit') {
+                switch (action.config_type) {
+                    case 'agent':
+                        dispatch({
+                            type: 'update_agent',
+                            name: action.name,
+                            agent: action.config_changes
+                        });
+                        break;
+                    case 'tool':
+                        dispatch({
+                            type: 'update_tool',
+                            name: action.name,
+                            tool: action.config_changes
+                        });
+                        break;
+                    case 'prompt':
+                        dispatch({
+                            type: 'update_prompt',
+                            name: action.name,
+                            prompt: action.config_changes
+                        });
+                        break;
+                    case 'workflow':
+                        Object.entries(action.config_changes).forEach(([field, value]) => {
+                            if (field === 'startAgent') {
+                                dispatch({
+                                    type: 'set_main_agent',
+                                    name: value as string
+                                });
+                            }
+                        });
+                        break;
+                }
+            }
+
+            // Mark all fields as applied
+            const appliedKeys = Object.keys(action.config_changes).reduce((acc, key) => {
+                acc[getAppliedChangeKey(messageIndex, index, key)] = true;
+                return acc;
+            }, {} as Record<string, boolean>);
+            setAppliedChanges(prev => ({
+                ...prev,
+                ...appliedKeys
+            }));
+        });
+    };
+
     // split the content into parts 
+    let actionRenderIndex = 0;
     return (
         <div className="w-full">
             <div className="px-4 py-2.5 text-sm leading-relaxed text-gray-700 dark:text-gray-200">
                 <div className="flex flex-col gap-4">
                     <div className="text-left flex flex-col gap-4">
-                        {parsed.map((part, actionIndex) => {
+                        {parsed.map((part, index) => {
                             if (part.type === 'text') {
                                 return <MarkdownContent
-                                    key={actionIndex}
+                                    key={index}
                                     content={part.content}
                                 />;
                             }
                             if (part.type === 'streaming_action') {
                                 return <StreamingAction
-                                    key={actionIndex}
+                                    key={index}
                                     action={part.action}
                                     loading={loading}
                                 />;
                             }
                             if (part.type === 'action') {
+                                const currentActionIndex = actionRenderIndex;
+                                actionRenderIndex++;
                                 return <Action
-                                    key={actionIndex}
+                                    key={index}
                                     msgIndex={messageIndex}
-                                    actionIndex={actionIndex}
+                                    actionIndex={currentActionIndex}
                                     action={part.action}
                                     workflow={workflow}
                                     dispatch={dispatch}
                                     stale={false}
+                                    appliedChanges={appliedChanges}
+                                    setAppliedChanges={setAppliedChanges}
                                 />;
                             }
                         })}
                     </div>
+                    {hasMultipleActions && !loading && (
+                        <div className="flex justify-end mt-2">
+                            <button
+                                className="px-4 py-2 rounded-md bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/30 disabled:bg-gray-100 dark:disabled:bg-gray-800/30 disabled:text-gray-400 dark:disabled:text-gray-600 flex items-center gap-2 text-sm font-medium transition-colors"
+                                onClick={handleApplyAll}
+                                disabled={allActionsApplied}
+                            >
+                                <CheckCheckIcon size={16} />
+                                {allActionsApplied ? 'Все применено' : 'Применить все'}
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -296,6 +428,10 @@ export function Messages({
 
         if (message.role === 'user' && typeof message.content === 'string') {
             return <UserMessage key={messageIndex} content={message.content} />;
+        }
+
+        if (message.role === 'system' && typeof message.content === 'string') {
+            return <SystemMessage key={messageIndex} content={message.content} />;
         }
 
         return null;

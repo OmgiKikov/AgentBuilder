@@ -16,12 +16,12 @@ I'm adding a tool `get_status()` below:
 }
 ```
 
-I'm also updating the example agent:
+I'm also updating the Тестовый Агент:
 
 ```copilot_change
 // action: edit
 // config_type: agent
-// name: Example agent
+// name: Тестовый Агент
 {
 	"change_description": "updated the instructions...",
 	"config_changes": {
