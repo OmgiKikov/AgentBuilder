@@ -14,30 +14,6 @@ from .types import PromptType, outputVisibility, ResponseType
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 
 
-def order_messages(messages):
-    """
-    Sorts each message's keys in a specified order and returns a new list of ordered messages.
-    """
-    ordered_messages = []
-    for msg in messages:
-        # Filter out None values
-        msg = {k: v for k, v in msg.items() if v is not None}
-
-        # Specify the exact order
-        ordered = {}
-        for key in ["role", "sender", "content", "created_at", "timestamp"]:
-            if key in msg:
-                ordered[key] = msg[key]
-
-        # Add remaining keys in alphabetical order
-        remaining_keys = sorted(k for k in msg if k not in ordered)
-        for key in remaining_keys:
-            ordered[key] = msg[key]
-
-        ordered_messages.append(ordered)
-    return ordered_messages
-
-
 def set_sys_message(messages):
     """
     If the system message is empty, set it to the default message: "You are a helplful assistant."
