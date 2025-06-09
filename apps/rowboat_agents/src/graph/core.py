@@ -110,7 +110,7 @@ class TurnRunner(ABC):
 
     async def _produce_final_message(self) -> None:
         await self._produce_message(message={"state": self._get_final_state()}, message_type="done")
-        await self._produce_end_of_stream_message()
+        await self._close_stream()
 
     async def _produce_message(self, message, message_type="message", message_description=None) -> None:
         if message_description is None:
@@ -120,7 +120,7 @@ class TurnRunner(ABC):
         print("-" * 100)
         await self._message_queue.put((message_type, message))
 
-    async def _produce_end_of_stream_message(self) -> None:
+    async def _close_stream(self) -> None:
         await self._message_queue.put(None)
 
     def _get_final_state(self) -> Dict:
