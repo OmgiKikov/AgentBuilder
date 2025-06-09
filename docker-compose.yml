@@ -70,6 +70,18 @@ services:
       - GOOGLE_REFRESH_TOKEN=${GOOGLE_REFRESH_TOKEN}
     profiles: ["mcp_server"]
 
+  hello-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    environment:
+      - MCP_PUBLIC_URL=http://hello-mcp-server:8080/sse
+    command: ["python", "hello.py", "--host", "0.0.0.0", "--port", "8080"]
+    profiles: ["mcp_server"]
+
   rowboat_agents:
     build:
       context: ./apps/rowboat_agents
