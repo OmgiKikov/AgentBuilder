@@ -844,6 +844,9 @@ export function WorkflowEditor({
 
     return <div className="flex flex-col h-full relative">
         <div className="shrink-0 flex justify-between items-center pb-6">
+            <div className="text-lg font-bold text-black dark:text-white mb-2 ml-2">
+                ProTo — ИИ-помощник построения агентов
+            </div>
             {/* Левая часть (селектор версии, название, статус, меню версий) скрыта */}
             {/*
             <div className="workflow-version-selector flex items-center gap-4 px-2 text-gray-800 dark:text-gray-100">

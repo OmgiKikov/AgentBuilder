@@ -14,8 +14,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "AgentBuilder Chat",
-  description: "AgentBuilder Chat",
+  title: "ProTo Chat",
+  description: "ProTo Chat",
 };
 
 export default function RootLayout({

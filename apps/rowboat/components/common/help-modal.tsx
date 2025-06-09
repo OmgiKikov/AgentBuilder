@@ -28,7 +28,7 @@ export function HelpModal({ isOpen, onClose, onStartTour }: HelpModalProps) {
                         <div>
                             <div className="font-medium text-base text-gray-900 dark:text-gray-100">Пройти тур по продукту</div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">
-                                Изучите возможности AgentBuilder
+                                Изучите возможности ProTo
                             </div>
                         </div>
                     </Button>

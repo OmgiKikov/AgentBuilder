@@ -285,7 +285,7 @@ export function HostedServers() {
         });
         setToggleError({
           serverId: serverKey,
-          message: "We're having trouble setting up this server. Please reach out at AgentBuilder"
+          message: "We're having trouble setting up this server. Please reach out at ProTo"
         });
       }
     } finally {

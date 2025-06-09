@@ -184,7 +184,7 @@ export function ApiKeysSection({
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <p className="text-sm text-muted-foreground">
-                    API ключи используются для аутентификации запросов к API AgentBuilder.
+                    API ключи используются для аутентификации запросов к API ProTo.
                 </p>
                 <Button
                     onPress={handleCreateKey}
@@ -404,7 +404,7 @@ export function ChatWidgetSection({
 
     const code = `<!-- RowBoat Chat Widget -->
 <script>
-    window.AgentBuilder_CONFIG = {
+    window.ProTo_CONFIG = {
         clientId: '${chatClientId}'
     };
     (function(d) {

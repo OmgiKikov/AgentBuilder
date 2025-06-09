@@ -295,7 +295,7 @@ function ApiKeysSection({ projectId }: { projectId: string }) {
 
     return <Section 
         title="API ключи"
-        description="API ключи используются для аутентификации запросов к API AgentBuilder."
+        description="API ключи используются для аутентификации запросов к API ProTo."
     >
         <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -373,9 +373,9 @@ function ChatWidgetSection({ projectId, chatWidgetHost }: { projectId: string, c
         });
     }, [projectId]);
 
-    const code = `<!-- AgentBuilder Chat Widget -->
+    const code = `<!-- ProTo Chat Widget -->
 <script>
-    window.AgentBuilder_CONFIG = {
+    window.ProTo_CONFIG = {
         clientId: '${chatClientId}'
     };
     (function(d) {

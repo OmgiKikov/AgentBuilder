@@ -41,10 +41,10 @@ export function App() {
 
             {/* Footer */}
             <div className="flex flex-col items-center gap-2 text-xs text-white/70">
-                <div>&copy; 2025 AgentBuilder Labs</div>
+                <div>&copy; 2025 ProTo Labs</div>
                 <div className="flex gap-4">
-                    <a className="hover:text-white transition-colors" href="https://www.AgentBuilderlabs.com/terms-of-service" target="_blank" rel="noopener noreferrer">Условия использования</a>
-                    <a className="hover:text-white transition-colors" href="https://www.AgentBuilderlabs.com/privacy-policy" target="_blank" rel="noopener noreferrer">Политика конфиденциальности</a>
+                    <a className="hover:text-white transition-colors" href="https://www.ProTolabs.com/terms-of-service" target="_blank" rel="noopener noreferrer">Условия использования</a>
+                    <a className="hover:text-white transition-colors" href="https://www.ProTolabs.com/privacy-policy" target="_blank" rel="noopener noreferrer">Политика конфиденциальности</a>
                 </div>
             </div>
         </div>
