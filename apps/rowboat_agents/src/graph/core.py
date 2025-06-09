@@ -1,7 +1,8 @@
 import traceback
 import json
 import uuid
-from typing import AsyncGenerator, Dict, List, Generator, Tuple, Optional
+import asyncio
+from typing import AsyncGenerator, Dict, List, Tuple, Optional
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from .helpers.access import get_agent_by_name, get_prompt_by_type
@@ -78,9 +79,7 @@ def add_sender_details_to_messages(messages):
     result_messages = []
     for msg in messages:
         if msg.get("sender"):
-            result_messages.append(
-                add_sender_details_to_message(message=msg, sender_agent_name=msg.get("sender"))
-            )
+            result_messages.append(add_sender_details_to_message(message=msg, sender_agent_name=msg.get("sender")))
     return result_messages
 
 
@@ -103,10 +102,57 @@ class TurnRunner(ABC):
         self._tokens_used = {"total": 0, "prompt": 0, "completion": 0}
         self._accumulated_messages = []
         self._agent_message_counts = defaultdict(int)
+        self._message_queue = asyncio.Queue()
+
+    async def stream(self) -> AsyncGenerator:
+        print("\n=== Starting new turn ===")
+        print(f"Starting agent: {self._start_agent_name}")
+
+        try:
+            asyncio.create_task(self._produce_messages())
+            async for msg in self._consume_messages():
+                yield msg
+        except Exception as e:
+            print(traceback.format_exc())
+            print(f"Error in stream processing: {str(e)}")
+            yield ("error", {"error": str(e), "state": self._get_final_state()})
+
+    async def _produce_messages(self) -> None:
+        await self._produce_conversation_messages()
+        await self._produce_final_message()
+
+    async def _consume_messages(self) -> AsyncGenerator:
+        while True:
+            message = await self._message_queue.get()
+            if message is None:
+                break
+            yield message
 
     @abstractmethod
-    async def stream(self) -> AsyncGenerator:
-        yield
+    async def _produce_conversation_messages(self) -> None:
+        pass
+
+    async def _produce_final_message(self) -> None:
+        await self._produce_message(message={"state": self._get_final_state()}, message_type="done")
+        await self._produce_end_of_stream_message()
+
+    async def _produce_message(self, message, message_type="message", message_description=None) -> None:
+        if message_description is None:
+            message_description = message_type
+        print("-" * 100)
+        print(f"Yielding {message_description}: {message}")
+        print("-" * 100)
+        await self._message_queue.put((message_type, message))
+
+    async def _produce_end_of_stream_message(self) -> None:
+        await self._message_queue.put(None)
+
+    def _get_final_state(self) -> Dict:
+        return {
+            "last_agent_name": self._get_current_agent_name(),
+            "tokens": self._tokens_used,
+            "turn_messages": self._accumulated_messages,
+        }
 
     @abstractmethod
     def _get_current_agent_name(self) -> Optional[str]:
@@ -116,22 +162,13 @@ class TurnRunner(ABC):
     def _is_current_agent_internal(self) -> bool:
         pass
 
-    @staticmethod
-    def _yield_message(message, message_type="message", message_log_type=None) -> Tuple:
-        if message_log_type is None:
-            message_log_type = message_type
-        print("-" * 100)
-        print(f"Yielding {message_log_type}: {message}")
-        print("-" * 100)
-        return (message_type, message)
-
-    def _yield_assistance_message(
+    async def _produce_assistance_message(
         self,
         response_type: str,
         content: Optional[str] = None,
         citations: Optional[List] = None,
         tool_calls: Optional[List] = None,
-    ) -> Tuple:
+    ) -> None:
         sender_agent_name = self._get_current_agent_name()
         message = {
             "content": content,
@@ -144,29 +181,18 @@ class TurnRunner(ABC):
         }
         if citations:
             message["citations"] = citations
-        message_to_yield = self._yield_message(message)
+        await self._produce_message(message)
         self._accumulated_messages.append(
             add_sender_details_to_message(message=message, sender_agent_name=sender_agent_name)
         )
-        return message_to_yield
 
-    def _yield_assistance_content_message(self, content: str, citations: Optional[List] = None) -> Tuple:
+    async def _produce_assistance_content_message(self, content: str, citations: Optional[List] = None) -> None:
         self._agent_message_counts[self._get_current_agent_name()] += 1
-        return self._yield_assistance_message(
+        await self._produce_assistance_message(
             response_type=self._get_current_agent_response_type(),
             content=content,
             citations=citations,
         )
-
-    def _yield_final_message(self) -> Tuple:
-        return self._yield_message(message={"state": self._get_final_state()}, message_type="done")
-
-    def _get_final_state(self) -> Dict:
-        return {
-            "last_agent_name": self._get_current_agent_name(),
-            "tokens": self._tokens_used,
-            "turn_messages": self._accumulated_messages,
-        }
 
     def _get_current_agent_response_type(self) -> str:
         if self._is_current_agent_internal():
@@ -179,9 +205,8 @@ class GreetingTurnRunner(TurnRunner):
         super().__init__(start_agent_name=start_agent_name)
         self._prompt_configs = prompt_configs
 
-    async def stream(self) -> AsyncGenerator:
-        yield self._yield_assistance_content_message(content=self._get_greeting_prompt())
-        yield self._yield_final_message()
+    async def _produce_conversation_messages(self) -> None:
+        await self._produce_assistance_content_message(content=self._get_greeting_prompt())
 
     def _get_current_agent_name(self) -> Optional[str]:
         return self._start_agent_name
@@ -218,25 +243,10 @@ class MultiAgentsTurnRunner(TurnRunner):
         self._parent_stack = []
         self._iter = 0
 
-    async def stream(self) -> AsyncGenerator:
-        print("\n=== Starting new turn ===")
-        print(f"Starting agent: {self._start_agent_name}")
-
-        try:
-            self._initialize_agent()
-
-            async for msg in self._run_event_loop():
-                yield msg
-
-            yield self._yield_final_message()
-
-        except Exception as e:
-            print(traceback.format_exc())
-            print(f"Error in stream processing: {str(e)}")
-            yield ("error", {"error": str(e), "state": self._get_final_state()})
-
-    async def _run_event_loop(self) -> AsyncGenerator:
+    async def _produce_conversation_messages(self) -> None:
         self._iter = 0
+        self._initialize_agent()
+
         while True:
             self._on_new_iteration_start()
 
@@ -256,16 +266,14 @@ class MultiAgentsTurnRunner(TurnRunner):
                         if self._event_has_tokens_usage_info(event=event):
                             self._update_tokens_usage_info(event=event)
 
-                        for msg in self._yield_web_search_messages(event=event):
-                            yield msg
+                        await self._produce_web_search_messages(event=event)
                     elif event.type == "agent_updated_stream_event":
                         if self._should_skip_transfer_control(event=event):
                             continue
 
-                        for msg in self._yield_control_transition_messages(
+                        await self._produce_control_transition_messages(
                             new_agent_name=event.new_agent.name, response_type=ResponseType.INTERNAL.value
-                        ):
-                            yield msg
+                        )
 
                         if check_internal_visibility(event.new_agent):
                             self._child_call_counts[
@@ -276,10 +284,9 @@ class MultiAgentsTurnRunner(TurnRunner):
                     elif event.type == "run_item_stream_event":
                         if event.item.type == "tool_call_item":
                             if hasattr(event.item.raw_item, "type") and event.item.raw_item.type == "web_search_call":
-                                for msg in self._yield_web_search_messages(event=event):
-                                    yield msg
+                                await self._produce_web_search_messages(event=event)
                             else:
-                                yield self._yield_tool_call_message(
+                                await self._produce_tool_call_message(
                                     tool_call_id=event.item.raw_item.call_id,
                                     tool_name=event.item.raw_item.name,
                                     tool_args=event.item.raw_item.arguments,
@@ -287,20 +294,19 @@ class MultiAgentsTurnRunner(TurnRunner):
                         elif event.item.type == "tool_call_output_item":
                             tool_call_id, tool_name = self._extract_tool_call_id_and_name_from_event(event=event)
 
-                            yield self._yield_tool_response_message(
+                            await self._produce_tool_response_message(
                                 content=str(event.item.output), tool_call_id=tool_call_id, tool_name=tool_name
                             )
                         elif event.item.type == "message_output_item":
                             content, url_citations = self._extract_content_and_citations_from_event(event=event)
 
-                            yield self._yield_assistance_content_message(content=content, citations=url_citations)
+                            await self._produce_assistance_content_message(content=content, citations=url_citations)
 
                             if self._is_current_agent_internal() and self._parent_stack:
-                                for msg in self._yield_control_transition_messages(
+                                await self._produce_control_transition_messages(
                                     new_agent_name=self._parent_stack[-1].name,
                                     response_type=self._get_current_agent_response_type(),
-                                ):
-                                    yield msg
+                                )
                                 self._current_agent = self._parent_stack.pop()
                             elif not self._is_current_agent_internal():
                                 break
@@ -349,11 +355,11 @@ class MultiAgentsTurnRunner(TurnRunner):
     def _get_parent_child_key(self, new_agent_name: str) -> str:
         return f"{self._get_current_agent_name()}:{new_agent_name}"
 
-    def _yield_web_search_messages(self, event) -> Generator:
+    async def _produce_web_search_messages(self, event) -> None:
         web_search_messages = handle_web_search_event(event, self._current_agent)
         for message in web_search_messages:
             message["response_type"] = ResponseType.INTERNAL.value
-            yield self._yield_message(message)
+            await self._produce_message(message)
             if message.get("role") != "tool":
                 self._accumulated_messages.append(
                     add_sender_details_to_message(message=message, sender_agent_name=self._get_current_agent_name())
@@ -420,10 +426,10 @@ class MultiAgentsTurnRunner(TurnRunner):
                             url_citations.append(citation)
         return content, url_citations
 
-    def _yield_tool_call_message(
+    async def _produce_tool_call_message(
         self, tool_call_id: Optional[str], tool_name: Optional[str], tool_args: Optional[str]
-    ) -> Tuple:
-        return self._yield_assistance_message(
+    ) -> None:
+        await self._produce_assistance_message(
             response_type=ResponseType.INTERNAL.value,
             tool_calls=[
                 {
@@ -437,10 +443,10 @@ class MultiAgentsTurnRunner(TurnRunner):
             ],
         )
 
-    def _yield_tool_response_message(
+    async def _produce_tool_response_message(
         self, content: str, tool_call_id: Optional[str], tool_name: Optional[str]
-    ) -> Tuple:
-        return self._yield_message(
+    ) -> None:
+        await self._produce_message(
             message={
                 "content": content,
                 "role": "tool",
@@ -450,20 +456,22 @@ class MultiAgentsTurnRunner(TurnRunner):
                 "tool_name": tool_name,
                 "response_type": ResponseType.INTERNAL.value,
             },
-            message_log_type="tool call output message",
+            message_description="tool call output message",
         )
 
-    def _yield_control_transition_messages(self, new_agent_name: str, response_type: str) -> Generator:
+    async def _produce_control_transition_messages(self, new_agent_name: str, response_type: str) -> None:
         tool_call_id = str(uuid.uuid4())
-        yield self._yield_control_transition_call_message(
+        await self._produce_control_transition_call_message(
             tool_call_id=tool_call_id, new_agent_name=new_agent_name, response_type=response_type
         )
-        yield self._yield_control_transition_response_message(tool_call_id=tool_call_id, new_agent_name=new_agent_name)
+        await self._produce_control_transition_response_message(
+            tool_call_id=tool_call_id, new_agent_name=new_agent_name
+        )
 
-    def _yield_control_transition_call_message(
+    async def _produce_control_transition_call_message(
         self, tool_call_id: str, new_agent_name: str, response_type: str
-    ) -> Tuple:
-        return self._yield_message(
+    ) -> None:
+        await self._produce_message(
             message={
                 "content": None,
                 "role": "assistant",
@@ -482,11 +490,11 @@ class MultiAgentsTurnRunner(TurnRunner):
                 "tool_name": None,
                 "response_type": response_type,
             },
-            message_log_type="control transition message",
+            message_description="control transition message",
         )
 
-    def _yield_control_transition_response_message(self, tool_call_id: str, new_agent_name: str) -> Tuple:
-        return self._yield_message(
+    async def _produce_control_transition_response_message(self, tool_call_id: str, new_agent_name: str) -> None:
+        await self._produce_message(
             message={
                 "content": json.dumps({"assistant": new_agent_name}),
                 "role": "tool",
@@ -495,7 +503,7 @@ class MultiAgentsTurnRunner(TurnRunner):
                 "tool_call_id": tool_call_id,
                 "tool_name": "transfer_to_agent",
             },
-            message_log_type="control transition response",
+            message_description="control transition response",
         )
 
     def _is_current_agent_internal(self) -> bool:
