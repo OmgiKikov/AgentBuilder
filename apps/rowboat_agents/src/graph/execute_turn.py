@@ -3,6 +3,8 @@ import json
 import aiohttp
 import jwt
 import hashlib
+import re
+import traceback
 from agents import OpenAIChatCompletionsModel, trace, add_trace_processor
 import pprint
 
@@ -10,7 +12,7 @@ import pprint
 from .helpers.access import get_tool_config_by_name, get_tool_config_by_type
 from .helpers.instructions import add_rag_instructions_to_agent
 from .types import outputVisibility
-from agents import Agent as NewAgent, Runner, FunctionTool, RunContextWrapper, ModelSettings, WebSearchTool
+from agents import Agent as NewAgent, Runner, FunctionTool, RunContextWrapper, ModelSettings
 from .tracing import AgentTurnTraceProcessor
 
 # Add import for OpenAI functionality
@@ -111,6 +113,133 @@ async def call_mcp(tool_name: str, args: str, mcp_server_url: str) -> str:
         return f"Error: {str(e)}"
 
 
+async def web_search_tool(args: str, context_messages: list = None) -> str:
+    """
+    Custom web search function using Firecrawl API
+    """
+    try:
+        print(f"Web search tool called with args: {args}")
+        
+        query = ""
+        try:
+            args_dict = json.loads(args) if args else {}
+            query = args_dict.get("query", "")
+            print(f"Extracted query: '{query}'")
+        except Exception as parse_error:
+            print(f"Error parsing args: {parse_error}")
+            # Try to use args directly as query if JSON parsing fails
+            query = args.strip() if args else ""
+        
+        # If no query provided, try to extract from context
+        if not query and context_messages:
+            # Look for the last user message to extract search intent
+            for msg in reversed(context_messages):
+                if msg.get("role") == "user" and msg.get("content"):
+                    user_content = msg.get("content", "").strip()
+                    if user_content:
+                        # Extract search intent from user message - use full user message as query
+                        # Skip only very short messages like "hi", "hello"
+                        if len(user_content) > 5:  # More than just greeting
+                            query = user_content
+                            print(f"Extracted query from context: '{query}'")
+                            break
+        
+        if not query:
+            return "Не указан поисковый запрос. Пожалуйста, укажите что именно вы хотите найти в интернете."
+        
+        # Firecrawl API configuration
+        firecrawl_api_key = os.getenv('FIRECRAWL_API_KEY', 'fc-5f994925f6104da69ddaea12bd13519b')
+        firecrawl_url = 'https://api.firecrawl.dev/v1/search'
+        
+        headers = {
+            'Authorization': f'Bearer {firecrawl_api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {
+            'query': query,
+            'limit': 3,  # Get top 3 results
+            'scrapeOptions': {
+                'formats': ['markdown']
+            }
+        }
+        
+        print(f"Making Firecrawl search request for: {query}")
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(firecrawl_url, headers=headers, json=payload) as response:
+                if response.status == 200:
+                    try:
+                        data = await response.json()
+                        print(f"Firecrawl API response received")
+                        
+                        if data.get('success') and data.get('data'):
+                            results = data['data']
+                            
+                            # Format the search results - simplified and shorter
+                            result_parts = []
+                            result_parts.append(f"Результаты поиска по запросу '{query}':")
+                            result_parts.append("")
+                            
+                            for i, result in enumerate(results, 1):  # Limit to 2 results
+                                title = result.get('title', 'Без названия')
+                                description = result.get('description', '')
+                                url = result.get('url', '')
+                                markdown = result.get('markdown', '')
+                                
+                                result_part = f"{i}. {title}"
+                                if url:
+                                    result_part += f"\nИсточник: {url}"
+                                if description and len(description) < 200:  # Limit description length
+                                    result_part += f"\nОписание: {description}"
+                                
+                                # Extract key information from markdown (simplified)
+                                if markdown:
+                                    lines = markdown.split('\n')
+                                    content_lines = []
+                                    for line in lines:
+                                        line = line.strip()
+                                        # Clean line from special characters and emojis
+                                        clean_line = ''.join(char for char in line if ord(char) < 127 or char.isalnum() or char in ' .,!?-+()[]{}')
+                                        if clean_line and len(clean_line) > 10 and len(clean_line) < 100:
+                                            content_lines.append(clean_line)
+                                            if len(content_lines) >= 2:  # Limit to 2 lines per result
+                                                break
+                                    
+                                    if content_lines:
+                                        result_part += f"\nКлючевая информация: {' '.join(content_lines)}"
+                                
+                                result_parts.append(result_part)
+                                result_parts.append("")  # Empty line between results
+                            
+                            final_result = "\n".join(result_parts)
+                            final_result += "Поиск завершен."
+                            print(f"Returning web search result")
+                            print(final_result)
+                            return final_result
+                        
+                        else:
+                            # No results found
+                            no_results = f"По запросу '{query}' не найдено результатов. Попробуйте использовать другие ключевые слова."
+                            print(f"No results found")
+                            return no_results
+                    
+                    except Exception as json_error:
+                        print(f"JSON parsing error: {json_error}")
+                        return f"Возникли технические сложности при обработке результатов поиска для '{query}'. Попробуйте повторить поиск позже."
+                
+                else:
+                    error_text = await response.text()
+                    print(f"Firecrawl API error (status {response.status}): {error_text}")
+                    return f"Временные технические сложности с поисковым сервисом (ошибка {response.status}) для запроса '{query}'. Попробуйте повторить поиск позже."
+    
+    except Exception as search_error:
+        print(f"Web search error: {search_error}")
+        print(f"Traceback: {traceback.format_exc()}")
+        
+        return f"Возникли технические сложности при выполнении поиска для '{query}'. Попробуйте повторить поиск позже."
+
+
 async def catch_all(
     ctx: RunContextWrapper[Any], args: str, tool_name: str, tool_config: dict, complete_request: dict
 ) -> str:
@@ -194,17 +323,20 @@ def get_rag_tool(config: dict, complete_request: dict) -> FunctionTool:
             "additionalProperties": False,
             "required": ["query"],
         }
-        tool = FunctionTool(
-            name="rag_search",
-            description="Get information about an article",
-            params_json_schema=params,
-            on_invoke_tool=lambda ctx, args: call_rag_tool(
+        async def rag_tool_wrapper(ctx, args):
+            return await call_rag_tool(
                 project_id,
                 json.loads(args)["query"],
                 config.get("ragDataSources", []),
                 config.get("ragReturnType", "chunks"),
                 config.get("ragK", 3),
-            ),
+            )
+        
+        tool = FunctionTool(
+            name="rag_search",
+            description="Get information about an article",
+            params_json_schema=params,
+            on_invoke_tool=rag_tool_wrapper,
         )
         return tool
     else:
@@ -276,20 +408,58 @@ def get_agents(agent_configs, tool_configs, complete_request):
 
                 external_tools.append({"type": "function", "function": tool_config})
 
-                if tool_name == "web_search":
-                    tool = WebSearchTool()
-                elif tool_name == "rag_search":
-                    tool = get_rag_tool(agent_config, complete_request)
-                else:
-                    tool = FunctionTool(
-                        name=tool_name,
-                        description=tool_config["description"],
-                        params_json_schema=tool_params,  # Use the enriched parameters
-                        strict_json_schema=False,
-                        on_invoke_tool=lambda ctx, args, _tool_name=tool_name, _tool_config=tool_config, _complete_request=complete_request: catch_all(
-                            ctx, args, _tool_name, _tool_config, _complete_request
-                        ),
-                    )
+                def create_tool(tool_name, tool_config, tool_params):
+                    if tool_name == "web_search":
+                        # Debug: Print the tool parameters for web_search
+                        print(f"DEBUG: web_search tool_params: {tool_params}")
+                        print(f"DEBUG: web_search tool_config: {tool_config}")
+                        
+                        # Force correct schema for web_search if it's missing query parameter
+                        corrected_params = tool_params.copy() if tool_params else {}
+                        if not corrected_params.get("properties", {}).get("query"):
+                            print("DEBUG: Correcting web_search schema - adding query parameter")
+                            corrected_params = {
+                                "type": "object",
+                                "properties": {
+                                    "query": {
+                                        "type": "string",
+                                        "description": "The search query to find information on the web"
+                                    }
+                                },
+                                "required": ["query"]
+                            }
+                        print(f"DEBUG: Final web_search params: {corrected_params}")
+                        
+                        # Use our custom web search function instead of WebSearchTool
+                        async def web_search_wrapper(ctx, args):
+                            # Extract context messages from the current conversation
+                            context_messages = []
+                            if hasattr(ctx, 'messages') and ctx.messages:
+                                context_messages = ctx.messages
+                            return await web_search_tool(args, context_messages)
+                        
+                        return FunctionTool(
+                            name="web_search",
+                            description=tool_config.get("description", "Fetch information from the web based on chat context"),
+                            params_json_schema=corrected_params,
+                            strict_json_schema=False,
+                            on_invoke_tool=web_search_wrapper,
+                        )
+                    elif tool_name == "rag_search":
+                        return get_rag_tool(agent_config, complete_request)
+                    else:
+                        async def catch_all_wrapper(ctx, args):
+                            return await catch_all(ctx, args, tool_name, tool_config, complete_request)
+                        
+                        return FunctionTool(
+                            name=tool_name,
+                            description=tool_config["description"],
+                            params_json_schema=tool_params,  # Use the enriched parameters
+                            strict_json_schema=False,
+                            on_invoke_tool=catch_all_wrapper,
+                        )
+
+                tool = create_tool(tool_name, tool_config, tool_params)
                 if tool:
                     new_tools.append(tool)
                     print(f"Added tool {tool_name} to agent {agent_config['name']}")
@@ -305,9 +475,13 @@ def get_agents(agent_configs, tool_configs, complete_request):
             # Identify the model
             model_name = agent_config["model"] if agent_config["model"] else PROVIDER_DEFAULT_MODEL
             print(f"Using model: {model_name}")
+            print(f"Completions client type: {type(client)}")
+            print(f"Completions client base_url: {getattr(client, 'base_url', 'N/A')}")
+            
             model = (
                 OpenAIChatCompletionsModel(model=model_name, openai_client=client) if client else agent_config["model"]
             )
+            print(f"Created model: {type(model)}")
 
             # Create the agent object
             new_agent = NewAgent(
@@ -397,29 +571,53 @@ async def run_streamed(agent, messages, external_tools=None, tokens_used=None, e
             add_trace_processor(trace_processor)
             trace_processor_added = True
 
-        # Get the stream result without trace context first
-        stream_result = Runner.run_streamed(agent, formatted_messages)
+        # Try streaming first
+        try:
+            print("Attempting streaming mode...")
+            stream_result = Runner.run_streamed(agent, formatted_messages)
 
-        # If tracing is enabled, wrap the stream_events to handle tracing
-        if enable_tracing:
-            original_stream_events = stream_result.stream_events
+            # If tracing is enabled, wrap the stream_events to handle tracing
+            if enable_tracing:
+                original_stream_events = stream_result.stream_events
 
-            async def wrapped_stream_events():
-                # Create trace context inside the async function
-                with trace(f"Agent turn: {agent.name}") as trace_ctx:
-                    try:
-                        async for event in original_stream_events():
-                            yield event
-                    except GeneratorExit:
-                        # Handle generator exit gracefully
-                        raise
-                    except Exception as e:
-                        print(f"Error in stream events: {str(e)}")
-                        raise
+                async def wrapped_stream_events():
+                    # Create trace context inside the async function
+                    with trace(f"Agent turn: {agent.name}") as trace_ctx:
+                        try:
+                            async for event in original_stream_events():
+                                yield event
+                        except GeneratorExit:
+                            # Handle generator exit gracefully
+                            raise
+                        except Exception as e:
+                            print(f"Error in stream events: {str(e)}")
+                            raise
 
-            stream_result.stream_events = wrapped_stream_events
+                stream_result.stream_events = wrapped_stream_events
 
-        return stream_result
+            return stream_result
+            
+        except Exception as streaming_error:
+            print(f"Streaming failed with error: {streaming_error}")
+            print("Falling back to non-streaming mode...")
+            
+            # Fallback to non-streaming mode
+            result = Runner.run(agent, formatted_messages)
+            
+            # Create a mock streaming result for compatibility
+            class MockStreamResult:
+                def __init__(self, result):
+                    self.result = result
+                
+                async def stream_events(self):
+                    # Yield all messages at once
+                    for message in self.result.messages:
+                        yield {"type": "message", "data": message}
+                    yield {"type": "done", "data": {"messages": self.result.messages}}
+            
+            return MockStreamResult(result)
+
     except Exception as e:
-        print(f"Error during streaming run: {str(e)}")
+        print(f"Error during run: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
         raise
