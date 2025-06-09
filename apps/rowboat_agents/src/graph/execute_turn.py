@@ -1,9 +1,10 @@
+from collections import defaultdict
 import logging
 import json
 import aiohttp
 import jwt
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from agents import OpenAIChatCompletionsModel, trace, add_trace_processor
 import pprint
 
@@ -16,7 +17,7 @@ from .tracing import AgentTurnTraceProcessor
 
 # Add import for OpenAI functionality
 from src.utils.common import generate_openai_output
-from typing import Any, Literal
+from typing import Any
 import asyncio
 from mcp import ClientSession
 from mcp.client.sse import sse_client
@@ -34,7 +35,7 @@ db = mongo_client["rowboat"]
 from src.utils.client import client, PROVIDER_DEFAULT_MODEL
 
 
-DEFAULT_MAX_CALLS_PER_PARENT_AGENT = 3
+DEFAULT_MAX_CHILD_AGENT_CALLS = 3
 
 
 class NewResponse(BaseModel):
@@ -47,7 +48,9 @@ class NewResponse(BaseModel):
 @dataclass
 class NodeAgent(Agent):
     output_visibility: str = outputVisibility.EXTERNAL.value
-    max_calls_per_parent_agent: int = DEFAULT_MAX_CALLS_PER_PARENT_AGENT
+    max_child_agent_calls: int = DEFAULT_MAX_CHILD_AGENT_CALLS
+    content_messages_count: int = 0
+    child_calls_count: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
 
     def is_internal(self) -> bool:
         return self.output_visibility == outputVisibility.INTERNAL.value
@@ -56,6 +59,18 @@ class NodeAgent(Agent):
         if self.is_internal():
             return ResponseType.INTERNAL.value
         return ResponseType.EXTERNAL.value
+
+    def is_done(self) -> bool:
+        return self.content_messages_count > 0
+
+    def register_new_content_message(self) -> None:
+        self.content_messages_count += 1
+
+    def register_child_agent_call(self, child_agent_name: str) -> None:
+        self.child_calls_count[child_agent_name] += 1
+
+    def can_run_child_agent(self, child_agent_name: str) -> bool:
+        return self.child_calls_count[child_agent_name] < self.max_child_agent_calls
 
 
 async def mock_tool(tool_name: str, args: str, description: str, mock_instructions: str) -> str:
@@ -349,17 +364,15 @@ def get_agents(agent_configs, tool_configs, complete_request):
                 model=model,
                 model_settings=ModelSettings(temperature=0.0),
                 output_visibility=agent_config.get("outputVisibility", outputVisibility.EXTERNAL.value),
-                max_calls_per_parent_agent=agent_config.get(
-                    "maxCallsPerParentAgent", DEFAULT_MAX_CALLS_PER_PARENT_AGENT
-                ),
+                max_child_agent_calls=agent_config.get("maxCallsPerParentAgent", DEFAULT_MAX_CHILD_AGENT_CALLS),
             )
 
             if not agent_config.get("maxCallsPerParentAgent", None):
                 print(
-                    f"WARNING: Max calls per parent agent not received for agent {new_agent.name}. Using rowboat_agents default of {DEFAULT_MAX_CALLS_PER_PARENT_AGENT}"
+                    f"WARNING: Max calls per parent agent not received for agent {new_agent.name}. Using rowboat_agents default of {DEFAULT_MAX_CHILD_AGENT_CALLS}"
                 )
             else:
-                print(f"Max calls per parent agent for agent {new_agent.name}: {new_agent.max_calls_per_parent_agent}")
+                print(f"Max calls per parent agent for agent {new_agent.name}: {new_agent.max_child_agent_calls}")
 
             if not agent_config.get("outputVisibility", None):
                 print(

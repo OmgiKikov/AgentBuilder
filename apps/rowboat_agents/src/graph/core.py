@@ -4,7 +4,6 @@ import uuid
 import asyncio
 from typing import AsyncGenerator, Dict, List, Tuple, Optional, cast
 from abc import ABC, abstractmethod
-from collections import defaultdict
 from .helpers.access import get_agent_by_name, get_prompt_by_type
 from .helpers.library_tools import handle_web_search_event
 from .helpers.control import get_last_agent_name
@@ -72,7 +71,6 @@ class TurnRunner(ABC):
         self._current_agent = current_agent
         self._tokens_used = {"total": 0, "prompt": 0, "completion": 0}
         self._accumulated_messages = []
-        self._agent_message_counts = defaultdict(int)
         self._message_queue = asyncio.Queue()
 
     async def stream(self) -> AsyncGenerator:
@@ -149,7 +147,7 @@ class TurnRunner(ABC):
         )
 
     async def _produce_assistance_content_message(self, content: str, citations: Optional[List] = None) -> None:
-        self._agent_message_counts[self._current_agent.name] += 1
+        self._current_agent.register_new_content_message()
         await self._produce_assistance_message(
             response_type=self._current_agent.get_response_type(),
             content=content,
@@ -176,7 +174,6 @@ class MultiAgentsTurnRunner(TurnRunner):
         super().__init__(current_agent=current_agent)
         self._messages = messages
         self._enable_tracing = enable_tracing
-        self._child_call_counts = defaultdict(int)
         self._parent_stack = []
         self._iter = 0
 
@@ -185,8 +182,6 @@ class MultiAgentsTurnRunner(TurnRunner):
 
         while True:
             self._on_new_iteration_start()
-
-            is_internal_agent = self._current_agent.is_internal()
 
             stream_result = await swarm_run_streamed(
                 agent=self._current_agent,
@@ -213,7 +208,7 @@ class MultiAgentsTurnRunner(TurnRunner):
                         )
 
                         if new_agent.is_internal():
-                            self._child_call_counts[self._get_parent_child_key(new_agent=new_agent)] += 1
+                            self._current_agent.register_child_agent_call(child_agent_name=new_agent.name)
                             self._parent_stack.append(self._current_agent)
                         self._current_agent = new_agent
                     elif event.type == "run_item_stream_event":
@@ -258,7 +253,7 @@ class MultiAgentsTurnRunner(TurnRunner):
                     print("=" * 50)
                     raise
 
-            if not is_internal_agent and self._current_agent.name in self._agent_message_counts:
+            if self._is_done():
                 break
 
     def _on_new_iteration_start(self) -> None:
@@ -270,6 +265,9 @@ class MultiAgentsTurnRunner(TurnRunner):
         print(f"Parent stack: {[agent.name for agent in self._parent_stack]}")
         print("-" * 100)
 
+    def _is_done(self) -> bool:
+        return not self._current_agent.is_internal() and self._current_agent.is_done()
+
     def _should_skip_transfer_control(self, new_agent: Agent):
         if self._current_agent.name == new_agent.name:
             print(
@@ -277,17 +275,13 @@ class MultiAgentsTurnRunner(TurnRunner):
             )
             return True
 
-        current_count = self._child_call_counts[self._get_parent_child_key(new_agent=new_agent)]
-        if current_count >= new_agent.max_calls_per_parent_agent:
+        if not self._current_agent.can_run_child_agent(child_agent_name=new_agent.name):
             print(
                 f"Skipping transfer from {self._current_agent.name} to "
                 f"{new_agent.name} (max calls reached from parent to child)"
             )
             return True
         return False
-
-    def _get_parent_child_key(self, new_agent: Agent) -> str:
-        return f"{self._current_agent.name}:{new_agent.name}"
 
     async def _produce_web_search_messages(self, event) -> None:
         web_search_messages = handle_web_search_event(event, self._current_agent)
