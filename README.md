@@ -100,5 +100,5 @@ The easiest way to build AI agents that work together to solve complex problems.
 
 [Quickstart](#quick-start) | [Docs](https://docs.rowboatlabs.com/) | [Website](https://www.rowboatlabs.com/) | [Youtube](https://www.youtube.com/@RowBoatLabs)
 
-
+# Use Openrouter instead of gpt
 
