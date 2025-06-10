@@ -254,7 +254,7 @@ class MultiAgentsTurnRunner(TurnRunner):
 
     async def _handle_agent_updated_stream_event(self, event) -> AsyncGenerator:
         new_agent = cast(Agent, event.new_agent)
-        if self._should_skip_transfer_control(new_agent=new_agent):
+        if self._current_agent.should_skip_transfer_control_to_agent(agent=new_agent):
             return
 
         async for msg in self._produce_control_transition_messages(
@@ -266,21 +266,6 @@ class MultiAgentsTurnRunner(TurnRunner):
             self._current_agent.register_child_agent_call(child_agent_name=new_agent.name)
             self._parent_stack.append(self._current_agent)
         self._current_agent = new_agent
-
-    def _should_skip_transfer_control(self, new_agent: Agent):
-        if self._current_agent.name == new_agent.name:
-            print(
-                f"\nSkipping agent transfer attempt: {self._current_agent.name} -> " f"{new_agent.name} (self-transfer)"
-            )
-            return True
-
-        if not self._current_agent.can_run_child_agent(child_agent_name=new_agent.name):
-            print(
-                f"Skipping transfer from {self._current_agent.name} to "
-                f"{new_agent.name} (max calls reached from parent to child)"
-            )
-            return True
-        return False
 
     async def _produce_control_transition_messages(self, new_agent: Agent, response_type: str) -> AsyncGenerator:
         tool_call_id = str(uuid.uuid4())

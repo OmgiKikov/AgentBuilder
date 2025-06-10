@@ -69,8 +69,23 @@ class NodeAgent(Agent):
     def register_child_agent_call(self, child_agent_name: str) -> None:
         self.child_calls_count[child_agent_name] += 1
 
-    def can_run_child_agent(self, child_agent_name: str) -> bool:
-        return self.child_calls_count[child_agent_name] < self.max_child_agent_calls
+    def can_run_child_agent(self, child_agent: Agent) -> bool:
+        return self.child_calls_count[child_agent.name] < self.max_child_agent_calls
+
+    def should_skip_transfer_control_to_agent(self, agent: Agent):
+        if self.name == agent.name:
+            print(
+                f"\nSkipping agent transfer attempt: {self.name} -> " f"{agent.name} (self-transfer)"
+            )
+            return True
+
+        if not self.can_run_child_agent(child_agent=agent):
+            print(
+                f"Skipping transfer from {self.name} to "
+                f"{agent.name} (max calls reached from parent to child)"
+            )
+            return True
+        return False
 
 
 async def mock_tool(tool_name: str, args: str, description: str, mock_instructions: str) -> str:
