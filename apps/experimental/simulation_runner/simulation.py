@@ -62,7 +62,7 @@ async def simulate_simulation(
     print(f"   Max iterations: {max_iterations}")
 
     # Todo: add profile_id
-    support_chat = StatefulChat(rowboat_client, workflow_id=workflow_id, test_profile_id=profile_id)
+    support_chat = StatefulChat(rowboat_client, workflow_id=workflow_id)
 
     messages = [
         {
@@ -78,6 +78,20 @@ async def simulate_simulation(
     # -------------------------
     print(f"🤖 Запуск основного цикла симуляции ({max_iterations} итераций)...")
     global_messages = []
+    
+    # Добавляем приветственное сообщение в историю, если оно есть
+    if len(support_chat.messages) > 0:
+        last_agent_message = None
+        for msg in reversed(support_chat.messages):
+            if (msg.role == 'assistant' and 
+                hasattr(msg, 'agenticResponseType') and 
+                msg.agenticResponseType == 'external'):
+                last_agent_message = msg
+                break
+        
+        if last_agent_message:
+            print(f"   📝 Добавляю приветственное сообщение в историю: {last_agent_message.content}")
+            global_messages.append({"role": "assistant", "content": last_agent_message.content})
     
     for iteration in range(max_iterations):
         print(f"   Итерация {iteration + 1}/{max_iterations}")

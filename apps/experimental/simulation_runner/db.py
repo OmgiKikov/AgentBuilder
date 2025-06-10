@@ -1,8 +1,15 @@
 from pymongo import MongoClient
 from bson import ObjectId
 import os
+import sys
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+# Добавляем текущую директорию в путь для поиска модулей
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
 from scenario_types import TestRun, TestScenario, TestSimulation, TestResult, AggregateResults
 
 MONGO_URI = os.environ.get("MONGODB_URI", "mongodb://localhost:27017/rowboat").strip()

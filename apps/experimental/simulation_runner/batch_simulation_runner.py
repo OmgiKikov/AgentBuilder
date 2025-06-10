@@ -76,7 +76,7 @@ async def run_single_simulation(simulation_data: dict, workflow_id: str, max_dia
     service = JobService()
     
     try:
-        await service.poll_and_process_jobs(max_iterations_pre_m=6, max_iterations=max_dialog_iterations)
+        await service.poll_and_process_jobs(max_iterations_pre_m=20, max_iterations=max_dialog_iterations)
     except Exception as e:
         print(f"❌ Ошибка сервиса: {e}")
         import traceback

@@ -1,7 +1,13 @@
-from apps.experimental.simulation_runner.db import get_collection
+import sys
+import os
+# Добавляем текущую директорию в путь для поиска модулей
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
+from db import get_collection
 from bson import ObjectId
 import json
-import os
 
 def get_simulation_pairs():
     """

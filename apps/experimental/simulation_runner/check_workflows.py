@@ -3,7 +3,11 @@
 Проверка workflow в базе данных
 """
 
-from .db import get_collection
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from db import get_collection
 from bson import ObjectId
 
 def check_workflows():

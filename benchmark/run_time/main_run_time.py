@@ -82,7 +82,7 @@ async def run_single_simulation(simulation_data: dict, workflow_id: str, max_dia
     service = JobService()
     
     try:
-        await service.poll_and_process_jobs(max_iterations_pre_m=6, max_iterations=max_dialog_iterations)
+        await service.poll_and_process_jobs(max_iterations_pre_m=20, max_iterations=max_dialog_iterations, target_run_id=run_id)
     except Exception as e:
         print(f"❌ Ошибка сервиса: {e}")
         import traceback
@@ -155,13 +155,20 @@ async def run_batch_simulations():
     
     print(f"📋 Найдено симуляций: {len(simulation_pairs)}")
     
-    # Очищаем старые результаты ТОЛЬКО для автотестов
+    # Очищаем ВСЕ старые запуски и результаты
     runs_collection = get_collection("test_runs")
     results_collection = get_collection("test_results")
     
-    deleted_runs = runs_collection.delete_many({"name": {"$regex": "^Автотест:"}})
+    # Очищаем все запуски со статусом pending или running
+    deleted_runs = runs_collection.delete_many({
+        "$or": [
+            {"status": "pending"},
+            {"status": "running"},
+            {"name": {"$regex": "^Автотест:"}}
+        ]
+    })
     deleted_results = results_collection.delete_many({})
-    print(f"\n🧹 Очищено {deleted_runs.deleted_count} старых автотестов")
+    print(f"\n🧹 Очищено {deleted_runs.deleted_count} старых запусков")
     print(f"🧹 Очищено {deleted_results.deleted_count} старых результатов")
     print()
     
@@ -216,7 +223,7 @@ async def run_batch_simulations():
         except:
             pass
     
-    with open("benchmark/run_time/run_time_result.json", 'w', encoding='utf-8') as f:
+    with open("benchmark/run_time/run_time_result_gpt1.json", 'w', encoding='utf-8') as f:
         json.dump(batch_results, f, ensure_ascii=False, indent=4, default=json_serializer)
 
 if __name__ == "__main__":

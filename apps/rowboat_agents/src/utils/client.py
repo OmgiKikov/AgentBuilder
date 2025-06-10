@@ -7,7 +7,7 @@ dotenv.load_dotenv()
 
 # DeepSeek configuration via OpenRouter
 BASE_URL = "https://openrouter.ai/api/v1"
-MODEL = "anthropic/claude-sonnet-4"
+MODEL = "openai/gpt-4.1"
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
 # Legacy environment variables for backward compatibility

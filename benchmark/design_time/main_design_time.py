@@ -328,7 +328,7 @@ async def main():
         result["scenario_name"] = test["scenario_name"]
         benchmark_processed.append(result)
 
-    with open("benchmark/design_time/design_time_result.json", 'w', encoding='utf-8') as f:
+    with open("benchmark/design_time/design_time_result_gpt1.json", 'w', encoding='utf-8') as f:
         json.dump(benchmark_processed, f, ensure_ascii=False, indent=2)
         
     # # Выводим результаты

@@ -158,7 +158,7 @@ async def web_search_tool(args: str, context_messages: list = None) -> str:
         
         payload = {
             'query': query,
-            'limit': 3,  # Get top 3 results
+            'limit': 5,  # Get top 3 results
             'scrapeOptions': {
                 'formats': ['markdown']
             }

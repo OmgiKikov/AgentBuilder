@@ -27,7 +27,7 @@ class JobService:
         # Control concurrency of run processing
         self.semaphore = asyncio.Semaphore(5)
 
-    async def poll_and_process_jobs(self, max_iterations_pre_m: Optional[int] = None, max_iterations: int = 2):
+    async def poll_and_process_jobs(self, max_iterations_pre_m: Optional[int] = None, max_iterations: int = 2, target_run_id: Optional[str] = None):
         """
         Periodically checks for new runs in MongoDB and processes them.
         """
@@ -49,23 +49,52 @@ class JobService:
         
         while True:
             logging.info(f"Checking for pending runs... (iteration {iterations + 1})")
-            run = get_pending_run()  # <--- changed to match new DB function
-            if run:
-                logging.info(f"Found new run: {run}. Processing...")
-                asyncio.create_task(self.process_run(run, max_iterations))
-                consecutive_empty_checks = 0  # Сбрасываем счетчик
+            
+            # Если указан конкретный run_id, ищем только его
+            if target_run_id:
+                runs_collection = get_collection("test_runs")
+                from bson import ObjectId
+                run_doc = runs_collection.find_one({"_id": ObjectId(target_run_id)})
+                if run_doc and run_doc.get("status") == "pending":
+                    from apps.experimental.simulation_runner.scenario_types import TestRun
+                    run = TestRun(**{
+                        "id": str(run_doc["_id"]),
+                        "projectId": run_doc["projectId"],
+                        "name": run_doc["name"],
+                        "simulationIds": run_doc["simulationIds"],
+                        "workflowId": run_doc["workflowId"],
+                        "status": run_doc["status"],
+                        "startedAt": run_doc["startedAt"],
+                        "completedAt": run_doc.get("completedAt"),
+                        "aggregateResults": run_doc.get("aggregateResults"),
+                        "lastHeartbeat": run_doc.get("lastHeartbeat")
+                    })
+                    logging.info(f"Found target run: {run}. Processing...")
+                    await self.process_run(run, max_iterations)
+                    logging.info("Target run processed. Stopping service.")
+                    break
+                else:
+                    logging.info(f"Target run {target_run_id} not found or not pending. Stopping.")
+                    break
             else:
-                logging.info("No pending runs found. Waiting...")
-                consecutive_empty_checks += 1
-                
-                # Если нет pending runs, проверяем есть ли running runs
-                if consecutive_empty_checks >= 2:  # После 2 пустых проверок
-                    runs_collection = get_collection("test_runs")
-                    running_runs = runs_collection.count_documents({"status": "running"})
+                # Обычная логика поиска любых pending runs
+                run = get_pending_run()  # <--- changed to match new DB function
+                if run:
+                    logging.info(f"Found new run: {run}. Processing...")
+                    await self.process_run(run, max_iterations)
+                    consecutive_empty_checks = 0  # Сбрасываем счетчик
+                else:
+                    logging.info("No pending runs found. Waiting...")
+                    consecutive_empty_checks += 1
                     
-                    if running_runs == 0:
-                        logging.info("No pending or running runs found. Stopping service.")
-                        break
+                    # Если нет pending runs, проверяем есть ли running runs
+                    if consecutive_empty_checks >= 2:  # После 2 пустых проверок
+                        runs_collection = get_collection("test_runs")
+                        running_runs = runs_collection.count_documents({"status": "running"})
+                        
+                        if running_runs == 0:
+                            logging.info("No pending or running runs found. Stopping service.")
+                            break
 
             iterations += 1
             if max_iterations_pre_m is not None and iterations >= max_iterations_pre_m:
