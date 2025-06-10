@@ -1,7 +1,6 @@
 import traceback
 import json
 import uuid
-import asyncio
 from typing import AsyncGenerator, Dict, List, Tuple, Optional, cast
 from abc import ABC, abstractmethod
 from .helpers.access import get_agent_by_name, get_prompt_by_type
@@ -71,50 +70,30 @@ class TurnRunner(ABC):
         self._current_agent = current_agent
         self._tokens_used = {"total": 0, "prompt": 0, "completion": 0}
         self._accumulated_messages = []
-        self._message_queue = asyncio.Queue()
 
     async def stream(self) -> AsyncGenerator:
         print("\n=== Starting new turn ===")
         print(f"Starting agent: {self._current_agent.name}")
 
         try:
-            asyncio.create_task(self._produce_messages())
-            async for msg in self._consume_messages():
+            async for msg in self._produce_messages():
                 yield msg
         except Exception as e:
             print(traceback.format_exc())
             print(f"Error in stream processing: {str(e)}")
             yield ("error", {"error": str(e), "state": self._get_final_state()})
 
-    async def _produce_messages(self) -> None:
-        await self._produce_conversation_messages()
-        await self._produce_final_message()
-
-    async def _consume_messages(self) -> AsyncGenerator:
-        while True:
-            message = await self._message_queue.get()
-            if message is None:
-                break
-            yield message
+    async def _produce_messages(self) -> AsyncGenerator:
+        async for msg in self._produce_conversation_messages():
+            yield msg
+        yield self._produce_final_message()
 
     @abstractmethod
-    async def _produce_conversation_messages(self) -> None:
-        pass
+    async def _produce_conversation_messages(self) -> AsyncGenerator:
+        yield
 
-    async def _produce_final_message(self) -> None:
-        await self._produce_message(message={"state": self._get_final_state()}, message_type="done")
-        await self._close_stream()
-
-    async def _produce_message(self, message, message_type="message", message_description=None) -> None:
-        if message_description is None:
-            message_description = message_type
-        print("-" * 100)
-        print(f"Yielding {message_description}: {message}")
-        print("-" * 100)
-        await self._message_queue.put((message_type, message))
-
-    async def _close_stream(self) -> None:
-        await self._message_queue.put(None)
+    def _produce_final_message(self) -> Tuple:
+        return self._produce_message(message={"state": self._get_final_state()}, message_type="done")
 
     def _get_final_state(self) -> Dict:
         return {
@@ -123,13 +102,29 @@ class TurnRunner(ABC):
             "turn_messages": self._accumulated_messages,
         }
 
-    async def _produce_assistance_message(
+    def _produce_message(self, message, message_type="message", message_description=None) -> Tuple:
+        if message_description is None:
+            message_description = message_type
+        print("-" * 100)
+        print(f"Yielding {message_description}: {message}")
+        print("-" * 100)
+        return (message_type, message)
+
+    def _produce_assistance_content_message(self, content: str, citations: Optional[List] = None) -> Tuple:
+        self._current_agent.register_new_content_message()
+        return self._produce_assistance_message(
+            response_type=self._current_agent.get_response_type(),
+            content=content,
+            citations=citations,
+        )
+
+    def _produce_assistance_message(
         self,
         response_type: str,
         content: Optional[str] = None,
         citations: Optional[List] = None,
         tool_calls: Optional[List] = None,
-    ) -> None:
+    ) -> Tuple:
         message = {
             "content": content,
             "role": "assistant",
@@ -141,18 +136,11 @@ class TurnRunner(ABC):
         }
         if citations:
             message["citations"] = citations
-        await self._produce_message(message)
+        result_message = self._produce_message(message)
         self._accumulated_messages.append(
             add_sender_details_to_message(message=message, sender_agent_name=self._current_agent.name)
         )
-
-    async def _produce_assistance_content_message(self, content: str, citations: Optional[List] = None) -> None:
-        self._current_agent.register_new_content_message()
-        await self._produce_assistance_message(
-            response_type=self._current_agent.get_response_type(),
-            content=content,
-            citations=citations,
-        )
+        return result_message
 
 
 class GreetingTurnRunner(TurnRunner):
@@ -160,8 +148,8 @@ class GreetingTurnRunner(TurnRunner):
         super().__init__(current_agent=current_agent)
         self._content = content
 
-    async def _produce_conversation_messages(self) -> None:
-        await self._produce_assistance_content_message(content=self._content)
+    async def _produce_conversation_messages(self) -> AsyncGenerator:
+        yield self._produce_assistance_content_message(content=self._content)
 
 
 class MultiAgentsTurnRunner(TurnRunner):
@@ -177,96 +165,107 @@ class MultiAgentsTurnRunner(TurnRunner):
         self._parent_stack = []
         self._iter = 0
 
-    async def _produce_conversation_messages(self) -> None:
+    async def _produce_conversation_messages(self) -> AsyncGenerator:
         self._iter = 0
+        while not self._is_done():
+            async for msg in self._run_agents():
+                yield msg
 
-        while True:
-            self._on_new_iteration_start()
+    def _is_done(self) -> bool:
+        return not self._current_agent.is_internal() and self._current_agent.is_done()
 
-            stream_result = await swarm_run_streamed(
-                agent=self._current_agent,
-                messages=self._messages,
-                external_tools=None,
-                tokens_used=self._tokens_used,
-                enable_tracing=self._enable_tracing,
-            )
+    async def _run_agents(self) -> AsyncGenerator:
+        self._on_agents_run()
 
-            async for event in stream_result.stream_events():
-                try:
-                    if event.type == "raw_response_event":
-                        if self._event_has_tokens_usage_info(event=event):
-                            self._update_tokens_usage_info(event=event)
+        async for event in self._create_event_generator():
+            try:
+                async for msg in self._handle_event(event=event):
+                    yield msg
+                if self._is_done():
+                    break
+            except Exception as e:
+                self._log_event_handling_exception(exception=e, event=event)
+                raise
 
-                        await self._produce_web_search_messages(event=event)
-                    elif event.type == "agent_updated_stream_event":
-                        new_agent = cast(Agent, event.new_agent)
-                        if self._should_skip_transfer_control(new_agent=new_agent):
-                            continue
-
-                        await self._produce_control_transition_messages(
-                            new_agent=new_agent, response_type=ResponseType.INTERNAL.value
-                        )
-
-                        if new_agent.is_internal():
-                            self._current_agent.register_child_agent_call(child_agent_name=new_agent.name)
-                            self._parent_stack.append(self._current_agent)
-                        self._current_agent = new_agent
-                    elif event.type == "run_item_stream_event":
-                        if event.item.type == "tool_call_item":
-                            if hasattr(event.item.raw_item, "type") and event.item.raw_item.type == "web_search_call":
-                                await self._produce_web_search_messages(event=event)
-                            else:
-                                await self._produce_tool_call_message(
-                                    tool_call_id=event.item.raw_item.call_id,
-                                    tool_name=event.item.raw_item.name,
-                                    tool_args=event.item.raw_item.arguments,
-                                )
-                        elif event.item.type == "tool_call_output_item":
-                            tool_call_id, tool_name = self._extract_tool_call_id_and_name_from_event(event=event)
-
-                            await self._produce_tool_response_message(
-                                content=str(event.item.output), tool_call_id=tool_call_id, tool_name=tool_name
-                            )
-                        elif event.item.type == "message_output_item":
-                            content, url_citations = self._extract_content_and_citations_from_event(event=event)
-
-                            await self._produce_assistance_content_message(content=content, citations=url_citations)
-
-                            if self._current_agent.is_internal() and self._parent_stack:
-                                await self._produce_control_transition_messages(
-                                    new_agent=self._parent_stack[-1],
-                                    response_type=self._current_agent.get_response_type(),
-                                )
-                                self._current_agent = self._parent_stack.pop()
-                            elif not self._current_agent.is_internal():
-                                break
-
-                except Exception as e:
-                    print("\n=== Error in stream event processing ===")
-                    print(f"Error: {str(e)}")
-                    print("Event details:")
-                    print(f"Event type: {event.type if hasattr(event, 'type') else 'unknown'}")
-                    if hasattr(event, "__dict__"):
-                        print(f"Event attributes: {event.__dict__}")
-                    print(f"Full event object: {event}")
-                    print(f"Traceback: {traceback.format_exc()}")
-                    print("=" * 50)
-                    raise
-
-            if self._is_done():
-                break
-
-    def _on_new_iteration_start(self) -> None:
+    def _on_agents_run(self) -> None:
         self._iter += 1
         self._messages = append_messages(self._messages, self._accumulated_messages)
         print("-" * 100)
-        print(f"Iteration {iter} of turn loop")
+        print(f"Iteration {self._iter} of turn loop")
         print(f"Current agent: {self._current_agent.name} (internal: {self._current_agent.is_internal()})")
         print(f"Parent stack: {[agent.name for agent in self._parent_stack]}")
         print("-" * 100)
 
-    def _is_done(self) -> bool:
-        return not self._current_agent.is_internal() and self._current_agent.is_done()
+    async def _create_event_generator(self) -> AsyncGenerator:
+        event_streamer = await swarm_run_streamed(
+            agent=self._current_agent,
+            messages=self._messages,
+            external_tools=None,
+            tokens_used=self._tokens_used,
+            enable_tracing=self._enable_tracing,
+        )
+        async for event in event_streamer.stream_events():
+            yield event
+
+    async def _handle_event(self, event) -> AsyncGenerator:
+        if event.type == "raw_response_event":
+            messages = self._handle_raw_response_event(event=event)
+        elif event.type == "agent_updated_stream_event":
+            messages = self._handle_agent_updated_stream_event(event=event)
+        elif event.type == "run_item_stream_event":
+            messages = self._handle_run_item_stream_event(event=event)
+        else:
+            return
+
+        async for msg in messages:
+            yield msg
+
+    async def _handle_raw_response_event(self, event) -> AsyncGenerator:
+        if self._event_has_tokens_usage_info(event=event):
+            self._update_tokens_usage_info(event=event)
+        async for msg in self._produce_web_search_messages(event=event):
+            yield msg
+
+    @staticmethod
+    def _event_has_tokens_usage_info(event):
+        return (
+            hasattr(event.data, "type")
+            and event.data.type == "response.completed"
+            and hasattr(event.data.response, "usage")
+        )
+
+    def _update_tokens_usage_info(self, event):
+        self._tokens_used["total"] += event.data.response.usage.total_tokens
+        self._tokens_used["prompt"] += event.data.response.usage.input_tokens
+        self._tokens_used["completion"] += event.data.response.usage.output_tokens
+        print("-" * 50)
+        print(f"Found usage information. Updated cumulative tokens: {self._tokens_used}")
+        print("-" * 50)
+
+    async def _produce_web_search_messages(self, event) -> AsyncGenerator:
+        web_search_messages = handle_web_search_event(event, self._current_agent)
+        for message in web_search_messages:
+            message["response_type"] = ResponseType.INTERNAL.value
+            yield self._produce_message(message)
+            if message.get("role") != "tool":
+                self._accumulated_messages.append(
+                    add_sender_details_to_message(message=message, sender_agent_name=self._current_agent.name)
+                )
+
+    async def _handle_agent_updated_stream_event(self, event) -> AsyncGenerator:
+        new_agent = cast(Agent, event.new_agent)
+        if self._should_skip_transfer_control(new_agent=new_agent):
+            return
+
+        async for msg in self._produce_control_transition_messages(
+            new_agent=new_agent, response_type=ResponseType.INTERNAL.value
+        ):
+            yield msg
+
+        if new_agent.is_internal():
+            self._current_agent.register_child_agent_call(child_agent_name=new_agent.name)
+            self._parent_stack.append(self._current_agent)
+        self._current_agent = new_agent
 
     def _should_skip_transfer_control(self, new_agent: Agent):
         if self._current_agent.name == new_agent.name:
@@ -283,30 +282,97 @@ class MultiAgentsTurnRunner(TurnRunner):
             return True
         return False
 
-    async def _produce_web_search_messages(self, event) -> None:
-        web_search_messages = handle_web_search_event(event, self._current_agent)
-        for message in web_search_messages:
-            message["response_type"] = ResponseType.INTERNAL.value
-            await self._produce_message(message)
-            if message.get("role") != "tool":
-                self._accumulated_messages.append(
-                    add_sender_details_to_message(message=message, sender_agent_name=self._current_agent.name)
-                )
+    async def _produce_control_transition_messages(self, new_agent: Agent, response_type: str) -> AsyncGenerator:
+        tool_call_id = str(uuid.uuid4())
+        yield self._produce_control_transition_call_message(
+            tool_call_id=tool_call_id, new_agent=new_agent, response_type=response_type
+        )
+        yield self._produce_control_transition_response_message(tool_call_id=tool_call_id, new_agent=new_agent)
 
-    def _update_tokens_usage_info(self, event):
-        self._tokens_used["total"] += event.data.response.usage.total_tokens
-        self._tokens_used["prompt"] += event.data.response.usage.input_tokens
-        self._tokens_used["completion"] += event.data.response.usage.output_tokens
-        print("-" * 50)
-        print(f"Found usage information. Updated cumulative tokens: {self._tokens_used}")
-        print("-" * 50)
+    def _produce_control_transition_call_message(
+        self, tool_call_id: str, new_agent: Agent, response_type: str
+    ) -> Tuple:
+        return self._produce_message(
+            message={
+                "content": None,
+                "role": "assistant",
+                "sender": self._current_agent.name,
+                "tool_calls": [
+                    {
+                        "function": {
+                            "name": "transfer_to_agent",
+                            "arguments": json.dumps({"assistant": new_agent.name}),
+                        },
+                        "id": tool_call_id,
+                        "type": "function",
+                    }
+                ],
+                "tool_call_id": None,
+                "tool_name": None,
+                "response_type": response_type,
+            },
+            message_description="control transition message",
+        )
 
-    @staticmethod
-    def _event_has_tokens_usage_info(event):
-        return (
-            hasattr(event.data, "type")
-            and event.data.type == "response.completed"
-            and hasattr(event.data.response, "usage")
+    def _produce_control_transition_response_message(self, tool_call_id: str, new_agent: Agent) -> Tuple:
+        return self._produce_message(
+            message={
+                "content": json.dumps({"assistant": new_agent.name}),
+                "role": "tool",
+                "sender": None,
+                "tool_calls": None,
+                "tool_call_id": tool_call_id,
+                "tool_name": "transfer_to_agent",
+            },
+            message_description="control transition response",
+        )
+
+    async def _handle_run_item_stream_event(self, event) -> AsyncGenerator:
+        if event.item.type == "tool_call_item":
+            messages = self._handle_tool_call_item(event=event)
+        elif event.item.type == "tool_call_output_item":
+            messages = self._handle_tool_call_output_item(event=event)
+        elif event.item.type == "message_output_item":
+            messages = self._handle_message_output_item(event=event)
+        else:
+            return
+
+        async for msg in messages:
+            yield msg
+
+    async def _handle_tool_call_item(self, event) -> AsyncGenerator:
+        if hasattr(event.item.raw_item, "type") and event.item.raw_item.type == "web_search_call":
+            async for msg in self._produce_web_search_messages(event=event):
+                yield msg
+        else:
+            yield self._produce_tool_call_message(
+                tool_call_id=event.item.raw_item.call_id,
+                tool_name=event.item.raw_item.name,
+                tool_args=event.item.raw_item.arguments,
+            )
+
+    def _produce_tool_call_message(
+        self, tool_call_id: Optional[str], tool_name: Optional[str], tool_args: Optional[str]
+    ) -> Tuple:
+        return self._produce_assistance_message(
+            response_type=ResponseType.INTERNAL.value,
+            tool_calls=[
+                {
+                    "function": {
+                        "name": tool_name,
+                        "arguments": tool_args,
+                    },
+                    "id": tool_call_id,
+                    "type": "function",
+                }
+            ],
+        )
+
+    async def _handle_tool_call_output_item(self, event) -> AsyncGenerator:
+        tool_call_id, tool_name = self._extract_tool_call_id_and_name_from_event(event=event)
+
+        yield self._produce_tool_response_message(
+            content=str(event.item.output), tool_call_id=tool_call_id, tool_name=tool_name
         )
 
     @staticmethod
@@ -334,6 +400,35 @@ class MultiAgentsTurnRunner(TurnRunner):
 
         return tool_call_id, tool_name
 
+    def _produce_tool_response_message(
+        self, content: str, tool_call_id: Optional[str], tool_name: Optional[str]
+    ) -> Tuple:
+        return self._produce_message(
+            message={
+                "content": content,
+                "role": "tool",
+                "sender": None,
+                "tool_calls": None,
+                "tool_call_id": tool_call_id,
+                "tool_name": tool_name,
+                "response_type": ResponseType.INTERNAL.value,
+            },
+            message_description="tool call output message",
+        )
+
+    async def _handle_message_output_item(self, event) -> AsyncGenerator:
+        content, url_citations = self._extract_content_and_citations_from_event(event=event)
+
+        yield self._produce_assistance_content_message(content=content, citations=url_citations)
+
+        if self._current_agent.is_internal() and self._parent_stack:
+            async for msg in self._produce_control_transition_messages(
+                new_agent=self._parent_stack[-1],
+                response_type=self._current_agent.get_response_type(),
+            ):
+                yield msg
+            self._current_agent = self._parent_stack.pop()
+
     @staticmethod
     def _extract_content_and_citations_from_event(event) -> Tuple:
         content = ""
@@ -354,83 +449,16 @@ class MultiAgentsTurnRunner(TurnRunner):
                             url_citations.append(citation)
         return content, url_citations
 
-    async def _produce_tool_call_message(
-        self, tool_call_id: Optional[str], tool_name: Optional[str], tool_args: Optional[str]
-    ) -> None:
-        await self._produce_assistance_message(
-            response_type=ResponseType.INTERNAL.value,
-            tool_calls=[
-                {
-                    "function": {
-                        "name": tool_name,
-                        "arguments": tool_args,
-                    },
-                    "id": tool_call_id,
-                    "type": "function",
-                }
-            ],
-        )
-
-    async def _produce_tool_response_message(
-        self, content: str, tool_call_id: Optional[str], tool_name: Optional[str]
-    ) -> None:
-        await self._produce_message(
-            message={
-                "content": content,
-                "role": "tool",
-                "sender": None,
-                "tool_calls": None,
-                "tool_call_id": tool_call_id,
-                "tool_name": tool_name,
-                "response_type": ResponseType.INTERNAL.value,
-            },
-            message_description="tool call output message",
-        )
-
-    async def _produce_control_transition_messages(self, new_agent: Agent, response_type: str) -> None:
-        tool_call_id = str(uuid.uuid4())
-        await self._produce_control_transition_call_message(
-            tool_call_id=tool_call_id, new_agent=new_agent, response_type=response_type
-        )
-        await self._produce_control_transition_response_message(tool_call_id=tool_call_id, new_agent=new_agent)
-
-    async def _produce_control_transition_call_message(
-        self, tool_call_id: str, new_agent: Agent, response_type: str
-    ) -> None:
-        await self._produce_message(
-            message={
-                "content": None,
-                "role": "assistant",
-                "sender": self._current_agent.name,
-                "tool_calls": [
-                    {
-                        "function": {
-                            "name": "transfer_to_agent",
-                            "arguments": json.dumps({"assistant": new_agent.name}),
-                        },
-                        "id": tool_call_id,
-                        "type": "function",
-                    }
-                ],
-                "tool_call_id": None,
-                "tool_name": None,
-                "response_type": response_type,
-            },
-            message_description="control transition message",
-        )
-
-    async def _produce_control_transition_response_message(self, tool_call_id: str, new_agent: Agent) -> None:
-        await self._produce_message(
-            message={
-                "content": json.dumps({"assistant": new_agent.name}),
-                "role": "tool",
-                "sender": None,
-                "tool_calls": None,
-                "tool_call_id": tool_call_id,
-                "tool_name": "transfer_to_agent",
-            },
-            message_description="control transition response",
-        )
+    def _log_event_handling_exception(self, exception, event) -> None:
+        print("\n=== Error in stream event processing ===")
+        print(f"Error: {str(exception)}")
+        print("Event details:")
+        print(f"Event type: {event.type if hasattr(event, 'type') else 'unknown'}")
+        if hasattr(event, "__dict__"):
+            print(f"Event attributes: {event.__dict__}")
+        print(f"Full event object: {event}")
+        print(f"Traceback: {traceback.format_exc()}")
+        print("=" * 50)
 
 
 def is_greeting_turn(messages) -> bool:
