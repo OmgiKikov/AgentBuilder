@@ -48,7 +48,8 @@ def add_sender_details_to_messages(messages):
     result_messages = []
     for msg in messages:
         if msg.get("sender"):
-            result_messages.append(add_sender_details_to_message(message=msg, sender_agent_name=msg.get("sender")))
+            msg = add_sender_details_to_message(message=msg, sender_agent_name=msg.get("sender"))
+        result_messages.append(msg)
     return result_messages
 
 
@@ -111,7 +112,6 @@ class TurnRunner(ABC):
         return (message_type, message)
 
     def _produce_assistance_content_message(self, content: str, citations: Optional[List] = None) -> Tuple:
-        self._current_agent.register_new_content_message()
         return self._produce_assistance_message(
             response_type=self._current_agent.get_response_type(),
             content=content,
@@ -172,7 +172,7 @@ class MultiAgentsTurnRunner(TurnRunner):
                 yield msg
 
     def _is_done(self) -> bool:
-        return not self._current_agent.is_internal() and self._current_agent.is_done()
+        return self._current_agent.is_done
 
     async def _run_agents(self) -> AsyncGenerator:
         self._on_agents_run()
@@ -200,7 +200,6 @@ class MultiAgentsTurnRunner(TurnRunner):
         event_streamer = await swarm_run_streamed(
             agent=self._current_agent,
             messages=self._messages,
-            external_tools=None,
             tokens_used=self._tokens_used,
             enable_tracing=self._enable_tracing,
         )
@@ -254,18 +253,22 @@ class MultiAgentsTurnRunner(TurnRunner):
 
     async def _handle_agent_updated_stream_event(self, event) -> AsyncGenerator:
         new_agent = cast(Agent, event.new_agent)
+
         if self._current_agent.should_skip_transfer_control_to_agent(agent=new_agent):
             return
 
-        async for msg in self._produce_control_transition_messages(
-            new_agent=new_agent, response_type=ResponseType.INTERNAL.value
-        ):
+        if new_agent.is_internal():
+            self._current_agent.register_child_agent_call(child_agent=new_agent)
+            self._parent_stack.append(self._current_agent)
+
+        async for msg in self._transfer_control_to_agent(agent=new_agent, response_type=ResponseType.INTERNAL.value):
             yield msg
 
-        if new_agent.is_internal():
-            self._current_agent.register_child_agent_call(child_agent_name=new_agent.name)
-            self._parent_stack.append(self._current_agent)
-        self._current_agent = new_agent
+    async def _transfer_control_to_agent(self, agent: Agent, response_type: str) -> AsyncGenerator:
+        print(f"Transfer control from `{self._current_agent.name}` to `{agent.name}`")
+        async for msg in self._produce_control_transition_messages(new_agent=agent, response_type=response_type):
+            yield msg
+        self._current_agent = agent
 
     async def _produce_control_transition_messages(self, new_agent: Agent, response_type: str) -> AsyncGenerator:
         tool_call_id = str(uuid.uuid4())
@@ -355,7 +358,6 @@ class MultiAgentsTurnRunner(TurnRunner):
 
     async def _handle_tool_call_output_item(self, event) -> AsyncGenerator:
         tool_call_id, tool_name = self._extract_tool_call_id_and_name_from_event(event=event)
-
         yield self._produce_tool_response_message(
             content=str(event.item.output), tool_call_id=tool_call_id, tool_name=tool_name
         )
@@ -403,16 +405,19 @@ class MultiAgentsTurnRunner(TurnRunner):
 
     async def _handle_message_output_item(self, event) -> AsyncGenerator:
         content, url_citations = self._extract_content_and_citations_from_event(event=event)
-
         yield self._produce_assistance_content_message(content=content, citations=url_citations)
+        async for msg in self._interrupt_agent():
+            yield msg
 
+    async def _interrupt_agent(self) -> AsyncGenerator:
+        print(f"Interrupt agent `{self._current_agent.name}`")
         if self._current_agent.is_internal() and self._parent_stack:
-            async for msg in self._produce_control_transition_messages(
-                new_agent=self._parent_stack[-1],
-                response_type=self._current_agent.get_response_type(),
+            async for msg in self._transfer_control_to_agent(
+                agent=self._parent_stack.pop(), response_type=self._current_agent.get_response_type()
             ):
                 yield msg
-            self._current_agent = self._parent_stack.pop()
+        else:
+            self._current_agent.terminate()
 
     @staticmethod
     def _extract_content_and_citations_from_event(event) -> Tuple:

@@ -49,8 +49,8 @@ class NewResponse(BaseModel):
 class NodeAgent(Agent):
     output_visibility: str = outputVisibility.EXTERNAL.value
     max_child_agent_calls: int = DEFAULT_MAX_CHILD_AGENT_CALLS
-    content_messages_count: int = 0
     child_calls_count: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    is_done: bool = False
 
     def is_internal(self) -> bool:
         return self.output_visibility == outputVisibility.INTERNAL.value
@@ -60,32 +60,25 @@ class NodeAgent(Agent):
             return ResponseType.INTERNAL.value
         return ResponseType.EXTERNAL.value
 
-    def is_done(self) -> bool:
-        return self.content_messages_count > 0
-
-    def register_new_content_message(self) -> None:
-        self.content_messages_count += 1
-
-    def register_child_agent_call(self, child_agent_name: str) -> None:
-        self.child_calls_count[child_agent_name] += 1
+    def register_child_agent_call(self, child_agent: Agent) -> None:
+        self.child_calls_count[child_agent.name] += 1
 
     def can_run_child_agent(self, child_agent: Agent) -> bool:
         return self.child_calls_count[child_agent.name] < self.max_child_agent_calls
 
     def should_skip_transfer_control_to_agent(self, agent: Agent):
         if self.name == agent.name:
-            print(
-                f"\nSkipping agent transfer attempt: {self.name} -> " f"{agent.name} (self-transfer)"
-            )
+            print(f"\nSkipping agent transfer attempt: {self.name} -> " f"{agent.name} (self-transfer)")
             return True
 
         if not self.can_run_child_agent(child_agent=agent):
-            print(
-                f"Skipping transfer from {self.name} to "
-                f"{agent.name} (max calls reached from parent to child)"
-            )
+            print(f"Skipping transfer from {self.name} to " f"{agent.name} (max calls reached from parent to child)")
             return True
         return False
+
+    def terminate(self) -> None:
+        print(f"Terminate agent {self.name}")
+        self.is_done = True
 
 
 async def mock_tool(tool_name: str, args: str, description: str, mock_instructions: str) -> str:
@@ -260,18 +253,15 @@ def get_rag_tool(config: dict, complete_request: dict) -> FunctionTool:
 
 
 def _create_interruption_tool() -> FunctionTool:
+    async def no_op():
+        return
+
     return FunctionTool(
         name="interrupt_agent",
         description="Interrupt the current agent's execution. This is a hidden tool that should be used when the agent needs to stop its execution and return control to the parent agent or end the turn.",
-        params_json_schema={
-            "type": "object",
-            "properties": {
-                "reason": {"type": "string", "description": "The reason for interrupting the agent's execution"}
-            },
-            "required": ["reason"],
-        },
+        params_json_schema={"type": "object", "properties": {}},
         strict_json_schema=False,
-        on_invoke_tool=lambda ctx, args: None,  # No-op since we handle this in run_turn_streamed
+        on_invoke_tool=lambda ctx, args: no_op(),  # No-op since we handle this in run_turn_streamed
     )
 
 
@@ -303,7 +293,7 @@ def get_agents(agent_configs, tool_configs, complete_request):
 
         print(f"Agent {agent_config['name']} has {len(agent_config['tools'])} configured tools")
 
-        new_tools = [_create_interruption_tool()]
+        new_tools = []
 
         for tool_name in agent_config["tools"]:
             tool_config = get_tool_config_by_name(tool_configs, tool_name)
@@ -423,15 +413,13 @@ def get_agents(agent_configs, tool_configs, complete_request):
 trace_processor_added = False
 
 
-async def run_streamed(agent, messages, external_tools=None, tokens_used=None, enable_tracing=False):
+async def run_streamed(agent, messages, tokens_used=None, enable_tracing=False):
     """
     Wrapper function for initializing and running the Swarm client in streaming mode.
     """
     print(f"Initializing streaming client for agent: {agent.name}")
 
     # Initialize default parameters
-    if external_tools is None:
-        external_tools = []
     if tokens_used is None:
         tokens_used = {}
 
