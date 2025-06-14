@@ -353,16 +353,6 @@ def clear_all():
     
     print(f"\n   Всего будет удалено: {total_count} записей")
     
-    confirm1 = input("\n   ⚠️  Вы ДЕЙСТВИТЕЛЬНО хотите удалить ВСЕ данные? (УДАЛИТЬ/нет): ").strip()
-    if confirm1 != "УДАЛИТЬ":
-        print("   ❌ Удаление отменено")
-        return
-    
-    confirm2 = input("   ⚠️  Последнее предупреждение! Введите 'ПОДТВЕРЖДАЮ' для удаления: ").strip()
-    if confirm2 != "ПОДТВЕРЖДАЮ":
-        print("   ❌ Удаление отменено")
-        return
-    
     deleted_total = 0
     for collection_name in collections:
         collection = get_collection(collection_name)

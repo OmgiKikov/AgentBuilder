@@ -34,7 +34,7 @@ else:
     from rowboat.schema import UserMessage
 
 openai_client = OpenAI()
-MODEL_NAME = "gpt-4o"
+MODEL_NAME = "gpt-4.1"
 ROWBOAT_API_HOST = os.environ.get("ROWBOAT_API_HOST", "http://127.0.0.1:3000").strip()
 
 

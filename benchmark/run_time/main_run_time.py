@@ -138,7 +138,7 @@ def get_project_workflow_mapping():
     
     return project_workflow_map
 
-async def run_batch_simulations():
+async def run_batch_simulations(name_model):
     """
     Запускает все доступные симуляции поочередно
     """
@@ -223,8 +223,12 @@ async def run_batch_simulations():
         except:
             pass
     
-    with open("benchmark/run_time/run_time_result_gpt1.json", 'w', encoding='utf-8') as f:
+    # Заменяем недопустимые символы в имени файла
+    safe_name_model = name_model.replace('/', '_').replace('\\', '_').replace(':', '_').replace('*', '_').replace('?', '_').replace('"', '_').replace('<', '_').replace('>', '_').replace('|', '_')
+    
+    with open(f"benchmark/run_time/run_time_result_{safe_name_model}.json", 'w', encoding='utf-8') as f:
         json.dump(batch_results, f, ensure_ascii=False, indent=4, default=json_serializer)
 
 if __name__ == "__main__":
-    asyncio.run(run_batch_simulations()) 
+    name_model = "qwen/qwen-2.5-72b-instruct"
+    asyncio.run(run_batch_simulations(name_model)) 

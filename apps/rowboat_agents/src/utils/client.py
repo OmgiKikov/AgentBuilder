@@ -7,13 +7,12 @@ dotenv.load_dotenv()
 
 # DeepSeek configuration via OpenRouter
 BASE_URL = "https://openrouter.ai/api/v1"
-MODEL = "openai/gpt-4.1"
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
 # Legacy environment variables for backward compatibility
 PROVIDER_BASE_URL = os.getenv("PROVIDER_BASE_URL", BASE_URL)
 PROVIDER_API_KEY = os.getenv("PROVIDER_API_KEY", OPENROUTER_API_KEY)
-PROVIDER_DEFAULT_MODEL = os.getenv("PROVIDER_DEFAULT_MODEL", MODEL)
+PROVIDER_DEFAULT_MODEL = os.getenv("PROVIDER_DEFAULT_MODEL")
 
 client = None
 if not PROVIDER_API_KEY:
@@ -21,9 +20,6 @@ if not PROVIDER_API_KEY:
 
 if not PROVIDER_API_KEY:
     raise (ValueError("No LLM Provider API key found. Please set OPENROUTER_API_KEY or PROVIDER_API_KEY"))
-
-if not PROVIDER_DEFAULT_MODEL:
-    PROVIDER_DEFAULT_MODEL = MODEL
 
 # Use OpenRouter/DeepSeek by default
 print(f"Using provider {PROVIDER_BASE_URL} with model {PROVIDER_DEFAULT_MODEL}")

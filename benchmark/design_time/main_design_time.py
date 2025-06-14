@@ -23,8 +23,8 @@ class MockGPTAgent:
         copilot_base_url: str = "http://localhost:3002",
         copilot_api_key: str = None,
         rowboat_base_url: str = "http://localhost:3000",
-        openai_model: str = "gpt-4o-mini",
-        openai_model_eval: str = "gpt-4o",
+        openai_model: str = "gpt-4.1",
+        openai_model_eval: str = "gpt-4.1",
         openai_api_key: str = None
     ):
         """
@@ -65,7 +65,7 @@ class MockGPTAgent:
         max_iterations: int = 5,
         initial_message: str = None,
         pass_criteria: list = None,
-        temperature: float = 0.7
+        temperature: float = 0
     ) -> Dict[str, Any]:
         """
         Симулирует разговор между mock агентом и Copilot
@@ -226,7 +226,7 @@ class MockGPTAgent:
             {
                 "role": "system",
                 "content": (
-                    f"Ты нейтральный оценщик. Оцени разговор по следующим критериям:\n"
+                    f"Ты строгий оценщик, который придирается к критериям. Замечение: когда в критерии есть создал инструмент или агента - в транскрибации всегда должен присутствовать слово copilot_change в начале изменения/создания. Смотри на переписку внимательно, не пропускай ничего! Оцени разговор по следующему критерию (фокусируйся на него):\n"
                     f"{pass_criteria}\n\n"
                     "Верни ТОЛЬКО JSON объект в таком формате:\n"
                     '{"verdict": "pass", "details": <причина>} или '
@@ -266,7 +266,6 @@ class MockGPTAgent:
             "evaluation": {
                 "verdict": verdict,
                 "details": details,
-                "transcript": transcript_str,
                 "pass_criteria": pass_criteria
             }
         }
@@ -287,7 +286,7 @@ class MockGPTAgent:
         print("\n" + "="*50)
 
 
-async def main():
+async def main(model_name):
     """Пример использования MockGPTAgent"""
     
     # Загружаем конфигурацию из designtime.json
@@ -313,7 +312,7 @@ async def main():
             print("⚠️ Используется дефолтный workflow")
         
         description = test["scenario_description"]
-        agent_prompt = f"You are role playing a customer talking to a chatbot (the user is role playing the chatbot). Have the following chat with the chatbot. Scenario:\n{description}. You are provided no other information. If the chatbot asks you for information that is not in context, go ahead and provide one unless stated otherwise in the scenario. Directly have the chat with the chatbot. Start now with your first message."
+        agent_prompt = f"Вы играете роль клиента, разговаривающего с чат-ботом (пользователь играет роль чат-бота). Проведите следующий чат с чат-ботом. Сценарий:\n{description}\n\n Начните прямо сейчас с вашего первого сообщения."
         pass_criteria = test["list_of_passCriteria"]# [0]["passCriteria"]
         
         # Запускаем симуляцию
@@ -328,7 +327,7 @@ async def main():
         result["scenario_name"] = test["scenario_name"]
         benchmark_processed.append(result)
 
-    with open("benchmark/design_time/design_time_result_gpt1.json", 'w', encoding='utf-8') as f:
+    with open(f"benchmark/design_time/design_time_result_{model_name}.json", 'w', encoding='utf-8') as f:
         json.dump(benchmark_processed, f, ensure_ascii=False, indent=2)
         
     # # Выводим результаты
@@ -340,4 +339,5 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    model_name = "qwen-2.5-72b-instruct"
+    asyncio.run(main(model_name)) 

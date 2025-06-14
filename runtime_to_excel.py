@@ -3,7 +3,8 @@ import pandas as pd
 from datetime import datetime
 
 # Чтение JSON файла
-with open('benchmark/run_time/run_time_result.json', 'r', encoding='utf-8') as file:
+fila_name = "run_time_result_qwen_qwen-2.5-72b-instruct"
+with open(f'benchmark/run_time/{fila_name}.json', 'r', encoding='utf-8') as file:
     data = json.load(file)
 
 # Создание списка для хранения данных
@@ -42,9 +43,7 @@ for record in data:
 # Создание DataFrame
 df = pd.DataFrame(rows)
 
-# Получение текущей даты и времени для имени файла
-current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-output_file = f'runtime_results_{current_time}.xlsx'
+output_file = f'{fila_name}.xlsx'
 
 # Создание writer объекта
 with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
