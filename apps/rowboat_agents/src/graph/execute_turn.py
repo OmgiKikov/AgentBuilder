@@ -33,6 +33,80 @@ db = mongo_client["rowboat"]
 from src.utils.client import client, PROVIDER_DEFAULT_MODEL
 
 
+async def call_tavily_search(query: str) -> str:
+    """
+    Выполняет поиск через Tavily API
+    """
+    try:
+        api_key = os.environ.get("TAVILY_API_KEY", "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")
+        
+        if not api_key:
+            return "Error: Tavily API key not found. Please set TAVILY_API_KEY environment variable."
+        
+        # Tavily API endpoint
+        url = "https://api.tavily.com/search"
+        
+        # Параметры запроса
+        payload = {
+            "api_key": api_key,
+            "query": query,
+            "search_depth": "basic",
+            "max_results": 5,
+            "include_answer": True,
+            "include_raw_content": False
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    
+                    # Форматируем результаты
+                    results = []
+                    
+                    # Добавляем прямой ответ, если есть
+                    if data.get("answer"):
+                        results.append(f"Answer: {data['answer']}\n")
+                    
+                    # Добавляем результаты поиска
+                    for i, result in enumerate(data.get("results", [])[:5], 1):
+                        results.append(f"\n{i}. {result.get('title', 'No title')}")
+                        results.append(f"   URL: {result.get('url', '')}")
+                        results.append(f"   {result.get('content', '')[:200]}...")
+                    
+                    return "\n".join(results)
+                else:
+                    error_text = await response.text()
+                    return f"Error: Tavily API returned status {response.status}: {error_text}"
+                    
+    except Exception as e:
+        print(f"Error calling Tavily API: {str(e)}")
+        return f"Error: Failed to search - {str(e)}"
+
+
+class TavilySearchTool(FunctionTool):
+    """
+    Класс-обертка для Tavily, имитирующий интерфейс WebSearchTool
+    """
+    def __init__(self):
+        super().__init__(
+            name="web_search",
+            description="Search the web for current information",
+            params_json_schema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query"
+                    }
+                },
+                "required": ["query"],
+                "additionalProperties": False
+            },
+            on_invoke_tool=lambda ctx, args: call_tavily_search(json.loads(args)["query"])
+        )
+
+
 class NewResponse(BaseModel):
     messages: List[Dict]
     agent: Optional[Any] = None
@@ -277,7 +351,7 @@ def get_agents(agent_configs, tool_configs, complete_request):
                 external_tools.append({"type": "function", "function": tool_config})
 
                 if tool_name == "web_search":
-                    tool = WebSearchTool()
+                    tool = TavilySearchTool()
                 elif tool_name == "rag_search":
                     tool = get_rag_tool(agent_config, complete_request)
                 else:
