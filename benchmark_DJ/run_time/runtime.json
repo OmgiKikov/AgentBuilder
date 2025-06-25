@@ -2,32 +2,160 @@
     {
         "project_name": "Ассистент 1",
         "scenario_name": "Тест-А1",
-        "scenario_description": "Как тебя зовут и что ты умеешь?",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
         "simulation_name": "Тест-А1",
         "profileId": "",
         "passCriteria": ""
     },
     {
-        "project_name": "Ассистент 6",
-        "scenario_name": "Тест1",
-        "scenario_description": "Сколько будет 5/3?",
-        "simulation_name": "Тест1",
+        "project_name": "Ассистент 2",
+        "scenario_name": "Тест-А2",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А2",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 3",
+        "scenario_name": "Тест-А3",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А3",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 4",
+        "scenario_name": "Тест-А4",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А4",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 5",
+        "scenario_name": "Тест-А5",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А5",
         "profileId": "",
         "passCriteria": ""
     },
     {
         "project_name": "Ассистент 6",
-        "scenario_name": "Тест2",
-        "scenario_description": "Расскажи анекдот",
-        "simulation_name": "Тест2",
+        "scenario_name": "Тест-А6",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А6",
         "profileId": "",
         "passCriteria": ""
     },
     {
         "project_name": "Ассистент 7",
-        "scenario_name": "Тест3",
-        "scenario_description": "Кто ты такой?",
-        "simulation_name": "Тест3",
+        "scenario_name": "Тест-А7",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А7",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 8",
+        "scenario_name": "Тест-А8",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А8",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 9",
+        "scenario_name": "Тест-А9",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А9",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 10",
+        "scenario_name": "Тест-А10",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А10",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 11",
+        "scenario_name": "Тест-А11",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А11",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 12",
+        "scenario_name": "Тест-А12",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А12",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 13",
+        "scenario_name": "Тест-А13",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А13",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 14",
+        "scenario_name": "Тест-А14",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А14",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 15",
+        "scenario_name": "Тест-А15",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А15",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 16",
+        "scenario_name": "Тест-А16",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А16",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 17",
+        "scenario_name": "Тест-А17",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А17",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 18",
+        "scenario_name": "Тест-А18",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А18",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 19",
+        "scenario_name": "Тест-А19",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А19",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 20",
+        "scenario_name": "Тест-А20",
+        "scenario_description": "Привет, представься и расскажи, что ты умеешь?",
+        "simulation_name": "Тест-А20",
         "profileId": "",
         "passCriteria": ""
     }
