@@ -18,7 +18,7 @@ def get_simulation_pairs():
     simulations = list(simulations_collection.find())
     
     # Загружаем данные из runtime.json
-    runtime_file = 'benchmark/run_time/runtime.json'
+    runtime_file = 'benchmark_DJ/run_time/runtime.json'
     runtime_data = {}
     
     if os.path.exists(runtime_file):

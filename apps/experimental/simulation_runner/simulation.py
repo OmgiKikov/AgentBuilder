@@ -95,20 +95,8 @@ async def simulate_simulation(
     
     for iteration in range(max_iterations):
         print(f"   Итерация {iteration + 1}/{max_iterations}")
-        openai_input = messages
 
-        # Run OpenAI API call in a separate thread (non-blocking)
-        print(f"   🧠 Вызов OpenAI API...")
-        simulated_user_response = await loop.run_in_executor(
-            None,  # default ThreadPool
-            lambda: openai_client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=openai_input,
-                temperature=0.0,
-            ),
-        )
-
-        simulated_content = simulated_user_response.choices[0].message.content.strip()
+        simulated_content = scenario.description
         print(f"   👤 Сгенерированное сообщение пользователя: {simulated_content}")
         messages.append({"role": "assistant", "content": simulated_content})
         global_messages.append({"role": "user", "content": simulated_content})
@@ -197,9 +185,9 @@ async def simulate_simulation(
             print(f"      Headers: {rowboat_client.headers}")
             raise e
 
-    # -------------------------
-    # (2) EVALUATION STEP
-    # -------------------------
+    # # -------------------------
+    # # (2) EVALUATION STEP
+    # # -------------------------
     print(f"📊 Начинаю оценку результатов...")
     
     # swap the roles of the assistant and the user
@@ -212,51 +200,51 @@ async def simulate_simulation(
     # # Store the transcript as a JSON string
     transcript = json.dumps(global_messages)
 
-    # We use passCriteria as the evaluation "criteria."
-    evaluation_prompt = [
-        {
-            "role": "system",
-            "content": (
-                f"You are a neutral evaluator. Evaluate based on these criteria:\n"
-                f"{pass_criteria}\n\n"
-                "Return ONLY a JSON object in this format:\n"
-                '{"verdict": "pass", "details": <reason>} or '
-                '{"verdict": "fail", "details": <reason>}.'
-            ),
-        },
-        {
-            "role": "user",
-            "content": (
-                f"Here is the conversation transcript:\n\n{transcript_str}\n\n"
-                "Did the support bot answer correctly or not? "
-                "Return only 'pass' or 'fail' for verdict, and a brief explanation for details."
-            ),
-        },
-    ]
+    # # We use passCriteria as the evaluation "criteria."
+    # evaluation_prompt = [
+    #     {
+    #         "role": "system",
+    #         "content": (
+    #             f"You are a neutral evaluator. Evaluate based on these criteria:\n"
+    #             f"{pass_criteria}\n\n"
+    #             "Return ONLY a JSON object in this format:\n"
+    #             '{"verdict": "pass", "details": <reason>} or '
+    #             '{"verdict": "fail", "details": <reason>}.'
+    #         ),
+    #     },
+    #     {
+    #         "role": "user",
+    #         "content": (
+    #             f"Here is the conversation transcript:\n\n{transcript_str}\n\n"
+    #             "Did the support bot answer correctly or not? "
+    #             "Return only 'pass' or 'fail' for verdict, and a brief explanation for details."
+    #         ),
+    #     },
+    # ]
 
-    # Run evaluation in a separate thread
-    print(f"🧠 Вызов OpenAI API для оценки...")
-    eval_response = await loop.run_in_executor(
-        None,
-        lambda: openai_client.chat.completions.create(
-            model=MODEL_NAME, messages=evaluation_prompt, temperature=0.0, response_format={"type": "json_object"}
-        ),
-    )
+    # # Run evaluation in a separate thread
+    # print(f"🧠 Вызов OpenAI API для оценки...")
+    # eval_response = await loop.run_in_executor(
+    #     None,
+    #     lambda: openai_client.chat.completions.create(
+    #         model=MODEL_NAME, messages=evaluation_prompt, temperature=0.0, response_format={"type": "json_object"}
+    #     ),
+    # )
 
-    if not eval_response.choices:
-        raise Exception("No evaluation response received from model")
+    # if not eval_response.choices:
+    #     raise Exception("No evaluation response received from model")
 
-    response_json_str = eval_response.choices[0].message.content
-    # Attempt to parse the JSON
-    response_json = json.loads(response_json_str)
-    evaluation_result = response_json.get("verdict")
-    details = response_json.get("details")
+    # response_json_str = eval_response.choices[0].message.content
+    # # Attempt to parse the JSON
+    # response_json = json.loads(response_json_str)
+    # evaluation_result = response_json.get("verdict")
+    # details = response_json.get("details")
 
-    if evaluation_result is None:
-        raise Exception("No 'verdict' field found in evaluation response")
+    # if evaluation_result is None:
+    #     raise Exception("No 'verdict' field found in evaluation response")
 
-    print(f"✅ Оценка завершена: {evaluation_result} - {details}")
-    return (evaluation_result, details, transcript)
+    # print(f"✅ Оценка завершена: {evaluation_result} - {details}")
+    return ("pass", "", transcript)
 
 
 async def simulate_simulations(

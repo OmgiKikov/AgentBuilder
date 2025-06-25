@@ -1,0 +1,26 @@
+[
+    {
+        "project_name": "Ассистент 6",
+        "scenario_name": "Тест1",
+        "scenario_description": "Сколько будет 5/3?",
+        "simulation_name": "Тест1",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 6",
+        "scenario_name": "Тест2",
+        "scenario_description": "Расскажи анекдот",
+        "simulation_name": "Тест2",
+        "profileId": "",
+        "passCriteria": ""
+    },
+    {
+        "project_name": "Ассистент 7",
+        "scenario_name": "Тест3",
+        "scenario_description": "Кто ты такой?",
+        "simulation_name": "Тест3",
+        "profileId": "",
+        "passCriteria": ""
+    }
+]

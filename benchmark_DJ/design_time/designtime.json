@@ -1,0 +1,14 @@
+[
+    {
+        "PROJECT_ID": "fd26e13f-9d8b-445f-8758-293de5b64940",
+        "PROJECT_API_KEY": "6849dea2df605313c38eb5a2",
+        "first_message": "Создай агента который будет использовать калькулятор",
+        "scenario_name": "Сценарий 1-1",
+        "scenario_description": "Ты хочешь создать простого агента с калькулятором",
+        "list_of_passCriteria": [
+            {"test_name": "Проверка создания калькулятора-1", "passCriteria": "Copilot выдал правильную структуру агента с инструментов"},
+            {"test_name": "Проверка создания калькулятора-2", "passCriteria": "Copilot успешно создал агента с инструментом калькулятора @tool:calculator"}
+        ],
+        "MAX_DIALOG_ITERATIONS": 1
+    }
+]
