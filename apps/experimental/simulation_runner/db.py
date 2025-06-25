@@ -80,7 +80,7 @@ def set_run_to_completed(test_run: TestRun, aggregate: AggregateResults):
         {
             "$set": {
                 "status": "completed",
-                "aggregateResults": aggregate.model_dump(by_alias=True),
+                "aggregateResults": aggregate.dict(by_alias=True),
                 "completedAt": datetime.now(timezone.utc),
             }
         },
@@ -139,7 +139,7 @@ def get_simulations_for_run(test_run: TestRun) -> list[TestSimulation]:
     return simulations
 
 
-def get_scenario_by_id(scenario_id: str) -> TestScenario:
+def get_scenario_by_id(scenario_id: str) -> Optional[TestScenario]:
     """
     Returns a TestScenario by its ID.
     """
@@ -167,4 +167,4 @@ def write_test_result(result: TestResult):
     Writes a test result into the `test_results` collection.
     """
     collection = get_collection(TEST_RESULTS_COLLECTION)
-    collection.insert_one(result.model_dump())
+    collection.insert_one(result.dict())
