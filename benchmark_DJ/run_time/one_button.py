@@ -8,6 +8,11 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+# Add the python-sdk path
+python_sdk_src_path = os.path.join(project_root, 'apps', 'python-sdk', 'src')
+if python_sdk_src_path not in sys.path:
+    sys.path.insert(0, python_sdk_src_path)
+
 from get_workflow import get_project_info
 from apps.experimental.simulation_runner.db import get_collection
 from update_models_auto import update_all_agent_models
