@@ -16,13 +16,13 @@ class Client:
         test_profile_id: Optional[str] = None,
     ) -> ApiResponse:
         request = ApiRequest(messages=messages, state=state, workflowId=workflow_id, testProfileId=test_profile_id)
-        json_data = request.model_dump()
+        json_data = request.dict()
         response = requests.post(self.base_url, headers=self.headers, json=json_data)
 
         if not response.status_code == 200:
             raise ValueError(f"Error: {response.status_code} - {response.text}")
 
-        response_data = ApiResponse.model_validate(response.json())
+        response_data = ApiResponse.parse_obj(response.json())
 
         if not response_data.messages:
             raise ValueError("No response")
